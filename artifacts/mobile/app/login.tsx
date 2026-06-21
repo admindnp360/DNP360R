@@ -38,6 +38,14 @@ export default function LoginScreen() {
     } finally { setLoading(false); }
   }
 
+  function handleGoogleSignIn() {
+    Alert.alert(
+      'Google Sign-In',
+      'Google Sign-In will be available once Firebase is integrated.\n\nFirebase integration coming soon.',
+      [{ text: 'OK', style: 'default' }]
+    );
+  }
+
   return (
     <LinearGradient colors={['#031331', '#0D2350', '#031331']} style={styles.gradient}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
@@ -101,6 +109,24 @@ export default function LoginScreen() {
                 <TouchableOpacity style={[styles.primaryBtn, loading && { opacity: 0.6 }]} onPress={handleSignIn} disabled={loading} activeOpacity={0.85}>
                   <Feather name="log-in" size={16} color="#fff" />
                   <Text style={styles.primaryBtnText}>{loading ? 'Signing in…' : 'Sign In'}</Text>
+                </TouchableOpacity>
+
+                {/* OR Divider */}
+                <View style={styles.orRow}>
+                  <View style={styles.orLine} />
+                  <Text style={styles.orText}>OR</Text>
+                  <View style={styles.orLine} />
+                </View>
+
+                {/* Google Sign-In Button */}
+                <TouchableOpacity style={styles.googleBtn} onPress={handleGoogleSignIn} activeOpacity={0.85}>
+                  <View style={styles.googleIconWrap}>
+                    <Text style={styles.googleIconG}>G</Text>
+                  </View>
+                  <Text style={styles.googleBtnText}>Continue with Google</Text>
+                  <View style={styles.googleComingSoon}>
+                    <Text style={styles.googleComingSoonText}>Soon</Text>
+                  </View>
                 </TouchableOpacity>
 
                 <View style={styles.dividerRow}>
@@ -168,27 +194,74 @@ const styles = StyleSheet.create({
   welcomeSub: { color: '#8AB0D8', fontSize: 13, fontFamily: 'Inter_400Regular', textAlign: 'center', marginBottom: 20 },
   mainTabs: { flexDirection: 'row', backgroundColor: 'rgba(255,255,255,0.07)', borderRadius: 12, padding: 4, marginBottom: 16 },
   mainTab: { flex: 1, paddingVertical: 9, borderRadius: 10, alignItems: 'center' },
-  mainTabActive: { backgroundColor: '#005AB6' },
+  mainTabActive: { backgroundColor: '#1264E8' },
   mainTabText: { color: '#8AB0D8', fontSize: 13, fontFamily: 'Inter_600SemiBold' },
   mainTabTextActive: { color: '#FFFFFF' },
   subTabs: { flexDirection: 'row', gap: 8, marginBottom: 14 },
   subTab: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, paddingVertical: 9, borderRadius: 10, backgroundColor: 'rgba(255,255,255,0.07)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)' },
-  subTabActive: { borderColor: '#60A0F0', backgroundColor: 'rgba(0,90,182,0.2)' },
+  subTabActive: { borderColor: '#60A0F0', backgroundColor: 'rgba(18,100,232,0.2)' },
   subTabText: { color: '#8A9BB0', fontSize: 12, fontFamily: 'Inter_500Medium' },
   subTabTextActive: { color: '#60A0F0' },
   inputWrap: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: 'rgba(255,255,255,0.07)', borderRadius: 12, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)', marginBottom: 12, paddingHorizontal: 14 },
   input: { flex: 1, color: '#FFFFFF', fontSize: 14, fontFamily: 'Inter_400Regular', paddingVertical: 14 },
   forgotRow: { alignItems: 'flex-end', marginBottom: 16 },
   forgotText: { color: '#5F8BC0', fontSize: 13, fontFamily: 'Inter_500Medium' },
-  primaryBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#005AB6', borderRadius: 14, paddingVertical: 15, marginBottom: 16 },
+  primaryBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#1264E8', borderRadius: 14, paddingVertical: 15, marginBottom: 16 },
   primaryBtnText: { color: '#FFFFFF', fontSize: 15, fontFamily: 'Inter_600SemiBold' },
+  // OR divider
+  orRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 14 },
+  orLine: { flex: 1, height: 1, backgroundColor: 'rgba(255,255,255,0.12)' },
+  orText: { color: '#6A7D96', fontSize: 11, fontFamily: 'Inter_600SemiBold', letterSpacing: 1 },
+  // Google button
+  googleBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    paddingVertical: 13,
+    paddingHorizontal: 18,
+    marginBottom: 18,
+    gap: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  googleIconWrap: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: '#E8EAED',
+  },
+  googleIconG: {
+    fontSize: 16,
+    fontFamily: 'Inter_700Bold',
+    color: '#4285F4',
+    lineHeight: 20,
+  },
+  googleBtnText: { flex: 1, color: '#1F2937', fontSize: 14, fontFamily: 'Inter_600SemiBold' },
+  googleComingSoon: {
+    backgroundColor: '#FEF3C7',
+    borderRadius: 99,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderWidth: 1,
+    borderColor: '#FCD34D',
+  },
+  googleComingSoonText: { color: '#92400E', fontSize: 9, fontFamily: 'Inter_700Bold', letterSpacing: 0.3 },
+  // Divider
   dividerRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 14 },
   dividerLine: { flex: 1, height: 1, backgroundColor: 'rgba(255,255,255,0.1)' },
   dividerText: { color: '#8A9BB0', fontSize: 12, fontFamily: 'Inter_500Medium' },
   signUpBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: 'rgba(96,160,240,0.1)', borderRadius: 14, paddingVertical: 14, borderWidth: 1, borderColor: 'rgba(96,160,240,0.3)', marginBottom: 12 },
   signUpBtnText: { color: '#60A0F0', fontSize: 14, fontFamily: 'Inter_600SemiBold' },
   secretDesc: { color: '#8AB0D8', fontSize: 13, fontFamily: 'Inter_400Regular', textAlign: 'center', marginBottom: 18, lineHeight: 20 },
-  demoBox: { marginTop: 10, backgroundColor: 'rgba(0,90,182,0.15)', borderRadius: 10, padding: 12, borderWidth: 1, borderColor: 'rgba(0,90,182,0.3)' },
+  demoBox: { marginTop: 10, backgroundColor: 'rgba(18,100,232,0.15)', borderRadius: 10, padding: 12, borderWidth: 1, borderColor: 'rgba(18,100,232,0.3)' },
   demoTitle: { color: '#ABC7FF', fontSize: 11, fontFamily: 'Inter_600SemiBold', marginBottom: 5 },
   demoItem: { color: '#8AB0D8', fontSize: 11, fontFamily: 'Inter_400Regular', marginTop: 2 },
   footer: { flexDirection: 'row', justifyContent: 'center', gap: 28, marginBottom: 12 },
