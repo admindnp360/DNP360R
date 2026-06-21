@@ -154,63 +154,58 @@ export default function AdminKeys() {
             <View key={k.id} style={[styles.keyCard, { backgroundColor: colors.card, borderColor: colors.border, opacity: k.isActive ? 1 : 0.7 }]}>
               <LinearGradient colors={grad} style={styles.keyAccent} />
               <View style={styles.keyInner}>
-                {/* Header row */}
-                <View style={styles.keyHeader}>
+
+                {/* Row 1: Role icon + Code + Status */}
+                <View style={styles.keyRow1}>
                   <LinearGradient colors={grad} style={styles.keyRoleIcon}>
-                    <Feather name={ROLE_ICONS[k.role] as any} size={13} color="#fff" />
+                    <Feather name={ROLE_ICONS[k.role] as any} size={11} color="#fff" />
                   </LinearGradient>
-                  <View style={{ flex: 1 }}>
-                    <LinearGradient colors={grad} style={styles.keyRoleBadge}>
-                      <Text style={styles.keyRoleBadgeText}>{ROLE_LABELS[k.role]}</Text>
-                    </LinearGradient>
-                    <Text style={[styles.keyDate, { color: colors.mutedForeground }]}>{k.createdAt}</Text>
-                  </View>
+                  <Feather name="key" size={12} color={grad[0]} />
+                  <Text style={[styles.codeText, { color: grad[0], flex: 1 }]}>{k.code}</Text>
+                  {k.usedBy && (
+                    <View style={[styles.usedChip, { backgroundColor: grad[0] + '18' }]}>
+                      <Feather name="user-check" size={8} color={grad[0]} />
+                      <Text style={[styles.usedChipText, { color: grad[0] }]}>Used</Text>
+                    </View>
+                  )}
                   <View style={[styles.keyStatusPill, { backgroundColor: k.isActive ? '#D1FAE5' : '#FEE2E2' }]}>
                     <View style={[styles.keyStatusDot, { backgroundColor: k.isActive ? '#10B981' : '#EF4444' }]} />
                     <Text style={[styles.keyStatusText, { color: k.isActive ? '#059669' : '#DC2626' }]}>{k.isActive ? 'Active' : 'Revoked'}</Text>
                   </View>
                 </View>
 
-                {/* Code display */}
-                <LinearGradient colors={[grad[0] + '18', grad[1] + '10']} style={[styles.codeBox, { borderColor: grad[0] + '35' }]}>
-                  <Feather name="key" size={14} color={grad[0]} />
-                  <Text style={[styles.codeText, { color: grad[0] }]}>{k.code}</Text>
-                  <View style={{ flex: 1 }} />
-                  {k.usedBy && (
-                    <View style={[styles.usedChip, { backgroundColor: grad[0] + '15' }]}>
-                      <Feather name="user-check" size={9} color={grad[0]} />
-                      <Text style={[styles.usedChipText, { color: grad[0] }]}>Used</Text>
-                    </View>
+                {/* Row 2: Role badge + date + assigned user */}
+                <View style={styles.keyRow2}>
+                  <LinearGradient colors={grad} style={styles.keyRoleBadge}>
+                    <Text style={styles.keyRoleBadgeText}>{ROLE_LABELS[k.role]}</Text>
+                  </LinearGradient>
+                  <Text style={[styles.keyDate, { color: colors.mutedForeground }]}>{k.createdAt}</Text>
+                  {assignedName && (
+                    <>
+                      <View style={styles.keyDot} />
+                      <LinearGradient colors={grad} style={styles.assignedAvatar}>
+                        <Text style={styles.assignedAvatarLetter}>{assignedName[0].toUpperCase()}</Text>
+                      </LinearGradient>
+                      <Text style={[styles.assignedName, { color: colors.text }]} numberOfLines={1}>{assignedName}</Text>
+                      <Feather name="check-circle" size={11} color="#10B981" />
+                    </>
                   )}
-                </LinearGradient>
+                </View>
 
-                {/* Assigned to */}
-                {assignedName && (
-                  <View style={[styles.assignedRow, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-                    <LinearGradient colors={grad} style={styles.assignedAvatar}>
-                      <Text style={styles.assignedAvatarLetter}>{assignedName[0].toUpperCase()}</Text>
-                    </LinearGradient>
-                    <View style={{ flex: 1 }}>
-                      <Text style={[styles.assignedLabel, { color: colors.mutedForeground }]}>Registered by</Text>
-                      <Text style={[styles.assignedName, { color: colors.text }]}>{assignedName}</Text>
-                    </View>
-                    <Feather name="check-circle" size={14} color="#10B981" />
-                  </View>
-                )}
-
-                {/* Actions */}
+                {/* Row 3: Actions */}
                 <View style={styles.keyActions}>
                   <TouchableOpacity
                     style={[styles.keyActionBtn, { flex: 1, backgroundColor: k.isActive ? '#FEF3C7' : '#D1FAE5' }]}
                     onPress={() => handleToggle(k)} activeOpacity={0.8}
                   >
-                    <Feather name={k.isActive ? 'lock' : 'unlock'} size={13} color={k.isActive ? '#D97706' : '#059669'} />
+                    <Feather name={k.isActive ? 'lock' : 'unlock'} size={12} color={k.isActive ? '#D97706' : '#059669'} />
                     <Text style={[styles.keyActionText, { color: k.isActive ? '#D97706' : '#059669' }]}>{k.isActive ? 'Revoke' : 'Activate'}</Text>
                   </TouchableOpacity>
                   <TouchableOpacity style={[styles.keyActionIconBtn, { backgroundColor: '#FEF2F2' }]} onPress={() => handleDelete(k)} activeOpacity={0.8}>
-                    <Feather name="trash-2" size={14} color="#EF4444" />
+                    <Feather name="trash-2" size={13} color="#EF4444" />
                   </TouchableOpacity>
                 </View>
+
               </View>
             </View>
           );
@@ -293,33 +288,32 @@ const styles = StyleSheet.create({
   filterBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, borderRadius: 12, paddingVertical: 10, borderWidth: 1 },
   filterBtnText: { fontSize: 11, fontFamily: 'Inter_500Medium' },
 
-  keyCard: { borderRadius: 16, borderWidth: 1, overflow: 'hidden' },
-  keyAccent: { height: 4 },
-  keyInner: { padding: 10, gap: 7 },
-  keyHeader: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  keyRoleIcon: { width: 30, height: 30, borderRadius: 8, justifyContent: 'center', alignItems: 'center' },
-  keyRoleBadge: { borderRadius: 99, paddingHorizontal: 8, paddingVertical: 3, alignSelf: 'flex-start' },
-  keyRoleBadgeText: { color: '#fff', fontSize: 9, fontFamily: 'Inter_700Bold' },
-  keyDate: { fontSize: 10, fontFamily: 'Inter_400Regular', marginTop: 3 },
-  keyStatusPill: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 5, borderRadius: 99 },
-  keyStatusDot: { width: 6, height: 6, borderRadius: 3 },
-  keyStatusText: { fontSize: 10, fontFamily: 'Inter_700Bold' },
+  keyCard: { borderRadius: 14, borderWidth: 1, overflow: 'hidden' },
+  keyAccent: { height: 3 },
+  keyInner: { padding: 9, gap: 6 },
 
-  codeBox: { flexDirection: 'row', alignItems: 'center', gap: 10, borderRadius: 12, borderWidth: 1, paddingHorizontal: 12, paddingVertical: 8 },
-  codeText: { fontSize: 18, fontFamily: 'Inter_700Bold', letterSpacing: 2 },
-  usedChip: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 99 },
+  keyRow1: { flexDirection: 'row', alignItems: 'center', gap: 7 },
+  keyRoleIcon: { width: 24, height: 24, borderRadius: 6, justifyContent: 'center', alignItems: 'center' },
+  codeText: { fontSize: 15, fontFamily: 'Inter_700Bold', letterSpacing: 1.5 },
+  usedChip: { flexDirection: 'row', alignItems: 'center', gap: 3, paddingHorizontal: 6, paddingVertical: 3, borderRadius: 99 },
   usedChipText: { fontSize: 9, fontFamily: 'Inter_700Bold' },
+  keyStatusPill: { flexDirection: 'row', alignItems: 'center', gap: 3, paddingHorizontal: 7, paddingVertical: 3, borderRadius: 99 },
+  keyStatusDot: { width: 5, height: 5, borderRadius: 3 },
+  keyStatusText: { fontSize: 9, fontFamily: 'Inter_700Bold' },
 
-  assignedRow: { flexDirection: 'row', alignItems: 'center', gap: 10, borderRadius: 10, borderWidth: 1, padding: 10 },
-  assignedAvatar: { width: 30, height: 30, borderRadius: 15, justifyContent: 'center', alignItems: 'center' },
-  assignedAvatarLetter: { color: '#fff', fontSize: 13, fontFamily: 'Inter_700Bold' },
-  assignedLabel: { fontSize: 9, fontFamily: 'Inter_400Regular' },
-  assignedName: { fontSize: 12, fontFamily: 'Inter_600SemiBold' },
+  keyRow2: { flexDirection: 'row', alignItems: 'center', gap: 5, flexWrap: 'nowrap' },
+  keyRoleBadge: { borderRadius: 99, paddingHorizontal: 7, paddingVertical: 2, alignSelf: 'flex-start' },
+  keyRoleBadgeText: { color: '#fff', fontSize: 8, fontFamily: 'Inter_700Bold' },
+  keyDate: { fontSize: 9, fontFamily: 'Inter_400Regular' },
+  keyDot: { width: 3, height: 3, borderRadius: 2, backgroundColor: '#9CA3AF' },
+  assignedAvatar: { width: 18, height: 18, borderRadius: 9, justifyContent: 'center', alignItems: 'center' },
+  assignedAvatarLetter: { color: '#fff', fontSize: 9, fontFamily: 'Inter_700Bold' },
+  assignedName: { fontSize: 10, fontFamily: 'Inter_600SemiBold', flexShrink: 1 },
 
-  keyActions: { flexDirection: 'row', gap: 8 },
-  keyActionBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, borderRadius: 10, paddingVertical: 7 },
-  keyActionText: { fontSize: 12, fontFamily: 'Inter_700Bold' },
-  keyActionIconBtn: { width: 34, height: 34, borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
+  keyActions: { flexDirection: 'row', gap: 6 },
+  keyActionBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, borderRadius: 8, paddingVertical: 6 },
+  keyActionText: { fontSize: 11, fontFamily: 'Inter_700Bold' },
+  keyActionIconBtn: { width: 30, height: 30, borderRadius: 8, justifyContent: 'center', alignItems: 'center' },
 
   empty: { borderRadius: 16, padding: 40, borderWidth: 1, alignItems: 'center', gap: 8 },
   emptyIcon: { width: 60, height: 60, borderRadius: 16, justifyContent: 'center', alignItems: 'center' },
