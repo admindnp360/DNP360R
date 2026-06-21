@@ -51,7 +51,7 @@ export default function CitizenComplaints() {
         description: description.trim(),
         location: location.trim(),
         status: 'submitted',
-        wardId: '',
+        wardId: user?.wardId ?? '',
         images: [],
       });
       setShowModal(false);

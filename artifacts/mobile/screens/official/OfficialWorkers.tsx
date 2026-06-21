@@ -54,7 +54,7 @@ export default function OfficialWorkers() {
                 {w.wardId && (
                   <>
                     <Feather name="map-pin" size={12} color={colors.mutedForeground} />
-                    <Text style={[styles.footerText, { color: colors.mutedForeground }]}>Ward {w.wardId.replace('ward-', '')}</Text>
+                    <Text style={[styles.footerText, { color: colors.mutedForeground }]}>Ward {w.wardId.replace(/[^0-9]/g, '')}</Text>
                   </>
                 )}
               </View>
