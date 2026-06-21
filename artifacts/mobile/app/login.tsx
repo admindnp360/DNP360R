@@ -111,34 +111,18 @@ export default function LoginScreen() {
                   <Text style={styles.primaryBtnText}>{loading ? 'Signing in…' : 'Sign In'}</Text>
                 </TouchableOpacity>
 
-                {/* OR Divider */}
-                <View style={styles.orRow}>
-                  <View style={styles.orLine} />
-                  <Text style={styles.orText}>OR</Text>
-                  <View style={styles.orLine} />
+                {/* Google + Create Account side by side */}
+                <View style={styles.actionsRow}>
+                  <TouchableOpacity style={styles.googleCompact} onPress={handleGoogleSignIn} activeOpacity={0.85}>
+                    <Text style={styles.googleG}>G</Text>
+                    <Text style={styles.googleCompactLabel}>Google</Text>
+                    <View style={styles.soonPill}><Text style={styles.soonText}>Soon</Text></View>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.createBtn} onPress={() => router.push('/signup')} activeOpacity={0.85}>
+                    <Feather name="user-plus" size={15} color="#60A0F0" />
+                    <Text style={styles.createBtnText}>Create Account</Text>
+                  </TouchableOpacity>
                 </View>
-
-                {/* Google Sign-In Button */}
-                <TouchableOpacity style={styles.googleBtn} onPress={handleGoogleSignIn} activeOpacity={0.85}>
-                  <View style={styles.googleIconWrap}>
-                    <Text style={styles.googleIconG}>G</Text>
-                  </View>
-                  <Text style={styles.googleBtnText}>Continue with Google</Text>
-                  <View style={styles.googleComingSoon}>
-                    <Text style={styles.googleComingSoonText}>Soon</Text>
-                  </View>
-                </TouchableOpacity>
-
-                <View style={styles.dividerRow}>
-                  <View style={styles.dividerLine} />
-                  <Text style={styles.dividerText}>New to DNP360?</Text>
-                  <View style={styles.dividerLine} />
-                </View>
-
-                <TouchableOpacity style={styles.signUpBtn} onPress={() => router.push('/signup')} activeOpacity={0.85}>
-                  <Feather name="user-plus" size={16} color="#60A0F0" />
-                  <Text style={styles.signUpBtnText}>Create Citizen Account</Text>
-                </TouchableOpacity>
 
                 <View style={styles.demoBox}>
                   <Text style={styles.demoTitle}>Demo Credentials</Text>
@@ -208,58 +192,14 @@ const styles = StyleSheet.create({
   forgotText: { color: '#5F8BC0', fontSize: 13, fontFamily: 'Inter_500Medium' },
   primaryBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#1264E8', borderRadius: 14, paddingVertical: 15, marginBottom: 16 },
   primaryBtnText: { color: '#FFFFFF', fontSize: 15, fontFamily: 'Inter_600SemiBold' },
-  // OR divider
-  orRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 14 },
-  orLine: { flex: 1, height: 1, backgroundColor: 'rgba(255,255,255,0.12)' },
-  orText: { color: '#6A7D96', fontSize: 11, fontFamily: 'Inter_600SemiBold', letterSpacing: 1 },
-  // Google button
-  googleBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 14,
-    paddingVertical: 13,
-    paddingHorizontal: 18,
-    marginBottom: 18,
-    gap: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 6,
-    elevation: 3,
-  },
-  googleIconWrap: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: '#FFFFFF',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1.5,
-    borderColor: '#E8EAED',
-  },
-  googleIconG: {
-    fontSize: 16,
-    fontFamily: 'Inter_700Bold',
-    color: '#4285F4',
-    lineHeight: 20,
-  },
-  googleBtnText: { flex: 1, color: '#1F2937', fontSize: 14, fontFamily: 'Inter_600SemiBold' },
-  googleComingSoon: {
-    backgroundColor: '#FEF3C7',
-    borderRadius: 99,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderWidth: 1,
-    borderColor: '#FCD34D',
-  },
-  googleComingSoonText: { color: '#92400E', fontSize: 9, fontFamily: 'Inter_700Bold', letterSpacing: 0.3 },
-  // Divider
-  dividerRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 14 },
-  dividerLine: { flex: 1, height: 1, backgroundColor: 'rgba(255,255,255,0.1)' },
-  dividerText: { color: '#8A9BB0', fontSize: 12, fontFamily: 'Inter_500Medium' },
-  signUpBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: 'rgba(96,160,240,0.1)', borderRadius: 14, paddingVertical: 14, borderWidth: 1, borderColor: 'rgba(96,160,240,0.3)', marginBottom: 12 },
-  signUpBtnText: { color: '#60A0F0', fontSize: 14, fontFamily: 'Inter_600SemiBold' },
+  actionsRow: { flexDirection: 'row', gap: 10, marginBottom: 12, marginTop: 4 },
+  googleCompact: { flex: 2, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: '#FFFFFF', borderRadius: 14, paddingVertical: 13 },
+  googleG: { fontSize: 15, fontFamily: 'Inter_700Bold', color: '#4285F4' },
+  googleCompactLabel: { fontSize: 13, fontFamily: 'Inter_600SemiBold', color: '#1F2937' },
+  soonPill: { backgroundColor: '#FEF3C7', borderRadius: 99, paddingHorizontal: 6, paddingVertical: 2, borderWidth: 1, borderColor: '#FCD34D' },
+  soonText: { color: '#92400E', fontSize: 8, fontFamily: 'Inter_700Bold' },
+  createBtn: { flex: 3, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, backgroundColor: 'rgba(96,160,240,0.1)', borderRadius: 14, paddingVertical: 13, borderWidth: 1, borderColor: 'rgba(96,160,240,0.3)' },
+  createBtnText: { color: '#60A0F0', fontSize: 13, fontFamily: 'Inter_600SemiBold' },
   secretDesc: { color: '#8AB0D8', fontSize: 13, fontFamily: 'Inter_400Regular', textAlign: 'center', marginBottom: 18, lineHeight: 20 },
   demoBox: { marginTop: 10, backgroundColor: 'rgba(18,100,232,0.15)', borderRadius: 10, padding: 12, borderWidth: 1, borderColor: 'rgba(18,100,232,0.3)' },
   demoTitle: { color: '#ABC7FF', fontSize: 11, fontFamily: 'Inter_600SemiBold', marginBottom: 5 },
