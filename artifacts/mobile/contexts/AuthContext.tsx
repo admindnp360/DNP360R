@@ -71,14 +71,51 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   async function loginWithCode(secretCode: string): Promise<boolean> {
-    const entry = SECRET_CODES[secretCode.toUpperCase()];
-    if (!entry) return false;
-    const found = DEMO_USERS.find(u => u.id === entry.userId);
-    if (!found) return false;
-    const { password: _, ...userData } = found;
-    setUser(userData);
-    await AsyncStorage.setItem('dnp360_user', JSON.stringify(userData));
-    return true;
+    const code = secretCode.toUpperCase().trim();
+
+    // 1. Check hardcoded demo codes
+    const hardcoded = SECRET_CODES[code];
+    if (hardcoded) {
+      const found = DEMO_USERS.find(u => u.id === hardcoded.userId);
+      if (found) {
+        const { password: _, ...userData } = found;
+        setUser(userData);
+        await AsyncStorage.setItem('dnp360_user', JSON.stringify(userData));
+        return true;
+      }
+    }
+
+    // 2. Check admin-generated keys stored in AsyncStorage
+    try {
+      const stored = await AsyncStorage.getItem('dnp360_secretKeys');
+      if (stored) {
+        const keys: Array<{ id: string; code: string; role: string; isActive: boolean; usedBy?: string }> = JSON.parse(stored);
+        const matched = keys.find(k => k.code.toUpperCase() === code && k.isActive);
+        if (matched) {
+          // If key is assigned to a specific user, log in as them
+          if (matched.usedBy) {
+            const allUsers = [...DEMO_USERS, ...(await getRegisteredUsers())];
+            const found = allUsers.find(u => u.id === matched.usedBy);
+            if (found) {
+              const { password: _, ...userData } = found;
+              setUser(userData);
+              await AsyncStorage.setItem('dnp360_user', JSON.stringify(userData));
+              return true;
+            }
+          }
+          // Unassigned key — log in as the demo user of that role
+          const demoForRole = DEMO_USERS.find(u => u.role === matched.role);
+          if (demoForRole) {
+            const { password: _, ...userData } = demoForRole;
+            setUser(userData);
+            await AsyncStorage.setItem('dnp360_user', JSON.stringify(userData));
+            return true;
+          }
+        }
+      }
+    } catch {}
+
+    return false;
   }
 
   async function register(name: string, email: string, mobile: string, password: string, address?: string): Promise<{ success: boolean; error?: string }> {

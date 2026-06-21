@@ -75,6 +75,48 @@ export default function OfficialHome() {
             </View>
           </View>
 
+          {/* Ward Health Dashboard */}
+          <View>
+            <Text style={[styles.sectionTitleText, { color: colors.text }]}>Ward Health Status</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10, paddingRight: 4 }}>
+              {wards.map(ward => {
+                const wardPending = complaints.filter(c => c.wardId === ward.id && c.status !== 'resolved').length;
+                const wardWorkers = users.filter(u => u.role === 'safaikarmi' && ward.assignedWorkers.includes(u.id));
+                const health = wardPending === 0 ? 'good' : wardPending <= 2 ? 'warn' : 'critical';
+                const healthColor = health === 'good' ? '#16A34A' : health === 'warn' ? '#D97706' : '#DC2626';
+                const healthBg    = health === 'good' ? '#DCFCE7' : health === 'warn' ? '#FEF3C7' : '#FEE2E2';
+                const healthLabel = health === 'good' ? 'Healthy' : health === 'warn' ? 'Warning' : 'Critical';
+                return (
+                  <View key={ward.id} style={[styles.wardCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                    <View style={styles.wardCardTop}>
+                      <Text style={[styles.wardNum, { color: colors.official }]}>W{ward.wardNumber}</Text>
+                      <View style={[styles.healthPill, { backgroundColor: healthBg }]}>
+                        <View style={[styles.healthDot, { backgroundColor: healthColor }]} />
+                        <Text style={[styles.healthLabel, { color: healthColor }]}>{healthLabel}</Text>
+                      </View>
+                    </View>
+                    <Text style={[styles.wardName, { color: colors.text }]} numberOfLines={1}>{ward.name}</Text>
+                    <Text style={[styles.wardArea, { color: colors.mutedForeground }]} numberOfLines={1}>{ward.area}</Text>
+                    <View style={styles.wardStats}>
+                      <View style={styles.wardStat}>
+                        <Feather name="alert-circle" size={12} color={wardPending > 0 ? '#DC2626' : colors.mutedForeground} />
+                        <Text style={[styles.wardStatText, { color: wardPending > 0 ? '#DC2626' : colors.mutedForeground }]}>{wardPending} pending</Text>
+                      </View>
+                      <View style={styles.wardStat}>
+                        <Feather name="user" size={12} color={wardWorkers.length > 0 ? '#16A34A' : colors.mutedForeground} />
+                        <Text style={[styles.wardStatText, { color: wardWorkers.length > 0 ? '#16A34A' : colors.mutedForeground }]}>{wardWorkers.length} SK</Text>
+                      </View>
+                    </View>
+                    <View style={styles.wardHouses}>
+                      <Feather name="home" size={11} color={colors.mutedForeground} />
+                      <Text style={[styles.wardStatText, { color: colors.mutedForeground }]}>{ward.totalHouses} houses</Text>
+                    </View>
+                  </View>
+                );
+              })}
+            </ScrollView>
+          </View>
+
           {critical.length > 0 && (
             <>
               <SectionHeader title="Pending Complaints" actionLabel="View All" />
@@ -138,6 +180,19 @@ const styles = StyleSheet.create({
   quickRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 12 },
   quickLabel: { fontSize: 14, fontFamily: 'Inter_500Medium' },
   quickValue: { fontSize: 14, fontFamily: 'Inter_700Bold' },
+  sectionTitleText: { fontSize: 17, fontFamily: 'Inter_700Bold', marginBottom: 10 },
+  wardCard: { width: 148, borderRadius: 14, padding: 12, borderWidth: 1, gap: 4 },
+  wardCardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 },
+  wardNum: { fontSize: 13, fontFamily: 'Inter_700Bold' },
+  healthPill: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 7, paddingVertical: 3, borderRadius: 99 },
+  healthDot: { width: 6, height: 6, borderRadius: 3 },
+  healthLabel: { fontSize: 9, fontFamily: 'Inter_600SemiBold' },
+  wardName: { fontSize: 12, fontFamily: 'Inter_600SemiBold' },
+  wardArea: { fontSize: 10, fontFamily: 'Inter_400Regular', marginBottom: 6 },
+  wardStats: { flexDirection: 'row', gap: 10 },
+  wardStat: { flexDirection: 'row', alignItems: 'center', gap: 3 },
+  wardStatText: { fontSize: 10, fontFamily: 'Inter_500Medium' },
+  wardHouses: { flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 2 },
   announceBannerWrap: { borderRadius: 16, overflow: 'hidden' },
   announceBanner: { flexDirection: 'row', gap: 12, alignItems: 'center', borderRadius: 16, padding: 16 },
   bannerIconWrap: { width: 40, height: 40, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center' },

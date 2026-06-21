@@ -124,10 +124,6 @@ export default function LoginScreen() {
                   </TouchableOpacity>
                 </View>
 
-                <View style={styles.demoBox}>
-                  <Text style={styles.demoTitle}>Demo Credentials</Text>
-                  <Text style={styles.demoItem}>citizen.dnp360@gmail.com / 12345678</Text>
-                </View>
               </>
             ) : (
               <>
@@ -140,12 +136,6 @@ export default function LoginScreen() {
                   <Feather name="shield" size={16} color="#fff" />
                   <Text style={styles.primaryBtnText}>{loading ? 'Verifying…' : 'Authenticate'}</Text>
                 </TouchableOpacity>
-                <View style={styles.demoBox}>
-                  <Text style={styles.demoTitle}>Demo Secret Codes</Text>
-                  <Text style={styles.demoItem}>Safai Karmi: SK2566F</Text>
-                  <Text style={styles.demoItem}>Official: OFF4416A</Text>
-                  <Text style={styles.demoItem}>Admin: ADMIN5790X</Text>
-                </View>
               </>
             )}
           </View>
