@@ -52,7 +52,11 @@ export default function AdminHome() {
 
         <View style={styles.body}>
           {pendingResets > 0 && (
-            <TouchableOpacity style={[styles.alertBanner, { backgroundColor: '#FFF3E0', borderColor: colors.official + '50' }]} activeOpacity={0.85} onPress={() => router.push('/(tabs)/action')}>
+            <TouchableOpacity
+              style={[styles.alertBanner, { backgroundColor: '#FFF3E0', borderColor: colors.official + '50' }]}
+              activeOpacity={0.85}
+              onPress={() => router.push('/(tabs)/tertiary')}
+            >
               <Feather name="alert-circle" size={16} color={colors.official} />
               <Text style={[styles.alertText, { color: colors.official }]}>
                 {pendingResets} password reset request{pendingResets > 1 ? 's' : ''} pending
@@ -94,9 +98,14 @@ export default function AdminHome() {
             ))}
           </View>
 
-          {/* Ward Health Dashboard */}
+          {/* Ward Health Dashboard — clickable */}
           <View>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>Ward Health Status</Text>
+            <View style={styles.sectionRow}>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>Ward Health Status</Text>
+              <TouchableOpacity onPress={() => router.push('/(tabs)/tertiary')} activeOpacity={0.7}>
+                <Text style={[styles.seeAll, { color: colors.adminColor }]}>Manage →</Text>
+              </TouchableOpacity>
+            </View>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10, paddingRight: 4 }}>
               {wards.map(ward => {
                 const wardPending = complaints.filter(c => c.wardId === ward.id && c.status !== 'resolved').length;
@@ -106,7 +115,12 @@ export default function AdminHome() {
                 const healthBg    = health === 'good' ? '#DCFCE7' : health === 'warn' ? '#FEF3C7' : '#FEE2E2';
                 const healthLabel = health === 'good' ? 'Healthy' : health === 'warn' ? 'Warning' : 'Critical';
                 return (
-                  <View key={ward.id} style={[styles.wardCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                  <TouchableOpacity
+                    key={ward.id}
+                    style={[styles.wardCard, { backgroundColor: colors.card, borderColor: health === 'critical' ? '#DC262640' : health === 'warn' ? '#D9770640' : colors.border }]}
+                    onPress={() => router.push('/(tabs)/tertiary')}
+                    activeOpacity={0.8}
+                  >
                     <View style={styles.wardCardTop}>
                       <Text style={[styles.wardNum, { color: colors.adminColor }]}>W{ward.wardNumber}</Text>
                       <View style={[styles.healthPill, { backgroundColor: healthBg }]}>
@@ -130,7 +144,11 @@ export default function AdminHome() {
                       <Feather name="home" size={11} color={colors.mutedForeground} />
                       <Text style={[styles.wardStatText, { color: colors.mutedForeground }]}>{ward.totalHouses} houses</Text>
                     </View>
-                  </View>
+                    <View style={[styles.tapHint, { borderTopColor: colors.border }]}>
+                      <Text style={[styles.tapHintText, { color: colors.adminColor }]}>Tap to manage</Text>
+                      <Feather name="chevron-right" size={10} color={colors.adminColor} />
+                    </View>
+                  </TouchableOpacity>
                 );
               })}
             </ScrollView>
@@ -193,7 +211,9 @@ const styles = StyleSheet.create({
   metric: { flex: 1, alignItems: 'center', paddingVertical: 14 },
   metricVal: { fontSize: 22, fontFamily: 'Inter_700Bold' },
   metricLabel: { fontSize: 9, fontFamily: 'Inter_500Medium', textAlign: 'center', marginTop: 2 },
+  sectionRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
   sectionTitle: { fontSize: 17, fontFamily: 'Inter_700Bold' },
+  seeAll: { fontSize: 12, fontFamily: 'Inter_600SemiBold' },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   statCard: { width: '30%', flexGrow: 1, borderRadius: 12, padding: 14, borderWidth: 1, gap: 4, alignItems: 'center' },
   iconWrap: { width: 40, height: 40, borderRadius: 12, justifyContent: 'center', alignItems: 'center', marginBottom: 4 },
@@ -204,18 +224,20 @@ const styles = StyleSheet.create({
   contentRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingVertical: 12 },
   contentLabel: { flex: 1, fontSize: 13, fontFamily: 'Inter_500Medium' },
   contentValue: { fontSize: 14, fontFamily: 'Inter_700Bold' },
-  wardCard: { width: 148, borderRadius: 14, padding: 12, borderWidth: 1, gap: 4 },
+  wardCard: { width: 155, borderRadius: 14, padding: 12, borderWidth: 1.5, gap: 4 },
   wardCardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 },
   wardNum: { fontSize: 13, fontFamily: 'Inter_700Bold' },
   healthPill: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 7, paddingVertical: 3, borderRadius: 99 },
   healthDot: { width: 6, height: 6, borderRadius: 3 },
   healthLabel: { fontSize: 9, fontFamily: 'Inter_600SemiBold' },
   wardName: { fontSize: 12, fontFamily: 'Inter_600SemiBold' },
-  wardArea: { fontSize: 10, fontFamily: 'Inter_400Regular', marginBottom: 6 },
+  wardArea: { fontSize: 10, fontFamily: 'Inter_400Regular', marginBottom: 4 },
   wardStats: { flexDirection: 'row', gap: 10 },
   wardStat: { flexDirection: 'row', alignItems: 'center', gap: 3 },
   wardStatText: { fontSize: 10, fontFamily: 'Inter_500Medium' },
   wardHouses: { flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 2 },
+  tapHint: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 2, borderTopWidth: 1, paddingTop: 6, marginTop: 4 },
+  tapHintText: { fontSize: 9, fontFamily: 'Inter_600SemiBold' },
   announceBannerWrap: { borderRadius: 16, overflow: 'hidden' },
   announceBanner: { flexDirection: 'row', gap: 12, alignItems: 'center', borderRadius: 16, padding: 16 },
   bannerIconWrap: { width: 40, height: 40, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center' },
