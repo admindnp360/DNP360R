@@ -1,6 +1,6 @@
 import { Feather } from '@expo/vector-icons';
 import React, { useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, Modal, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAppData } from '@/contexts/AppContext';
 import { useColors } from '@/hooks/useColors';
@@ -11,127 +11,174 @@ const ROLE_COLORS: Record<string, string> = { safaikarmi: '#006A35', official: '
 const ROLE_BG: Record<string, string> = { safaikarmi: '#D1FAE5', official: '#FFDCC3', admin: '#D7E3FF' };
 
 export default function AdminKeys() {
-  const { secretKeys, addSecretKey, toggleSecretKey, deleteSecretKey } = useAppData();
+  const { secretKeys, users, addSecretKey, toggleSecretKey, deleteSecretKey } = useAppData();
   const colors = useColors();
   const [generating, setGenerating] = useState(false);
+  const [newKey, setNewKey] = useState<SecretKey | null>(null);
+  const [filter, setFilter] = useState<'all' | 'active' | 'inactive'>('all');
+
+  const filteredKeys = secretKeys.filter(k => {
+    if (filter === 'active') return k.isActive;
+    if (filter === 'inactive') return !k.isActive;
+    return true;
+  });
+
+  const getUserName = (userId?: string) => {
+    if (!userId) return null;
+    return users.find(u => u.id === userId)?.name ?? null;
+  };
 
   async function handleGenerate(role: SecretKey['role']) {
     setGenerating(true);
     try {
       const key = await addSecretKey(role);
-      Alert.alert('✓ Key Generated', `New key for ${ROLE_LABELS[role]}:\n\n${key.code}\n\nShare this securely with the assigned employee.`);
+      setNewKey(key);
     } finally {
       setGenerating(false);
     }
   }
 
-  function handleToggle(key: SecretKey) {
-    Alert.alert(
-      key.isActive ? 'Revoke Key?' : 'Activate Key?',
-      `Code: ${key.code}\nRole: ${ROLE_LABELS[key.role]}`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: key.isActive ? 'Revoke' : 'Activate', onPress: () => toggleSecretKey(key.id) },
-      ]
-    );
-  }
-
-  function handleDelete(key: SecretKey) {
-    Alert.alert('Delete Key?', `This will permanently delete code "${key.code}". If assigned, the employee will lose access.`, [
+  function handleToggle(k: SecretKey) {
+    Alert.alert(k.isActive ? 'Revoke Key?' : 'Activate Key?', `Code: ${k.code}`, [
       { text: 'Cancel', style: 'cancel' },
-      { text: 'Delete', style: 'destructive', onPress: () => deleteSecretKey(key.id) },
+      { text: k.isActive ? 'Revoke' : 'Activate', onPress: () => toggleSecretKey(k.id) },
     ]);
   }
 
-  const activeKeys = secretKeys.filter(k => k.isActive);
-  const revokedKeys = secretKeys.filter(k => !k.isActive);
+  function handleDelete(k: SecretKey) {
+    Alert.alert('Delete Key?', `Permanently delete ${k.code}?`, [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Delete', style: 'destructive', onPress: () => deleteSecretKey(k.id) },
+    ]);
+  }
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={['top']}>
       <View style={[styles.header, { borderBottomColor: colors.border }]}>
         <Text style={[styles.title, { color: colors.text }]}>Secret Keys</Text>
-        <Text style={[styles.sub, { color: colors.mutedForeground }]}>{activeKeys.length} active</Text>
+        <View style={[styles.countBadge, { backgroundColor: colors.adminBg }]}>
+          <Text style={[styles.countText, { color: colors.adminColor }]}>{secretKeys.filter(k => k.isActive).length} active</Text>
+        </View>
       </View>
 
-      <ScrollView contentContainerStyle={{ padding: 16, gap: 16, paddingBottom: 100 }}>
-        {/* Generate section */}
-        <View style={[styles.genCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          <Text style={[styles.genTitle, { color: colors.text }]}>Generate New Key</Text>
-          <Text style={[styles.genSub, { color: colors.mutedForeground }]}>Create access codes for employees</Text>
-          <View style={styles.genBtns}>
-            {(['safaikarmi', 'official', 'admin'] as SecretKey['role'][]).map(role => (
+      <ScrollView contentContainerStyle={{ padding: 16, gap: 12, paddingBottom: 100 }} showsVerticalScrollIndicator={false}>
+        {/* Generate Section */}
+        <View style={[styles.generateCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <Text style={[styles.generateTitle, { color: colors.text }]}>Generate New Key</Text>
+          <Text style={[styles.generateSub, { color: colors.mutedForeground }]}>Select role to create a unique access code</Text>
+          <View style={styles.roleButtonRow}>
+            {(['safaikarmi', 'official', 'admin'] as const).map(role => (
               <TouchableOpacity
                 key={role}
-                style={[styles.genBtn, { backgroundColor: ROLE_BG[role], borderColor: ROLE_COLORS[role] + '50' }, generating && { opacity: 0.6 }]}
+                style={[styles.roleBtn, { backgroundColor: ROLE_BG[role], opacity: generating ? 0.6 : 1 }]}
                 onPress={() => handleGenerate(role)}
                 disabled={generating}
                 activeOpacity={0.8}
               >
-                <Feather name="key" size={14} color={ROLE_COLORS[role]} />
-                <Text style={[styles.genBtnText, { color: ROLE_COLORS[role] }]}>{ROLE_LABELS[role]}</Text>
+                <Feather name={role === 'safaikarmi' ? 'trash' : role === 'official' ? 'briefcase' : 'shield'} size={13} color={ROLE_COLORS[role]} />
+                <Text style={[styles.roleBtnText, { color: ROLE_COLORS[role] }]}>{ROLE_LABELS[role]}</Text>
               </TouchableOpacity>
             ))}
           </View>
         </View>
 
-        {/* Active keys */}
-        <Text style={[styles.sectionTitle, { color: colors.text }]}>Active Keys ({activeKeys.length})</Text>
-        {activeKeys.map(k => (
-          <View key={k.id} style={[styles.keyCard, { backgroundColor: colors.card, borderColor: ROLE_COLORS[k.role] + '30', borderLeftColor: ROLE_COLORS[k.role] }]}>
-            <View style={styles.keyTop}>
-              <View style={[styles.roleBadge, { backgroundColor: ROLE_BG[k.role] }]}>
-                <Text style={[styles.roleText, { color: ROLE_COLORS[k.role] }]}>{ROLE_LABELS[k.role]}</Text>
-              </View>
-              <Text style={[styles.keyCode, { color: colors.text }]}>{k.code}</Text>
-            </View>
-            <Text style={[styles.keyDate, { color: colors.mutedForeground }]}>Created: {k.createdAt}</Text>
-            <View style={styles.keyActions}>
-              <Pressable style={[styles.keyBtn, { backgroundColor: colors.submittedBg }]} onPress={() => handleToggle(k)}>
-                <Feather name="slash" size={13} color={colors.submitted} />
-                <Text style={[styles.keyBtnText, { color: colors.submitted }]}>Revoke</Text>
-              </Pressable>
-              <Pressable style={[styles.keyBtn, { backgroundColor: '#FDECEA' }]} onPress={() => handleDelete(k)}>
-                <Feather name="trash-2" size={13} color={colors.destructive} />
-                <Text style={[styles.keyBtnText, { color: colors.destructive }]}>Delete</Text>
-              </Pressable>
-            </View>
-          </View>
-        ))}
+        {/* Filter */}
+        <View style={styles.filterRow}>
+          {(['all', 'active', 'inactive'] as const).map(f => (
+            <Pressable
+              key={f}
+              style={[styles.filterChip, { backgroundColor: filter === f ? colors.adminColor : colors.card, borderColor: filter === f ? colors.adminColor : colors.border }]}
+              onPress={() => setFilter(f)}
+            >
+              <Text style={[styles.filterChipText, { color: filter === f ? '#fff' : colors.mutedForeground }]}>
+                {f === 'all' ? 'All' : f === 'active' ? '● Active' : '○ Revoked'}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
 
-        {/* Revoked keys */}
-        {revokedKeys.length > 0 && (
-          <>
-            <Text style={[styles.sectionTitle, { color: colors.mutedForeground }]}>Revoked Keys ({revokedKeys.length})</Text>
-            {revokedKeys.map(k => (
-              <View key={k.id} style={[styles.keyCard, { backgroundColor: colors.card, borderColor: colors.border, opacity: 0.6 }]}>
-                <View style={styles.keyTop}>
-                  <View style={[styles.roleBadge, { backgroundColor: colors.surface }]}>
-                    <Text style={[styles.roleText, { color: colors.mutedForeground }]}>{ROLE_LABELS[k.role]}</Text>
+        {/* Keys List */}
+        {filteredKeys.map(k => {
+          const assignedName = getUserName(k.usedBy);
+          return (
+            <View key={k.id} style={[styles.keyCard, { backgroundColor: colors.card, borderColor: colors.border, opacity: k.isActive ? 1 : 0.65 }]}>
+              <View style={styles.keyRow}>
+                <View style={[styles.roleTag, { backgroundColor: ROLE_BG[k.role] }]}>
+                  <Text style={[styles.roleTagText, { color: ROLE_COLORS[k.role] }]}>{ROLE_LABELS[k.role]}</Text>
+                </View>
+                <View style={[styles.codeWrap, { backgroundColor: colors.surface }]}>
+                  <Feather name="key" size={11} color={colors.adminColor} />
+                  <Text style={[styles.codeText, { color: colors.text }]}>{k.code}</Text>
+                </View>
+                <View style={{ flex: 1 }} />
+                <TouchableOpacity style={[styles.iconBtn, { backgroundColor: k.isActive ? '#FFF3E0' : colors.resolvedBg }]} onPress={() => handleToggle(k)} activeOpacity={0.7}>
+                  <Feather name={k.isActive ? 'lock' : 'unlock'} size={15} color={k.isActive ? colors.official : colors.resolved} />
+                </TouchableOpacity>
+                <TouchableOpacity style={[styles.iconBtn, { backgroundColor: '#FDECEA' }]} onPress={() => handleDelete(k)} activeOpacity={0.7}>
+                  <Feather name="trash-2" size={15} color={colors.destructive} />
+                </TouchableOpacity>
+              </View>
+
+              {assignedName && (
+                <View style={styles.assignedRow}>
+                  <Feather name="user-check" size={11} color={colors.safaikarmi} />
+                  <Text style={[styles.assignedText, { color: colors.text }]}>Used by: <Text style={{ fontFamily: 'Inter_600SemiBold' }}>{assignedName}</Text></Text>
+                </View>
+              )}
+
+              <View style={[styles.metaRow, { borderTopColor: colors.border }]}>
+                {k.usedBy && (
+                  <View style={styles.metaItem}>
+                    <Feather name="hash" size={9} color={colors.mutedForeground} />
+                    <Text style={[styles.metaText, { color: colors.mutedForeground }]}>{k.usedBy}</Text>
                   </View>
-                  <Text style={[styles.keyCode, { color: colors.mutedForeground, textDecorationLine: 'line-through' }]}>{k.code}</Text>
+                )}
+                <View style={styles.metaItem}>
+                  <Feather name="calendar" size={9} color={colors.mutedForeground} />
+                  <Text style={[styles.metaText, { color: colors.mutedForeground }]}>{k.createdAt}</Text>
                 </View>
-                <View style={styles.keyActions}>
-                  <Pressable style={[styles.keyBtn, { backgroundColor: colors.resolvedBg }]} onPress={() => handleToggle(k)}>
-                    <Feather name="check-circle" size={13} color={colors.resolved} />
-                    <Text style={[styles.keyBtnText, { color: colors.resolved }]}>Reactivate</Text>
-                  </Pressable>
-                  <Pressable style={[styles.keyBtn, { backgroundColor: '#FDECEA' }]} onPress={() => handleDelete(k)}>
-                    <Feather name="trash-2" size={13} color={colors.destructive} />
-                    <Text style={[styles.keyBtnText, { color: colors.destructive }]}>Delete</Text>
-                  </Pressable>
+                <View style={styles.metaItem}>
+                  <View style={[styles.statusDot, { backgroundColor: k.isActive ? colors.resolved : colors.destructive }]} />
+                  <Text style={[styles.metaText, { color: k.isActive ? colors.resolved : colors.destructive }]}>
+                    {k.isActive ? 'Active' : 'Revoked'}
+                  </Text>
                 </View>
               </View>
-            ))}
-          </>
-        )}
+            </View>
+          );
+        })}
 
-        {secretKeys.length === 0 && (
+        {filteredKeys.length === 0 && (
           <View style={[styles.empty, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <Feather name="key" size={36} color={colors.mutedForeground} />
-            <Text style={{ color: colors.mutedForeground, fontSize: 13, fontFamily: 'Inter_400Regular' }}>No secret keys generated yet</Text>
+            <Text style={{ color: colors.mutedForeground, fontSize: 13, fontFamily: 'Inter_400Regular' }}>No keys found</Text>
           </View>
         )}
       </ScrollView>
+
+      {/* New Key Modal */}
+      <Modal visible={!!newKey} animationType="slide" transparent>
+        <View style={styles.overlay}>
+          <View style={[styles.newKeySheet, { backgroundColor: colors.card }]}>
+            <View style={[styles.newKeyIconWrap, { backgroundColor: colors.adminBg }]}>
+              <Feather name="key" size={28} color={colors.adminColor} />
+            </View>
+            <Text style={[styles.newKeyTitle, { color: colors.text }]}>Key Generated!</Text>
+            <Text style={[styles.newKeyRole, { color: colors.mutedForeground }]}>
+              {ROLE_LABELS[newKey?.role ?? 'admin']} Access Code
+            </Text>
+            <View style={[styles.newCodeBox, { backgroundColor: colors.adminBg, borderColor: colors.adminColor + '60' }]}>
+              <Text style={[styles.newCode, { color: colors.adminColor }]}>{newKey?.code}</Text>
+            </View>
+            <Text style={[styles.newKeyNote, { color: colors.mutedForeground }]}>
+              Share this code securely. It will not be shown again after closing.
+            </Text>
+            <TouchableOpacity style={[styles.closeKeyBtn, { backgroundColor: colors.adminColor }]} onPress={() => setNewKey(null)} activeOpacity={0.85}>
+              <Text style={styles.closeKeyBtnText}>Done</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -139,22 +186,39 @@ export default function AdminKeys() {
 const styles = StyleSheet.create({
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16, paddingBottom: 12, borderBottomWidth: 1 },
   title: { fontSize: 22, fontFamily: 'Inter_700Bold' },
-  sub: { fontSize: 12, fontFamily: 'Inter_400Regular' },
-  genCard: { borderRadius: 16, padding: 16, borderWidth: 1, gap: 12 },
-  genTitle: { fontSize: 16, fontFamily: 'Inter_700Bold' },
-  genSub: { fontSize: 12, fontFamily: 'Inter_400Regular', marginTop: -6 },
-  genBtns: { flexDirection: 'row', gap: 10 },
-  genBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 10, borderRadius: 12, borderWidth: 1 },
-  genBtnText: { fontSize: 12, fontFamily: 'Inter_600SemiBold' },
-  sectionTitle: { fontSize: 16, fontFamily: 'Inter_700Bold' },
-  keyCard: { borderRadius: 12, padding: 14, borderWidth: 1, borderLeftWidth: 4, gap: 8 },
-  keyTop: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  roleBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 99 },
-  roleText: { fontSize: 11, fontFamily: 'Inter_600SemiBold' },
-  keyCode: { flex: 1, fontSize: 18, fontFamily: 'Inter_700Bold', letterSpacing: 1 },
-  keyDate: { fontSize: 11, fontFamily: 'Inter_400Regular' },
-  keyActions: { flexDirection: 'row', gap: 8 },
-  keyBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, paddingVertical: 8, borderRadius: 10 },
-  keyBtnText: { fontSize: 12, fontFamily: 'Inter_600SemiBold' },
+  countBadge: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 99 },
+  countText: { fontSize: 12, fontFamily: 'Inter_500Medium' },
+  generateCard: { borderRadius: 16, padding: 16, borderWidth: 1, gap: 8 },
+  generateTitle: { fontSize: 15, fontFamily: 'Inter_700Bold' },
+  generateSub: { fontSize: 12, fontFamily: 'Inter_400Regular' },
+  roleButtonRow: { flexDirection: 'row', gap: 8, marginTop: 4 },
+  roleBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, paddingVertical: 10, borderRadius: 10 },
+  roleBtnText: { fontSize: 11, fontFamily: 'Inter_600SemiBold' },
+  filterRow: { flexDirection: 'row', gap: 8 },
+  filterChip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 99, borderWidth: 1 },
+  filterChipText: { fontSize: 12, fontFamily: 'Inter_500Medium' },
+  keyCard: { borderRadius: 14, padding: 14, borderWidth: 1, gap: 8 },
+  keyRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  roleTag: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 99 },
+  roleTagText: { fontSize: 10, fontFamily: 'Inter_600SemiBold' },
+  codeWrap: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8 },
+  codeText: { fontSize: 14, fontFamily: 'Inter_700Bold', letterSpacing: 1 },
+  iconBtn: { width: 34, height: 34, borderRadius: 9, justifyContent: 'center', alignItems: 'center' },
+  assignedRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  assignedText: { fontSize: 12, fontFamily: 'Inter_400Regular' },
+  metaRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, alignItems: 'center', paddingTop: 8, borderTopWidth: 1 },
+  metaItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  metaText: { fontSize: 10, fontFamily: 'Inter_400Regular' },
+  statusDot: { width: 6, height: 6, borderRadius: 3 },
   empty: { borderRadius: 16, padding: 40, borderWidth: 1, alignItems: 'center', gap: 10 },
+  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', justifyContent: 'flex-end' },
+  newKeySheet: { borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 28, alignItems: 'center', gap: 12 },
+  newKeyIconWrap: { width: 72, height: 72, borderRadius: 20, justifyContent: 'center', alignItems: 'center', marginBottom: 4 },
+  newKeyTitle: { fontSize: 22, fontFamily: 'Inter_700Bold' },
+  newKeyRole: { fontSize: 14, fontFamily: 'Inter_400Regular' },
+  newCodeBox: { borderRadius: 16, paddingHorizontal: 28, paddingVertical: 20, borderWidth: 2, alignSelf: 'stretch', alignItems: 'center' },
+  newCode: { fontSize: 28, fontFamily: 'Inter_700Bold', letterSpacing: 4 },
+  newKeyNote: { fontSize: 12, fontFamily: 'Inter_400Regular', textAlign: 'center', lineHeight: 18 },
+  closeKeyBtn: { borderRadius: 14, paddingVertical: 14, paddingHorizontal: 40 },
+  closeKeyBtnText: { color: '#fff', fontSize: 15, fontFamily: 'Inter_600SemiBold' },
 });

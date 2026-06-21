@@ -2,24 +2,12 @@ import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
-import {
-  Alert,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { DNP360Logo } from '@/components/DNP360Logo';
 import { useAuth } from '@/contexts/AuthContext';
 
 export default function LoginScreen() {
   const { login, loginWithCode } = useAuth();
-
   const [mainTab, setMainTab] = useState<'signin' | 'secret'>('signin');
   const [subTab, setSubTab] = useState<'mobile' | 'email'>('email');
   const [mobile, setMobile] = useState('');
@@ -31,54 +19,32 @@ export default function LoginScreen() {
 
   async function handleSignIn() {
     const id = subTab === 'mobile' ? mobile.trim() : email.trim();
-    if (!id || !password) {
-      Alert.alert('Missing fields', 'Please fill in all required fields.');
-      return;
-    }
+    if (!id || !password) { Alert.alert('Missing fields', 'Please fill in all required fields.'); return; }
     setLoading(true);
     try {
       const success = await login(id, password, subTab);
-      if (!success) {
-        Alert.alert('Login Failed', 'Invalid credentials.\n\nDemo: citizen.dnp360@gmail.com / 12345678');
-      } else {
-        router.replace('/(tabs)');
-      }
-    } finally {
-      setLoading(false);
-    }
+      if (!success) Alert.alert('Login Failed', 'Invalid credentials.\n\nDemo: citizen.dnp360@gmail.com / 12345678');
+      else router.replace('/(tabs)');
+    } finally { setLoading(false); }
   }
 
   async function handleSecretCode() {
-    if (!secretCode.trim()) {
-      Alert.alert('Missing code', 'Please enter your secret code.');
-      return;
-    }
+    if (!secretCode.trim()) { Alert.alert('Missing code', 'Please enter your secret code.'); return; }
     setLoading(true);
     try {
       const success = await loginWithCode(secretCode.trim());
-      if (!success) {
-        Alert.alert('Invalid Code', 'Secret code not recognised.\n\nDemo codes:\nSK2566F · OFF4416A · ADMIN5790X');
-      } else {
-        router.replace('/(tabs)');
-      }
-    } finally {
-      setLoading(false);
-    }
+      if (!success) Alert.alert('Invalid Code', 'Secret code not recognised.\n\nDemo codes:\nSK2566F · OFF4416A · ADMIN5790X');
+      else router.replace('/(tabs)');
+    } finally { setLoading(false); }
   }
 
   return (
     <LinearGradient colors={['#031331', '#0D2350', '#031331']} style={styles.gradient}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
-        <ScrollView
-          contentContainerStyle={styles.scroll}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
-        >
+        <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
           <View style={styles.header}>
             <View style={styles.logoShield}>
-              <View style={styles.shieldInner}>
-                <DNP360Logo size="md" />
-              </View>
+              <View style={styles.shieldInner}><DNP360Logo size="md" /></View>
             </View>
             <Text style={styles.tagline}>Nagar Parishad Daudnagar</Text>
             <Text style={styles.subtitle}>Smart Governance · Digital India</Text>
@@ -137,15 +103,15 @@ export default function LoginScreen() {
                   <Text style={styles.primaryBtnText}>{loading ? 'Signing in…' : 'Sign In'}</Text>
                 </TouchableOpacity>
 
-                <View style={styles.orRow}>
-                  <View style={styles.orLine} />
-                  <Text style={styles.orText}>OR</Text>
-                  <View style={styles.orLine} />
+                <View style={styles.dividerRow}>
+                  <View style={styles.dividerLine} />
+                  <Text style={styles.dividerText}>New to DNP360?</Text>
+                  <View style={styles.dividerLine} />
                 </View>
 
-                <TouchableOpacity style={styles.googleBtn} activeOpacity={0.85}>
-                  <Text style={styles.googleIcon}>G</Text>
-                  <Text style={styles.googleText}>Continue with Google</Text>
+                <TouchableOpacity style={styles.signUpBtn} onPress={() => router.push('/signup')} activeOpacity={0.85}>
+                  <Feather name="user-plus" size={16} color="#60A0F0" />
+                  <Text style={styles.signUpBtnText}>Create Citizen Account</Text>
                 </TouchableOpacity>
 
                 <View style={styles.demoBox}>
@@ -156,17 +122,14 @@ export default function LoginScreen() {
             ) : (
               <>
                 <Text style={styles.secretDesc}>Officials and Safai Karmis use their assigned secret code to sign in securely.</Text>
-
                 <View style={styles.inputWrap}>
                   <Feather name="key" size={16} color="#8A9BB0" />
                   <TextInput style={styles.input} placeholder="Secret Code (e.g. SK2566F)" placeholderTextColor="#8A9BB0" autoCapitalize="characters" value={secretCode} onChangeText={setSecretCode} />
                 </View>
-
                 <TouchableOpacity style={[styles.primaryBtn, loading && { opacity: 0.6 }]} onPress={handleSecretCode} disabled={loading} activeOpacity={0.85}>
                   <Feather name="shield" size={16} color="#fff" />
                   <Text style={styles.primaryBtnText}>{loading ? 'Verifying…' : 'Authenticate'}</Text>
                 </TouchableOpacity>
-
                 <View style={styles.demoBox}>
                   <Text style={styles.demoTitle}>Demo Secret Codes</Text>
                   <Text style={styles.demoItem}>Safai Karmi: SK2566F</Text>
@@ -217,14 +180,13 @@ const styles = StyleSheet.create({
   input: { flex: 1, color: '#FFFFFF', fontSize: 14, fontFamily: 'Inter_400Regular', paddingVertical: 14 },
   forgotRow: { alignItems: 'flex-end', marginBottom: 16 },
   forgotText: { color: '#5F8BC0', fontSize: 13, fontFamily: 'Inter_500Medium' },
-  primaryBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#005AB6', borderRadius: 14, paddingVertical: 15, marginBottom: 14 },
+  primaryBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#005AB6', borderRadius: 14, paddingVertical: 15, marginBottom: 16 },
   primaryBtnText: { color: '#FFFFFF', fontSize: 15, fontFamily: 'Inter_600SemiBold' },
-  orRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 14 },
-  orLine: { flex: 1, height: 1, backgroundColor: 'rgba(255,255,255,0.1)' },
-  orText: { color: '#8A9BB0', fontSize: 12, fontFamily: 'Inter_500Medium' },
-  googleBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 14, paddingVertical: 14, borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)', marginBottom: 12 },
-  googleIcon: { width: 22, height: 22, borderRadius: 11, backgroundColor: '#FFFFFF', textAlign: 'center', lineHeight: 22, fontSize: 14, fontFamily: 'Inter_700Bold', color: '#4285F4' },
-  googleText: { color: '#FFFFFF', fontSize: 14, fontFamily: 'Inter_500Medium' },
+  dividerRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 14 },
+  dividerLine: { flex: 1, height: 1, backgroundColor: 'rgba(255,255,255,0.1)' },
+  dividerText: { color: '#8A9BB0', fontSize: 12, fontFamily: 'Inter_500Medium' },
+  signUpBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: 'rgba(96,160,240,0.1)', borderRadius: 14, paddingVertical: 14, borderWidth: 1, borderColor: 'rgba(96,160,240,0.3)', marginBottom: 12 },
+  signUpBtnText: { color: '#60A0F0', fontSize: 14, fontFamily: 'Inter_600SemiBold' },
   secretDesc: { color: '#8AB0D8', fontSize: 13, fontFamily: 'Inter_400Regular', textAlign: 'center', marginBottom: 18, lineHeight: 20 },
   demoBox: { marginTop: 10, backgroundColor: 'rgba(0,90,182,0.15)', borderRadius: 10, padding: 12, borderWidth: 1, borderColor: 'rgba(0,90,182,0.3)' },
   demoTitle: { color: '#ABC7FF', fontSize: 11, fontFamily: 'Inter_600SemiBold', marginBottom: 5 },

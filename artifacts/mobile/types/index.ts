@@ -59,9 +59,12 @@ export interface HouseVisit {
   ownerName: string;
   address: string;
   workerId: string;
-  workerName: string;
+  workerName?: string;
+  wardId?: string;
   visitDate: string;
   visitTime: string;
+  collectedGarbage: boolean;
+  notes?: string;
   status: 'visited' | 'not_visited';
 }
 
@@ -98,12 +101,27 @@ export interface Attendance {
 
 export interface SecretKey {
   id: string;
-  key: string;
+  code: string;
   role: 'safaikarmi' | 'official' | 'admin';
   isActive: boolean;
   usedBy?: string;
   usedByName?: string;
   createdAt: string;
+}
+
+export interface SupportDetails {
+  phone: string;
+  email: string;
+  address: string;
+  hours: string;
+}
+
+export interface PasswordResetRequest {
+  id: string;
+  email: string;
+  name: string;
+  requestedAt: string;
+  status: 'pending' | 'approved' | 'rejected';
 }
 
 export const COMPLAINT_CATEGORIES: Record<ComplaintCategory, string> = {

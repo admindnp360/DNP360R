@@ -1,5 +1,6 @@
 import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { router } from 'expo-router';
 import React from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -62,10 +63,10 @@ export default function CitizenHome() {
           <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <SectionHeader title="Quick Actions" />
             <View style={styles.actionsRow}>
-              <QuickActionBtn icon="plus-circle" label={'New\nComplaint'} color={colors.citizen} bg={colors.citizenBg} onPress={() => {}} />
-              <QuickActionBtn icon="clock" label={'Track\nStatus'} color="#6B00C7" bg={colors.inProgressBg} onPress={() => {}} />
-              <QuickActionBtn icon="volume-2" label={'Read\nNotices'} color={colors.accent} bg="#FFF3E0" onPress={() => {}} />
-              <QuickActionBtn icon="phone-call" label={'Emergency\nCall'} color={colors.destructive} bg="#FDECEA" onPress={() => {}} />
+              <QuickActionBtn icon="plus-circle" label={'New\nComplaint'} color={colors.citizen} bg={colors.citizenBg} onPress={() => router.push('/(tabs)/action')} />
+              <QuickActionBtn icon="clock" label={'Track\nStatus'} color="#6B00C7" bg={colors.inProgressBg} onPress={() => router.push('/(tabs)/action')} />
+              <QuickActionBtn icon="volume-2" label={'Read\nNotices'} color={colors.accent} bg="#FFF3E0" onPress={() => router.push('/(tabs)/secondary')} />
+              <QuickActionBtn icon="phone-call" label={'Emergency\nCall'} color={colors.destructive} bg="#FDECEA" onPress={() => router.push('/(tabs)/tertiary')} />
             </View>
           </View>
 
@@ -88,13 +89,20 @@ export default function CitizenHome() {
             </>
           )}
 
-          <View style={[styles.announceBanner, { backgroundColor: colors.dnpBlue ?? '#0F2D6B' }]}>
-            <Feather name="info" size={18} color="#ABC7FF" />
+          <TouchableOpacity
+            style={[styles.announceBanner, { backgroundColor: colors.citizen }]}
+            activeOpacity={0.85}
+            onPress={() => {}}
+          >
+            <View style={styles.bannerIconWrap}>
+              <Feather name="phone" size={18} color="#FFFFFF" />
+            </View>
             <View style={{ flex: 1 }}>
               <Text style={styles.bannerTitle}>Nagar Parishad Daudnagar</Text>
               <Text style={styles.bannerSub}>Municipal Office: 06184-XXXXXX</Text>
             </View>
-          </View>
+            <Feather name="chevron-right" size={16} color="rgba(255,255,255,0.7)" />
+          </TouchableOpacity>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -117,6 +125,7 @@ const styles = StyleSheet.create({
   actionsRow: { flexDirection: 'row', gap: 8 },
   empty: { borderRadius: 12, padding: 24, borderWidth: 1, alignItems: 'center' },
   announceBanner: { flexDirection: 'row', gap: 12, alignItems: 'center', borderRadius: 14, padding: 16 },
+  bannerIconWrap: { width: 38, height: 38, borderRadius: 10, backgroundColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center' },
   bannerTitle: { color: '#FFFFFF', fontSize: 13, fontFamily: 'Inter_600SemiBold' },
-  bannerSub: { color: '#8AB0D8', fontSize: 11, fontFamily: 'Inter_400Regular', marginTop: 2 },
+  bannerSub: { color: 'rgba(255,255,255,0.8)', fontSize: 11, fontFamily: 'Inter_400Regular', marginTop: 2 },
 });
