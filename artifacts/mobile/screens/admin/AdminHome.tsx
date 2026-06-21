@@ -115,7 +115,7 @@ export default function AdminHome() {
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10, paddingRight: 4 }}>
               {wards.map(ward => {
                 const wardPending = complaints.filter(c => c.wardId === ward.id && c.status !== 'resolved').length;
-                const wardWorkers = users.filter(u => u.role === 'safaikarmi' && ward.assignedWorkers.includes(u.id));
+                const wardWorkers = users.filter(u => u.role === 'safaikarmi' && (ward.assignedWorkers ?? []).includes(u.id));
                 const health = wardPending === 0 ? 'good' : wardPending <= 2 ? 'warn' : 'critical';
                 const healthColor = health === 'good' ? '#16A34A' : health === 'warn' ? '#D97706' : '#DC2626';
                 const healthBg    = health === 'good' ? '#DCFCE7' : health === 'warn' ? '#FEF3C7' : '#FEE2E2';

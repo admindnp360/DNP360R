@@ -49,7 +49,7 @@ interface AppContextType {
   isTodayAttendanceMarked: (workerId: string) => boolean;
 }
 
-const STORAGE_VERSION = '4';
+const STORAGE_VERSION = '5';
 const RTDB_BASE = 'dnp360';
 
 function uid() {
@@ -72,8 +72,13 @@ function genSecretKey(role: SecretKey['role']): string {
   return `${prefix}${digits}${letter}`;
 }
 
+const EMPTY_ARRAY_SENTINEL = '__ea__';
+
 function clean<T>(data: T): T {
-  return JSON.parse(JSON.stringify(data));
+  return JSON.parse(JSON.stringify(data, (_k, v) => {
+    if (Array.isArray(v) && v.length === 0) return EMPTY_ARRAY_SENTINEL;
+    return v === undefined ? null : v;
+  }));
 }
 
 const d = (daysAgo: number) => {
@@ -195,6 +200,7 @@ function seedHouseVisits(): HouseVisit[] {
 
 function normalizeFromRTDB(val: any): any {
   if (val === null || val === undefined) return val;
+  if (val === EMPTY_ARRAY_SENTINEL) return [];
   if (Array.isArray(val)) return val.map(normalizeFromRTDB);
   if (typeof val === 'object') {
     const keys = Object.keys(val);
@@ -262,17 +268,19 @@ async function rtdbSaveObj<T>(path: string, data: T): Promise<void> {
   }
 }
 
-async function checkVersion(): Promise<boolean> {
+const DATA_COLLECTIONS = ['complaints', 'houses', 'wards', 'notices', 'attendance', 'houseVisits', 'secretKeys', 'support', 'passwordResetRequests'];
+
+async function checkVersion(): Promise<void> {
   try {
     const snap = await get(ref(rtdb, `${RTDB_BASE}/meta/version`));
-    if (snap.exists() && snap.val() === STORAGE_VERSION) return true;
+    if (snap.exists() && snap.val() === STORAGE_VERSION) return;
+    await Promise.all(DATA_COLLECTIONS.map(c => set(ref(rtdb, `${RTDB_BASE}/${c}`), null)));
     await set(ref(rtdb, `${RTDB_BASE}/meta/version`), STORAGE_VERSION);
-    return false;
   } catch {
     const v = await AsyncStorage.getItem('dnp360_version').catch(() => null);
-    if (v === STORAGE_VERSION) return true;
-    await AsyncStorage.setItem('dnp360_version', STORAGE_VERSION).catch(() => {});
-    return false;
+    if (v !== STORAGE_VERSION) {
+      await AsyncStorage.setItem('dnp360_version', STORAGE_VERSION).catch(() => {});
+    }
   }
 }
 
