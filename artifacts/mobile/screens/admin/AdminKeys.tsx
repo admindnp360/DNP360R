@@ -295,9 +295,9 @@ const styles = StyleSheet.create({
 
   keyCard: { borderRadius: 16, borderWidth: 1, overflow: 'hidden' },
   keyAccent: { height: 4 },
-  keyInner: { padding: 14, gap: 10 },
+  keyInner: { padding: 10, gap: 7 },
   keyHeader: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  keyRoleIcon: { width: 36, height: 36, borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
+  keyRoleIcon: { width: 30, height: 30, borderRadius: 8, justifyContent: 'center', alignItems: 'center' },
   keyRoleBadge: { borderRadius: 99, paddingHorizontal: 8, paddingVertical: 3, alignSelf: 'flex-start' },
   keyRoleBadgeText: { color: '#fff', fontSize: 9, fontFamily: 'Inter_700Bold' },
   keyDate: { fontSize: 10, fontFamily: 'Inter_400Regular', marginTop: 3 },
@@ -305,8 +305,8 @@ const styles = StyleSheet.create({
   keyStatusDot: { width: 6, height: 6, borderRadius: 3 },
   keyStatusText: { fontSize: 10, fontFamily: 'Inter_700Bold' },
 
-  codeBox: { flexDirection: 'row', alignItems: 'center', gap: 10, borderRadius: 12, borderWidth: 1, paddingHorizontal: 14, paddingVertical: 12 },
-  codeText: { fontSize: 20, fontFamily: 'Inter_700Bold', letterSpacing: 2 },
+  codeBox: { flexDirection: 'row', alignItems: 'center', gap: 10, borderRadius: 12, borderWidth: 1, paddingHorizontal: 12, paddingVertical: 8 },
+  codeText: { fontSize: 18, fontFamily: 'Inter_700Bold', letterSpacing: 2 },
   usedChip: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 99 },
   usedChipText: { fontSize: 9, fontFamily: 'Inter_700Bold' },
 
@@ -317,9 +317,9 @@ const styles = StyleSheet.create({
   assignedName: { fontSize: 12, fontFamily: 'Inter_600SemiBold' },
 
   keyActions: { flexDirection: 'row', gap: 8 },
-  keyActionBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, borderRadius: 10, paddingVertical: 9 },
+  keyActionBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, borderRadius: 10, paddingVertical: 7 },
   keyActionText: { fontSize: 12, fontFamily: 'Inter_700Bold' },
-  keyActionIconBtn: { width: 38, height: 38, borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
+  keyActionIconBtn: { width: 34, height: 34, borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
 
   empty: { borderRadius: 16, padding: 40, borderWidth: 1, alignItems: 'center', gap: 8 },
   emptyIcon: { width: 60, height: 60, borderRadius: 16, justifyContent: 'center', alignItems: 'center' },

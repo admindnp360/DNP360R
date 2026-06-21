@@ -13,6 +13,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { AppProvider } from "@/contexts/AppContext";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { LanguageProvider } from "@/contexts/LanguageContext";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -21,7 +22,8 @@ function RootLayoutNav() {
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="index" />
       <Stack.Screen name="login" />
-      <Stack.Screen name="forgot-password" options={{ headerShown: true, headerTitle: "Reset Password", headerBackTitle: "Back" }} />
+      <Stack.Screen name="forgot-password" options={{ headerShown: false }} />
+      <Stack.Screen name="signup" options={{ headerShown: false }} />
       <Stack.Screen name="(tabs)" />
     </Stack>
   );
@@ -47,11 +49,13 @@ export default function RootLayout() {
     <SafeAreaProvider>
       <ErrorBoundary>
         <GestureHandlerRootView style={{ flex: 1 }}>
-          <AuthProvider>
-            <AppProvider>
-              <RootLayoutNav />
-            </AppProvider>
-          </AuthProvider>
+          <LanguageProvider>
+            <AuthProvider>
+              <AppProvider>
+                <RootLayoutNav />
+              </AppProvider>
+            </AuthProvider>
+          </LanguageProvider>
         </GestureHandlerRootView>
       </ErrorBoundary>
     </SafeAreaProvider>

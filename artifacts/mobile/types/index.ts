@@ -122,6 +122,7 @@ export interface PasswordResetRequest {
   name: string;
   requestedAt: string;
   status: 'pending' | 'approved' | 'rejected';
+  adminNote?: string;
 }
 
 export const COMPLAINT_CATEGORIES: Record<ComplaintCategory, string> = {

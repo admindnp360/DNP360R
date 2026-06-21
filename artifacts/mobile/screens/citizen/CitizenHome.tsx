@@ -4,8 +4,10 @@ import { router } from 'expo-router';
 import React from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { LanguageSwitcher } from '@/components/LanguageSwitcher';
 import { useAppData } from '@/contexts/AppContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { useColors } from '@/hooks/useColors';
 
 function getGreeting() {
@@ -25,6 +27,7 @@ export default function CitizenHome() {
   const { user } = useAuth();
   const { notices, getComplaintsByUser } = useAppData();
   const colors = useColors();
+  const { t } = useLanguage();
   const greeting = getGreeting();
 
   const myComplaints = getComplaintsByUser(user?.id ?? '');
@@ -53,16 +56,19 @@ export default function CitizenHome() {
               <Text style={styles.heroName}>{user?.name ?? 'Citizen'} 👋</Text>
               <View style={styles.locationRow}>
                 <Feather name="map-pin" size={11} color="#93C5FD" />
-                <Text style={styles.locationText}>{user?.address ?? 'Daudnagar, Bihar'}</Text>
+                <Text style={styles.locationText}>{user?.address ?? t('cityName') + ', Bihar'}</Text>
               </View>
             </View>
-            <TouchableOpacity onPress={() => router.push('/(tabs)/profile')} activeOpacity={0.85}>
-              <LinearGradient colors={['#1652CC', '#0A2E8A']} style={styles.avatarRing}>
-                <LinearGradient colors={['#3B82F6', '#1652CC']} style={styles.avatarGrad}>
-                  <Text style={styles.avatarLetter}>{(user?.name ?? 'C')[0].toUpperCase()}</Text>
+            <View style={{ alignItems: 'flex-end', gap: 8 }}>
+              <TouchableOpacity onPress={() => router.push('/(tabs)/profile')} activeOpacity={0.85}>
+                <LinearGradient colors={['#1652CC', '#0A2E8A']} style={styles.avatarRing}>
+                  <LinearGradient colors={['#3B82F6', '#1652CC']} style={styles.avatarGrad}>
+                    <Text style={styles.avatarLetter}>{(user?.name ?? 'C')[0].toUpperCase()}</Text>
+                  </LinearGradient>
                 </LinearGradient>
-              </LinearGradient>
-            </TouchableOpacity>
+              </TouchableOpacity>
+              <LanguageSwitcher />
+            </View>
           </View>
 
           {/* Status badges */}

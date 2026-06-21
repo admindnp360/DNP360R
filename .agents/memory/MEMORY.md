@@ -1,0 +1,1 @@
+- [DNP360 mobile architecture](dnp360-arch.md) — Expo Router file-based routing, pnpm monorepo, AsyncStorage for all data, no real backend.

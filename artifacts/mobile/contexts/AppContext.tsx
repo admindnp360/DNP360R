@@ -39,7 +39,7 @@ interface AppContextType {
   deleteSecretKey: (id: string) => Promise<void>;
   updateSupportDetails: (updates: Partial<SupportDetails>) => Promise<void>;
   addPasswordResetRequest: (email: string, name: string) => Promise<void>;
-  updatePasswordResetRequest: (id: string, status: 'approved' | 'rejected') => Promise<void>;
+  updatePasswordResetRequest: (id: string, status: 'approved' | 'rejected', adminNote?: string) => Promise<void>;
   getHouseByRegistration: (regNum: string) => House | undefined;
   getComplaintsByUser: (userId: string) => Complaint[];
   getAttendanceByWorker: (workerId: string) => Attendance[];
@@ -392,8 +392,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setPasswordResetRequests(updated); await save('resetRequests', updated);
   }
 
-  async function updatePasswordResetRequest(id: string, status: 'approved' | 'rejected') {
-    const updated = passwordResetRequests.map(r => r.id === id ? { ...r, status } : r);
+  async function updatePasswordResetRequest(id: string, status: 'approved' | 'rejected', adminNote?: string) {
+    const updated = passwordResetRequests.map(r => r.id === id ? { ...r, status, ...(adminNote ? { adminNote } : {}) } : r);
     setPasswordResetRequests(updated); await save('resetRequests', updated);
   }
 

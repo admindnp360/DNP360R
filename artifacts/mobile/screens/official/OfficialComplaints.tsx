@@ -1,22 +1,17 @@
 import { Feather } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import React, { useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ComplaintCard } from '@/components/ComplaintCard';
+import { LanguageSwitcher } from '@/components/LanguageSwitcher';
 import { SearchBar } from '@/components/SearchBar';
 import { useAppData } from '@/contexts/AppContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { useColors } from '@/hooks/useColors';
 import { COMPLAINT_CATEGORIES } from '@/types';
 
 type StatusFilter = 'all' | 'submitted' | 'assigned' | 'in_progress' | 'resolved';
-
-const STATUS_TABS: { key: StatusFilter; label: string; color?: string }[] = [
-  { key: 'all', label: 'All' },
-  { key: 'submitted', label: 'Submitted' },
-  { key: 'assigned', label: 'Assigned' },
-  { key: 'in_progress', label: 'In Progress' },
-  { key: 'resolved', label: 'Resolved' },
-];
 
 const NEXT_STATUS: Record<string, string> = {
   submitted: 'assigned',
@@ -33,6 +28,7 @@ const NEXT_STATUS_LABEL: Record<string, string> = {
 export default function OfficialComplaints() {
   const { complaints, updateComplaint } = useAppData();
   const colors = useColors();
+  const { t } = useLanguage();
   const [status, setStatus] = useState<StatusFilter>('all');
   const [search, setSearch] = useState('');
 
@@ -42,28 +38,64 @@ export default function OfficialComplaints() {
     return true;
   });
 
+  const STATUS_TABS: { key: StatusFilter; label: string }[] = [
+    { key: 'all', label: 'All' },
+    { key: 'submitted', label: t('pending') },
+    { key: 'assigned', label: t('assigned') },
+    { key: 'in_progress', label: t('inProgress') },
+    { key: 'resolved', label: t('resolved') },
+  ];
+
   async function handleUpdate(id: string, currentStatus: string) {
     const nextStatus = NEXT_STATUS[currentStatus];
     if (!nextStatus) return;
     Alert.alert('Update Status', `Move to "${nextStatus.replace('_', ' ')}"?`, [
-      { text: 'Cancel', style: 'cancel' },
+      { text: t('cancel'), style: 'cancel' },
       { text: 'Update', onPress: async () => { await updateComplaint(id, { status: nextStatus as any }); } },
     ]);
   }
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={['top']}>
-      <View style={[styles.header, { borderBottomColor: colors.border }]}>
-        <Text style={[styles.title, { color: colors.text }]}>Complaint Management</Text>
-        <Text style={[styles.sub, { color: colors.mutedForeground }]}>{filtered.length} complaints</Text>
-      </View>
+      <LinearGradient colors={['#78350F', '#92400E', '#B45309']} style={styles.hero}>
+        <View style={styles.heroTop}>
+          <View>
+            <Text style={styles.heroTitle}>{t('complaints')}</Text>
+            <Text style={styles.heroSub}>{filtered.length} complaints</Text>
+          </View>
+          <View style={{ alignItems: 'flex-end', gap: 8 }}>
+            <LinearGradient colors={['rgba(255,255,255,0.2)', 'rgba(255,255,255,0.05)']} style={styles.heroIcon}>
+              <Feather name="clipboard" size={20} color="#FDE68A" />
+            </LinearGradient>
+            <LanguageSwitcher />
+          </View>
+        </View>
+
+        <View style={styles.heroStats}>
+          {[
+            { label: 'All', value: complaints.length, color: '#FDE68A' },
+            { label: t('pending'), value: complaints.filter(c => c.status === 'submitted').length, color: '#FCA5A5' },
+            { label: t('inProgress'), value: complaints.filter(c => c.status === 'in_progress').length, color: '#A5B4FC' },
+            { label: t('resolved'), value: complaints.filter(c => c.status === 'resolved').length, color: '#6EE7B7' },
+          ].map(s => (
+            <View key={s.label} style={styles.heroStat}>
+              <Text style={[styles.heroStatVal, { color: s.color }]}>{s.value}</Text>
+              <Text style={styles.heroStatLbl}>{s.label}</Text>
+            </View>
+          ))}
+        </View>
+      </LinearGradient>
 
       <View style={styles.controls}>
-        <SearchBar value={search} onChangeText={setSearch} placeholder="Search complaints…" />
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          {STATUS_TABS.map(t => (
-            <Pressable key={t.key} style={[styles.tab, status === t.key && { backgroundColor: colors.official }]} onPress={() => setStatus(t.key)}>
-              <Text style={[styles.tabText, { color: status === t.key ? '#fff' : colors.mutedForeground }]}>{t.label}</Text>
+        <SearchBar value={search} onChangeText={setSearch} placeholder={t('search') + ' complaints…'} />
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 8 }}>
+          {STATUS_TABS.map(tab => (
+            <Pressable
+              key={tab.key}
+              style={[styles.tab, { backgroundColor: status === tab.key ? '#B45309' : colors.card, borderColor: status === tab.key ? '#B45309' : colors.border }]}
+              onPress={() => setStatus(tab.key)}
+            >
+              <Text style={[styles.tabText, { color: status === tab.key ? '#fff' : colors.mutedForeground }]}>{tab.label}</Text>
             </Pressable>
           ))}
         </ScrollView>
@@ -75,19 +107,23 @@ export default function OfficialComplaints() {
             <ComplaintCard complaint={c} />
             {NEXT_STATUS[c.status] && (
               <Pressable
-                style={[styles.actionBtn, { backgroundColor: colors.official }]}
+                style={styles.actionBtn}
                 onPress={() => handleUpdate(c.id, c.status)}
               >
-                <Feather name="arrow-right-circle" size={14} color="#fff" />
-                <Text style={styles.actionBtnText}>{NEXT_STATUS_LABEL[c.status]}</Text>
+                <LinearGradient colors={['#92400E', '#D97706']} style={styles.actionBtnGrad}>
+                  <Feather name="arrow-right-circle" size={14} color="#fff" />
+                  <Text style={styles.actionBtnText}>{NEXT_STATUS_LABEL[c.status]}</Text>
+                </LinearGradient>
               </Pressable>
             )}
           </View>
         ))}
         {filtered.length === 0 && (
           <View style={[styles.empty, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            <Feather name="inbox" size={36} color={colors.mutedForeground} />
-            <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>No complaints found</Text>
+            <LinearGradient colors={['#92400E', '#D97706']} style={styles.emptyIcon}>
+              <Feather name="inbox" size={28} color="#fff" />
+            </LinearGradient>
+            <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>{t('noData')}</Text>
           </View>
         )}
       </ScrollView>
@@ -96,14 +132,22 @@ export default function OfficialComplaints() {
 }
 
 const styles = StyleSheet.create({
-  header: { padding: 16, paddingBottom: 12, borderBottomWidth: 1 },
-  title: { fontSize: 22, fontFamily: 'Inter_700Bold' },
-  sub: { fontSize: 12, fontFamily: 'Inter_400Regular', marginTop: 2 },
-  controls: { padding: 16, gap: 10 },
-  tab: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 99, marginRight: 8 },
+  hero: { padding: 20, paddingBottom: 22, gap: 16, borderBottomLeftRadius: 24, borderBottomRightRadius: 24 },
+  heroTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
+  heroTitle: { color: '#fff', fontSize: 26, fontFamily: 'Inter_700Bold' },
+  heroSub: { color: 'rgba(255,255,255,0.6)', fontSize: 12, fontFamily: 'Inter_400Regular', marginTop: 2 },
+  heroIcon: { width: 46, height: 46, borderRadius: 13, justifyContent: 'center', alignItems: 'center' },
+  heroStats: { flexDirection: 'row', gap: 8 },
+  heroStat: { flex: 1, backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 12, padding: 10, alignItems: 'center', gap: 2 },
+  heroStatVal: { fontSize: 20, fontFamily: 'Inter_700Bold' },
+  heroStatLbl: { color: 'rgba(255,255,255,0.7)', fontSize: 9, fontFamily: 'Inter_600SemiBold' },
+  controls: { padding: 14, paddingBottom: 8 },
+  tab: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 99, borderWidth: 1, marginRight: 8 },
   tabText: { fontSize: 12, fontFamily: 'Inter_500Medium' },
-  actionBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, borderRadius: 8, paddingVertical: 8, marginTop: 4 },
+  actionBtn: { borderRadius: 10, overflow: 'hidden', marginTop: 4 },
+  actionBtnGrad: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 10 },
   actionBtnText: { color: '#fff', fontSize: 12, fontFamily: 'Inter_600SemiBold' },
-  empty: { borderRadius: 16, padding: 40, borderWidth: 1, alignItems: 'center', gap: 10 },
+  empty: { borderRadius: 16, padding: 40, borderWidth: 1, alignItems: 'center', gap: 12 },
+  emptyIcon: { width: 60, height: 60, borderRadius: 16, justifyContent: 'center', alignItems: 'center' },
   emptyText: { fontSize: 14, fontFamily: 'Inter_400Regular' },
 });

@@ -4,16 +4,19 @@ import React from 'react';
 import { Linking, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ComplaintCard } from '@/components/ComplaintCard';
+import { LanguageSwitcher } from '@/components/LanguageSwitcher';
 import { SectionHeader } from '@/components/SectionHeader';
 import { StatCard } from '@/components/StatCard';
 import { useAppData } from '@/contexts/AppContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { useColors } from '@/hooks/useColors';
 
 export default function OfficialHome() {
   const { user } = useAuth();
   const { complaints, wards, users } = useAppData();
   const colors = useColors();
+  const { t } = useLanguage();
 
   const myWard = wards.find(w => w.officialId === user?.id);
   const workers = users.filter(u => u.role === 'safaikarmi');
@@ -25,57 +28,72 @@ export default function OfficialHome() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={['top']}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
-        <LinearGradient colors={['#6E3900', '#904D00']} style={styles.header}>
+        <LinearGradient colors={['#78350F', '#92400E', '#B45309']} style={styles.header}>
           <View style={styles.topRow}>
-            <View>
-              <Text style={styles.greeting}>Municipal Officer</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.greeting}>{t('official')} · {t('nagar')}</Text>
               <Text style={styles.name}>{user?.name ?? 'Official'}</Text>
               <Text style={styles.emp}>ID: {user?.employeeId ?? 'N/A'}</Text>
             </View>
-            <View style={styles.avatar}>
-              <Text style={styles.avatarLetter}>{(user?.name ?? 'O')[0]}</Text>
+            <View style={{ alignItems: 'flex-end', gap: 8 }}>
+              <View style={styles.avatar}>
+                <Text style={styles.avatarLetter}>{(user?.name ?? 'O')[0]}</Text>
+              </View>
+              <LanguageSwitcher />
             </View>
           </View>
           {myWard && (
-            <View style={styles.wardBadge}>
-              <Feather name="map-pin" size={11} color="#FFDCC3" />
+            <LinearGradient colors={['rgba(255,255,255,0.15)', 'rgba(255,255,255,0.05)']} style={styles.wardBadge}>
+              <Feather name="map-pin" size={11} color="#FDE68A" />
               <Text style={styles.wardText}>{myWard.name}</Text>
-            </View>
+            </LinearGradient>
           )}
+
+          <View style={styles.heroStats}>
+            {[
+              { label: t('total'), value: complaints.length, grad: ['#D97706','#F59E0B'] as const },
+              { label: t('pending'), value: pending.length, grad: ['#DC2626','#EF4444'] as const },
+              { label: t('inProgress'), value: inProgress.length, grad: ['#7C3AED','#8B5CF6'] as const },
+              { label: t('resolved'), value: resolved.length, grad: ['#059669','#10B981'] as const },
+            ].map(s => (
+              <LinearGradient key={s.label} colors={s.grad} style={styles.heroStat}>
+                <Text style={styles.heroStatVal}>{s.value}</Text>
+                <Text style={styles.heroStatLbl}>{s.label}</Text>
+              </LinearGradient>
+            ))}
+          </View>
         </LinearGradient>
 
         <View style={styles.body}>
           <View style={styles.grid}>
-            <StatCard label="Total Complaints" value={complaints.length} icon="clipboard" iconColor={colors.official} iconBg={colors.officialBg} accentLeft={colors.official} />
-            <StatCard label="Pending" value={pending.length} icon="clock" iconColor={colors.submitted} iconBg={colors.submittedBg} accentLeft={colors.submitted} />
+            <StatCard label={t('total') + ' ' + t('complaints')} value={complaints.length} icon="clipboard" iconColor="#B45309" iconBg="#FEF3C7" accentLeft="#B45309" />
+            <StatCard label={t('pending')} value={pending.length} icon="clock" iconColor={colors.submitted} iconBg={colors.submittedBg} accentLeft={colors.submitted} />
           </View>
           <View style={styles.grid}>
-            <StatCard label="In Progress" value={inProgress.length} icon="loader" iconColor={colors.inProgress} iconBg={colors.inProgressBg} accentLeft={colors.inProgress} />
-            <StatCard label="Resolved" value={resolved.length} icon="check-circle" iconColor={colors.resolved} iconBg={colors.resolvedBg} accentLeft={colors.resolved} />
+            <StatCard label={t('inProgress')} value={inProgress.length} icon="loader" iconColor={colors.inProgress} iconBg={colors.inProgressBg} accentLeft={colors.inProgress} />
+            <StatCard label={t('resolved')} value={resolved.length} icon="check-circle" iconColor={colors.resolved} iconBg={colors.resolvedBg} accentLeft={colors.resolved} />
           </View>
 
-          {/* Workers summary */}
-          <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            <SectionHeader title="Workers Overview" />
+          <View style={[styles.card, { backgroundColor: colors.card, borderColor: '#D9770640' }]}>
+            <SectionHeader title={t('workers') + ' Overview'} />
             <View style={styles.workersRow}>
               <View style={styles.workerStat}>
-                <Text style={[styles.workerNum, { color: colors.official }]}>{workers.length}</Text>
-                <Text style={[styles.workerLabel, { color: colors.mutedForeground }]}>Total</Text>
+                <Text style={[styles.workerNum, { color: '#B45309' }]}>{workers.length}</Text>
+                <Text style={[styles.workerLabel, { color: colors.mutedForeground }]}>{t('total')}</Text>
               </View>
               <View style={[styles.divider, { backgroundColor: colors.border }]} />
               <View style={styles.workerStat}>
                 <Text style={[styles.workerNum, { color: colors.resolved }]}>{workers.filter(w => w.isActive).length}</Text>
-                <Text style={[styles.workerLabel, { color: colors.mutedForeground }]}>Active</Text>
+                <Text style={[styles.workerLabel, { color: colors.mutedForeground }]}>{t('active')}</Text>
               </View>
               <View style={[styles.divider, { backgroundColor: colors.border }]} />
               <View style={styles.workerStat}>
                 <Text style={[styles.workerNum, { color: colors.citizen }]}>{wards.length}</Text>
-                <Text style={[styles.workerLabel, { color: colors.mutedForeground }]}>Wards</Text>
+                <Text style={[styles.workerLabel, { color: colors.mutedForeground }]}>{t('ward')}s</Text>
               </View>
             </View>
           </View>
 
-          {/* Ward Health Dashboard */}
           <View>
             <Text style={[styles.sectionTitleText, { color: colors.text }]}>Ward Health Status</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10, paddingRight: 4 }}>
@@ -87,9 +105,9 @@ export default function OfficialHome() {
                 const healthBg    = health === 'good' ? '#DCFCE7' : health === 'warn' ? '#FEF3C7' : '#FEE2E2';
                 const healthLabel = health === 'good' ? 'Healthy' : health === 'warn' ? 'Warning' : 'Critical';
                 return (
-                  <View key={ward.id} style={[styles.wardCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                  <View key={ward.id} style={[styles.wardCard, { backgroundColor: colors.card, borderColor: '#D9770630' }]}>
                     <View style={styles.wardCardTop}>
-                      <Text style={[styles.wardNum, { color: colors.official }]}>W{ward.wardNumber}</Text>
+                      <Text style={[styles.wardNum, { color: '#B45309' }]}>W{ward.wardNumber}</Text>
                       <View style={[styles.healthPill, { backgroundColor: healthBg }]}>
                         <View style={[styles.healthDot, { backgroundColor: healthColor }]} />
                         <Text style={[styles.healthLabel, { color: healthColor }]}>{healthLabel}</Text>
@@ -100,7 +118,7 @@ export default function OfficialHome() {
                     <View style={styles.wardStats}>
                       <View style={styles.wardStat}>
                         <Feather name="alert-circle" size={12} color={wardPending > 0 ? '#DC2626' : colors.mutedForeground} />
-                        <Text style={[styles.wardStatText, { color: wardPending > 0 ? '#DC2626' : colors.mutedForeground }]}>{wardPending} pending</Text>
+                        <Text style={[styles.wardStatText, { color: wardPending > 0 ? '#DC2626' : colors.mutedForeground }]}>{wardPending} {t('pending')}</Text>
                       </View>
                       <View style={styles.wardStat}>
                         <Feather name="user" size={12} color={wardWorkers.length > 0 ? '#16A34A' : colors.mutedForeground} />
@@ -109,7 +127,7 @@ export default function OfficialHome() {
                     </View>
                     <View style={styles.wardHouses}>
                       <Feather name="home" size={11} color={colors.mutedForeground} />
-                      <Text style={[styles.wardStatText, { color: colors.mutedForeground }]}>{ward.totalHouses} houses</Text>
+                      <Text style={[styles.wardStatText, { color: colors.mutedForeground }]}>{ward.totalHouses} {t('houses')}</Text>
                     </View>
                   </View>
                 );
@@ -119,18 +137,18 @@ export default function OfficialHome() {
 
           {critical.length > 0 && (
             <>
-              <SectionHeader title="Pending Complaints" actionLabel="View All" />
+              <SectionHeader title={t('pending') + ' ' + t('complaints')} actionLabel="View All" />
               <View style={{ gap: 10 }}>
                 {critical.map(c => <ComplaintCard key={c.id} complaint={c} />)}
               </View>
             </>
           )}
 
-          <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <View style={[styles.card, { backgroundColor: colors.card, borderColor: '#D9770640' }]}>
             <Text style={[styles.cardTitle, { color: colors.text }]}>Quick Stats</Text>
             {[
               { label: 'Resolution Rate', value: complaints.length > 0 ? `${Math.round((resolved.length / complaints.length) * 100)}%` : '0%', color: colors.resolved },
-              { label: 'Total Houses', value: wards.reduce((s, w) => s + w.totalHouses, 0), color: colors.citizen },
+              { label: 'Total Houses', value: wards.reduce((s, w) => s + w.totalHouses, 0), color: '#B45309' },
               { label: 'Active Workers', value: workers.filter(w => w.isActive).length, color: colors.safaikarmi },
             ].map((stat, i, arr) => (
               <View key={stat.label} style={[styles.quickRow, { borderBottomColor: colors.border, borderBottomWidth: i < arr.length - 1 ? 1 : 0 }]}>
@@ -141,12 +159,12 @@ export default function OfficialHome() {
           </View>
 
           <TouchableOpacity style={styles.announceBannerWrap} activeOpacity={0.85} onPress={() => Linking.openURL('tel:0618400000')}>
-            <LinearGradient colors={['#5A2E00', '#C45C00']} style={styles.announceBanner} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
+            <LinearGradient colors={['#78350F', '#B45309']} style={styles.announceBanner} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
               <View style={styles.bannerIconWrap}>
                 <Feather name="phone" size={18} color="#FFFFFF" />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={styles.bannerTitle}>Nagar Parishad Daudnagar</Text>
+                <Text style={styles.bannerTitle}>{t('nagar')}</Text>
                 <Text style={styles.bannerSub}>Municipal Office: 06184-XXXXXX</Text>
               </View>
               <Feather name="chevron-right" size={16} color="rgba(255,255,255,0.7)" />
@@ -159,15 +177,19 @@ export default function OfficialHome() {
 }
 
 const styles = StyleSheet.create({
-  header: { paddingTop: 14, paddingBottom: 28, paddingHorizontal: 20, borderBottomLeftRadius: 28, borderBottomRightRadius: 28 },
-  topRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 },
-  greeting: { color: '#FFDCC3', fontSize: 13, fontFamily: 'Inter_400Regular' },
-  name: { color: '#FFFFFF', fontSize: 24, fontFamily: 'Inter_700Bold' },
-  emp: { color: '#FFA07A', fontSize: 12, fontFamily: 'Inter_400Regular', marginTop: 2 },
-  avatar: { width: 50, height: 50, borderRadius: 25, backgroundColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center' },
-  avatarLetter: { color: '#FFFFFF', fontSize: 22, fontFamily: 'Inter_700Bold' },
-  wardBadge: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  wardText: { color: '#FFDCC3', fontSize: 11, fontFamily: 'Inter_500Medium' },
+  header: { paddingTop: 14, paddingBottom: 20, paddingHorizontal: 20, borderBottomLeftRadius: 28, borderBottomRightRadius: 28, gap: 14 },
+  topRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
+  greeting: { color: '#FDE68A', fontSize: 11, fontFamily: 'Inter_400Regular' },
+  name: { color: '#FFFFFF', fontSize: 22, fontFamily: 'Inter_700Bold' },
+  emp: { color: '#FCD34D', fontSize: 12, fontFamily: 'Inter_400Regular', marginTop: 2 },
+  avatar: { width: 46, height: 46, borderRadius: 23, backgroundColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center' },
+  avatarLetter: { color: '#FFFFFF', fontSize: 20, fontFamily: 'Inter_700Bold' },
+  wardBadge: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 99, alignSelf: 'flex-start' },
+  wardText: { color: '#FDE68A', fontSize: 12, fontFamily: 'Inter_600SemiBold' },
+  heroStats: { flexDirection: 'row', gap: 8 },
+  heroStat: { flex: 1, borderRadius: 12, paddingVertical: 10, alignItems: 'center', gap: 2 },
+  heroStatVal: { color: '#fff', fontSize: 18, fontFamily: 'Inter_700Bold' },
+  heroStatLbl: { color: 'rgba(255,255,255,0.8)', fontSize: 9, fontFamily: 'Inter_600SemiBold' },
   body: { padding: 16, gap: 14 },
   grid: { flexDirection: 'row', gap: 10 },
   card: { borderRadius: 14, padding: 16, borderWidth: 1, gap: 14 },

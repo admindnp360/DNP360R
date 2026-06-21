@@ -61,7 +61,7 @@ export default function SignUpScreen() {
 
           <View style={styles.header}>
             <View style={styles.logoShield}>
-              <View style={styles.shieldInner}><DNP360Logo size="md" /></View>
+              <DNP360Logo size="sm" />
             </View>
             <Text style={styles.tagline}>Create Citizen Account</Text>
             <Text style={styles.subtitle}>Register to access DNP360 services</Text>
@@ -155,8 +155,7 @@ const styles = StyleSheet.create({
   backBtn: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   backText: { color: '#8AB0D8', fontSize: 14, fontFamily: 'Inter_500Medium' },
   header: { alignItems: 'center', marginBottom: 24 },
-  logoShield: { width: 72, height: 72, borderRadius: 20, backgroundColor: 'rgba(0,90,182,0.25)', justifyContent: 'center', alignItems: 'center', marginBottom: 12, borderWidth: 1, borderColor: 'rgba(0,90,182,0.4)' },
-  shieldInner: { width: 58, height: 58, borderRadius: 14, backgroundColor: 'rgba(0,90,182,0.4)', justifyContent: 'center', alignItems: 'center' },
+  logoShield: { paddingHorizontal: 16, paddingVertical: 12, borderRadius: 20, backgroundColor: 'rgba(0,90,182,0.35)', justifyContent: 'center', alignItems: 'center', marginBottom: 12, borderWidth: 1, borderColor: 'rgba(0,90,182,0.4)' },
   tagline: { color: '#FFFFFF', fontSize: 20, fontFamily: 'Inter_700Bold' },
   subtitle: { color: '#8AB0D8', fontSize: 12, fontFamily: 'Inter_400Regular', marginTop: 4 },
   card: { backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 20, borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)', padding: 24, marginBottom: 24 },

@@ -1,15 +1,19 @@
 import { Feather } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import React, { useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { HouseCard } from '@/components/HouseCard';
+import { LanguageSwitcher } from '@/components/LanguageSwitcher';
 import { SearchBar } from '@/components/SearchBar';
 import { useAppData } from '@/contexts/AppContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { useColors } from '@/hooks/useColors';
 
 export default function OfficialHouses() {
   const { houses, wards } = useAppData();
   const colors = useColors();
+  const { t } = useLanguage();
   const [search, setSearch] = useState('');
   const [wardFilter, setWardFilter] = useState<string>('all');
 
@@ -22,27 +26,56 @@ export default function OfficialHouses() {
     return h.isActive;
   });
 
+  const activeHouses = houses.filter(h => h.isActive).length;
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={['top']}>
-      <View style={[styles.header, { borderBottomColor: colors.border }]}>
-        <Text style={[styles.title, { color: colors.text }]}>Houses</Text>
-        <View style={[styles.countBadge, { backgroundColor: colors.officialBg }]}>
-          <Text style={[styles.countText, { color: colors.official }]}>{houses.filter(h => h.isActive).length} registered</Text>
-        </View>
-      </View>
-
-      <View style={styles.controls}>
-        <SearchBar value={search} onChangeText={setSearch} placeholder="Search by name, number, address…" />
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 8 }}>
-          <View style={[styles.wardChip, { backgroundColor: wardFilter === 'all' ? colors.official : colors.card, borderColor: wardFilter === 'all' ? colors.official : colors.border }]}>
-            <Text style={[styles.wardChipText, { color: wardFilter === 'all' ? '#fff' : colors.mutedForeground }]} onPress={() => setWardFilter('all')}>All Wards</Text>
+      <LinearGradient colors={['#78350F', '#92400E', '#B45309']} style={styles.hero}>
+        <View style={styles.heroTop}>
+          <View>
+            <Text style={styles.heroTitle}>{t('houses')}</Text>
+            <Text style={styles.heroSub}>{activeHouses} registered</Text>
           </View>
+          <View style={{ alignItems: 'flex-end', gap: 8 }}>
+            <LinearGradient colors={['rgba(255,255,255,0.2)', 'rgba(255,255,255,0.05)']} style={styles.heroIcon}>
+              <Feather name="home" size={20} color="#FDE68A" />
+            </LinearGradient>
+            <LanguageSwitcher />
+          </View>
+        </View>
+        <View style={styles.heroStats}>
+          {[
+            { label: 'Registered', value: activeHouses, grad: ['#D97706','#F59E0B'] as const },
+            { label: 'Wards', value: wards.length, grad: ['#059669','#10B981'] as const },
+            { label: 'Filtered', value: filtered.length, grad: ['#7C3AED','#8B5CF6'] as const },
+          ].map(s => (
+            <LinearGradient key={s.label} colors={s.grad} style={styles.heroStat}>
+              <Text style={styles.heroStatVal}>{s.value}</Text>
+              <Text style={styles.heroStatLbl}>{s.label}</Text>
+            </LinearGradient>
+          ))}
+        </View>
+      </LinearGradient>
+
+      <View style={[styles.controls, { backgroundColor: colors.background }]}>
+        <SearchBar value={search} onChangeText={setSearch} placeholder={t('search') + ' by name, number, address…'} />
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 8 }}>
+          <Pressable
+            style={[styles.wardChip, { backgroundColor: wardFilter === 'all' ? '#B45309' : colors.card, borderColor: wardFilter === 'all' ? '#B45309' : colors.border }]}
+            onPress={() => setWardFilter('all')}
+          >
+            <Text style={[styles.wardChipText, { color: wardFilter === 'all' ? '#fff' : colors.mutedForeground }]}>All {t('ward')}s</Text>
+          </Pressable>
           {wards.map(w => (
-            <View key={w.id} style={[styles.wardChip, { backgroundColor: wardFilter === w.id ? colors.official : colors.card, borderColor: wardFilter === w.id ? colors.official : colors.border }]}>
-              <Text style={[styles.wardChipText, { color: wardFilter === w.id ? '#fff' : colors.mutedForeground }]} onPress={() => setWardFilter(w.id)}>
-                Ward {w.wardNumber}
+            <Pressable
+              key={w.id}
+              style={[styles.wardChip, { backgroundColor: wardFilter === w.id ? '#B45309' : colors.card, borderColor: wardFilter === w.id ? '#B45309' : colors.border }]}
+              onPress={() => setWardFilter(w.id)}
+            >
+              <Text style={[styles.wardChipText, { color: wardFilter === w.id ? '#fff' : colors.mutedForeground }]}>
+                {t('ward')} {w.wardNumber}
               </Text>
-            </View>
+            </Pressable>
           ))}
         </ScrollView>
       </View>
@@ -51,8 +84,10 @@ export default function OfficialHouses() {
         {filtered.map(h => <HouseCard key={h.id} house={h} />)}
         {filtered.length === 0 && (
           <View style={[styles.empty, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            <Feather name="home" size={36} color={colors.mutedForeground} />
-            <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>No houses found</Text>
+            <LinearGradient colors={['#92400E', '#D97706']} style={styles.emptyIcon}>
+              <Feather name="home" size={28} color="#fff" />
+            </LinearGradient>
+            <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>{t('noData')}</Text>
           </View>
         )}
       </ScrollView>
@@ -61,13 +96,19 @@ export default function OfficialHouses() {
 }
 
 const styles = StyleSheet.create({
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16, paddingBottom: 12, borderBottomWidth: 1 },
-  title: { fontSize: 22, fontFamily: 'Inter_700Bold' },
-  countBadge: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 99 },
-  countText: { fontSize: 12, fontFamily: 'Inter_500Medium' },
-  controls: { padding: 16 },
+  hero: { padding: 20, paddingBottom: 22, gap: 14, borderBottomLeftRadius: 24, borderBottomRightRadius: 24 },
+  heroTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
+  heroTitle: { color: '#fff', fontSize: 26, fontFamily: 'Inter_700Bold' },
+  heroSub: { color: 'rgba(255,255,255,0.6)', fontSize: 12, fontFamily: 'Inter_400Regular', marginTop: 2 },
+  heroIcon: { width: 46, height: 46, borderRadius: 13, justifyContent: 'center', alignItems: 'center' },
+  heroStats: { flexDirection: 'row', gap: 10 },
+  heroStat: { flex: 1, borderRadius: 12, paddingVertical: 10, alignItems: 'center', gap: 2 },
+  heroStatVal: { color: '#fff', fontSize: 18, fontFamily: 'Inter_700Bold' },
+  heroStatLbl: { color: 'rgba(255,255,255,0.8)', fontSize: 9, fontFamily: 'Inter_600SemiBold' },
+  controls: { padding: 14, paddingBottom: 8 },
   wardChip: { paddingHorizontal: 12, paddingVertical: 7, borderRadius: 99, borderWidth: 1, marginRight: 8 },
   wardChipText: { fontSize: 12, fontFamily: 'Inter_500Medium' },
-  empty: { borderRadius: 16, padding: 40, borderWidth: 1, alignItems: 'center', gap: 10 },
+  empty: { borderRadius: 16, padding: 40, borderWidth: 1, alignItems: 'center', gap: 12 },
+  emptyIcon: { width: 60, height: 60, borderRadius: 16, justifyContent: 'center', alignItems: 'center' },
   emptyText: { fontSize: 14, fontFamily: 'Inter_400Regular' },
 });

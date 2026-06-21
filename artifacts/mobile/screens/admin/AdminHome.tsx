@@ -4,14 +4,17 @@ import { router } from 'expo-router';
 import React from 'react';
 import { Linking, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { LanguageSwitcher } from '@/components/LanguageSwitcher';
 import { useAppData } from '@/contexts/AppContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { useColors } from '@/hooks/useColors';
 
 export default function AdminHome() {
   const { user } = useAuth();
   const { complaints, houses, wards, users, notices, secretKeys, passwordResetRequests } = useAppData();
   const colors = useColors();
+  const { t } = useLanguage();
 
   const citizens = users.filter(u => u.role === 'citizen');
   const workers = users.filter(u => u.role === 'safaikarmi');
@@ -40,8 +43,11 @@ export default function AdminHome() {
               <Text style={styles.name}>{user?.name ?? 'Admin'}</Text>
               <Text style={styles.emp}>{user?.employeeId ?? ''}</Text>
             </View>
-            <View style={styles.avatar}>
-              <Text style={styles.avatarLetter}>{(user?.name ?? 'A')[0]}</Text>
+            <View style={{ alignItems: 'flex-end', gap: 10 }}>
+              <View style={styles.avatar}>
+                <Text style={styles.avatarLetter}>{(user?.name ?? 'A')[0]}</Text>
+              </View>
+              <LanguageSwitcher />
             </View>
           </View>
           <View style={styles.systemBadge}>

@@ -73,11 +73,20 @@ export default function LoginScreen() {
 
             {mainTab === 'signin' ? (
               <>
+                <View style={[styles.roleHintBox, { marginBottom: 12 }]}>
+                  <Feather name="info" size={12} color="#8AB0D8" />
+                  <Text style={styles.roleHintText}>
+                    <Text style={{ color: '#60A0F0', fontFamily: 'Inter_600SemiBold' }}>Citizens & Admin</Text>
+                    {' use email/mobile · '}
+                    <Text style={{ color: '#93C5FD', fontFamily: 'Inter_600SemiBold' }}>Officials & Safai Karmis</Text>
+                    {' use Secret Code tab'}
+                  </Text>
+                </View>
                 <View style={styles.subTabs}>
                   {(['mobile', 'email'] as const).map((t) => (
                     <Pressable key={t} style={[styles.subTab, subTab === t && styles.subTabActive]} onPress={() => setSubTab(t)}>
                       <Feather name={t === 'mobile' ? 'smartphone' : 'mail'} size={13} color={subTab === t ? '#60A0F0' : '#8A9BB0'} />
-                      <Text style={[styles.subTabText, subTab === t && styles.subTabTextActive]}>{t === 'mobile' ? 'Mobile' : 'Email'}</Text>
+                      <Text style={[styles.subTabText, subTab === t && styles.subTabTextActive]}>{t === 'mobile' ? 'Mobile No.' : 'Email'}</Text>
                     </Pressable>
                   ))}
                 </View>
@@ -190,6 +199,8 @@ const styles = StyleSheet.create({
   soonText: { color: '#92400E', fontSize: 8, fontFamily: 'Inter_700Bold' },
   createBtn: { flex: 3, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, backgroundColor: 'rgba(96,160,240,0.1)', borderRadius: 14, paddingVertical: 13, borderWidth: 1, borderColor: 'rgba(96,160,240,0.3)' },
   createBtnText: { color: '#60A0F0', fontSize: 13, fontFamily: 'Inter_600SemiBold' },
+  roleHintBox: { flexDirection: 'row', alignItems: 'flex-start', gap: 7, backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: 10, padding: 10, borderWidth: 1, borderColor: 'rgba(96,160,240,0.2)' },
+  roleHintText: { flex: 1, color: '#8AB0D8', fontSize: 11, fontFamily: 'Inter_400Regular', lineHeight: 17 },
   secretDesc: { color: '#8AB0D8', fontSize: 13, fontFamily: 'Inter_400Regular', textAlign: 'center', marginBottom: 18, lineHeight: 20 },
   demoBox: { marginTop: 10, backgroundColor: 'rgba(18,100,232,0.15)', borderRadius: 10, padding: 12, borderWidth: 1, borderColor: 'rgba(18,100,232,0.3)' },
   demoTitle: { color: '#ABC7FF', fontSize: 11, fontFamily: 'Inter_600SemiBold', marginBottom: 5 },

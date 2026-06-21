@@ -53,6 +53,7 @@ export default function AdminManagement() {
   const [showApproveModal, setShowApproveModal] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState<PasswordResetRequest | null>(null);
   const [tempPassword, setTempPassword] = useState('');
+  const [adminNote, setAdminNote] = useState('');
   const [noticeTitle, setNoticeTitle] = useState('');
   const [noticeContent, setNoticeContent] = useState('');
   const [noticeType, setNoticeType] = useState<'notice' | 'announcement' | 'alert'>('notice');
@@ -103,7 +104,7 @@ export default function AdminManagement() {
     } finally { setSaving(false); }
   }
 
-  function openApproveModal(req: PasswordResetRequest) { setSelectedRequest(req); setTempPassword(''); setShowApproveModal(true); }
+  function openApproveModal(req: PasswordResetRequest) { setSelectedRequest(req); setTempPassword(''); setAdminNote(''); setShowApproveModal(true); }
 
   async function handleApproveReset() {
     if (!selectedRequest) return;
@@ -112,8 +113,8 @@ export default function AdminManagement() {
     try {
       const ok = await resetUserPassword(selectedRequest.email, tempPassword.trim());
       if (!ok) { Alert.alert('Error', 'No user found with this email.'); return; }
-      await updatePasswordResetRequest(selectedRequest.id, 'approved');
-      setShowApproveModal(false); setSelectedRequest(null); setTempPassword('');
+      await updatePasswordResetRequest(selectedRequest.id, 'approved', adminNote.trim() || undefined);
+      setShowApproveModal(false); setSelectedRequest(null); setTempPassword(''); setAdminNote('');
       Alert.alert('✓ Approved', `Password reset for ${selectedRequest.name}.\n\nTemp password: ${tempPassword.trim()}\n\nContact them via registered mobile.`);
     } finally { setSaving(false); }
   }
@@ -589,6 +590,12 @@ export default function AdminManagement() {
                 style={[styles.fieldInput, { color: colors.text, backgroundColor: colors.card, borderColor: colors.border }]}
                 placeholder="Min. 6 characters" placeholderTextColor={colors.mutedForeground}
                 value={tempPassword} onChangeText={setTempPassword} autoCapitalize="none"
+              />
+              <Text style={[styles.fieldLabel, { color: colors.text }]}>Note to User (optional)</Text>
+              <TextInput
+                style={[styles.textarea, { color: colors.text, backgroundColor: colors.card, borderColor: colors.border }]}
+                placeholder="e.g. Contact office if you need help…" placeholderTextColor={colors.mutedForeground}
+                value={adminNote} onChangeText={setAdminNote} multiline numberOfLines={3} textAlignVertical="top"
               />
               <TouchableOpacity onPress={handleApproveReset} disabled={saving} activeOpacity={0.85} style={saving ? { opacity: 0.6 } : {}}>
                 <LinearGradient colors={['#10B981', '#059669']} style={styles.submitBtn}>
