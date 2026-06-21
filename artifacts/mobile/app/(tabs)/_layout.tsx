@@ -40,10 +40,10 @@ const ROLE_TABS: Record<string, Record<TabName, { icon: string; label: string }>
 };
 
 const ROLE_COLORS: Record<string, string> = {
-  citizen:    '#005AB6',
-  safaikarmi: '#006A35',
-  official:   '#904D00',
-  admin:      '#003884',
+  citizen:    '#1264E8',
+  safaikarmi: '#007F42',
+  official:   '#C45C00',
+  admin:      '#1A3FA8',
 };
 
 export default function TabLayout() {

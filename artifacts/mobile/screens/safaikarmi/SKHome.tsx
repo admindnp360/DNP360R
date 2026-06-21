@@ -38,7 +38,7 @@ export default function SKHome() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={['top']}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
         {/* Header */}
         <LinearGradient colors={['#003D1C', '#006A35']} style={styles.header}>
           <View style={styles.topRow}>
@@ -156,6 +156,19 @@ export default function SKHome() {
               <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>No visits yet. Start scanning QR codes!</Text>
             </View>
           )}
+
+          <TouchableOpacity style={styles.announceBannerWrap} activeOpacity={0.85} onPress={() => {}}>
+            <LinearGradient colors={['#003D1C', '#007F42']} style={styles.announceBanner} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
+              <View style={styles.bannerIconWrap}>
+                <Feather name="phone" size={18} color="#FFFFFF" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.bannerTitle}>Nagar Parishad Daudnagar</Text>
+                <Text style={styles.bannerSub}>Municipal Office: 06184-XXXXXX</Text>
+              </View>
+              <Feather name="chevron-right" size={16} color="rgba(255,255,255,0.7)" />
+            </LinearGradient>
+          </TouchableOpacity>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -204,4 +217,9 @@ const styles = StyleSheet.create({
   garbageText: { fontSize: 10, fontFamily: 'Inter_600SemiBold' },
   empty: { borderRadius: 14, padding: 32, borderWidth: 1, alignItems: 'center', gap: 10 },
   emptyText: { fontSize: 13, fontFamily: 'Inter_400Regular', textAlign: 'center' },
+  announceBannerWrap: { borderRadius: 16, overflow: 'hidden' },
+  announceBanner: { flexDirection: 'row', gap: 12, alignItems: 'center', borderRadius: 16, padding: 16 },
+  bannerIconWrap: { width: 40, height: 40, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center' },
+  bannerTitle: { color: '#FFFFFF', fontSize: 14, fontFamily: 'Inter_700Bold' },
+  bannerSub: { color: 'rgba(255,255,255,0.8)', fontSize: 11, fontFamily: 'Inter_400Regular', marginTop: 2 },
 });

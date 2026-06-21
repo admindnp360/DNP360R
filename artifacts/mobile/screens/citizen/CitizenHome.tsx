@@ -32,7 +32,7 @@ export default function CitizenHome() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={['top']}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
         <LinearGradient colors={['#0F2D6B', '#005AB6']} style={styles.header}>
           <View style={styles.topRow}>
             <View>
@@ -89,19 +89,17 @@ export default function CitizenHome() {
             </>
           )}
 
-          <TouchableOpacity
-            style={[styles.announceBanner, { backgroundColor: colors.citizen }]}
-            activeOpacity={0.85}
-            onPress={() => {}}
-          >
-            <View style={styles.bannerIconWrap}>
-              <Feather name="phone" size={18} color="#FFFFFF" />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.bannerTitle}>Nagar Parishad Daudnagar</Text>
-              <Text style={styles.bannerSub}>Municipal Office: 06184-XXXXXX</Text>
-            </View>
-            <Feather name="chevron-right" size={16} color="rgba(255,255,255,0.7)" />
+          <TouchableOpacity style={styles.announceBannerWrap} activeOpacity={0.85} onPress={() => {}}>
+            <LinearGradient colors={['#0D2A6E', '#1264E8']} style={styles.announceBanner} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
+              <View style={styles.bannerIconWrap}>
+                <Feather name="phone" size={18} color="#FFFFFF" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.bannerTitle}>Nagar Parishad Daudnagar</Text>
+                <Text style={styles.bannerSub}>Municipal Office: 06184-XXXXXX</Text>
+              </View>
+              <Feather name="chevron-right" size={16} color="rgba(255,255,255,0.7)" />
+            </LinearGradient>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -124,8 +122,9 @@ const styles = StyleSheet.create({
   card: { borderRadius: 14, padding: 16, borderWidth: 1, gap: 14 },
   actionsRow: { flexDirection: 'row', gap: 8 },
   empty: { borderRadius: 12, padding: 24, borderWidth: 1, alignItems: 'center' },
-  announceBanner: { flexDirection: 'row', gap: 12, alignItems: 'center', borderRadius: 14, padding: 16 },
-  bannerIconWrap: { width: 38, height: 38, borderRadius: 10, backgroundColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center' },
-  bannerTitle: { color: '#FFFFFF', fontSize: 13, fontFamily: 'Inter_600SemiBold' },
+  announceBannerWrap: { borderRadius: 16, overflow: 'hidden' },
+  announceBanner: { flexDirection: 'row', gap: 12, alignItems: 'center', borderRadius: 16, padding: 16 },
+  bannerIconWrap: { width: 40, height: 40, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center' },
+  bannerTitle: { color: '#FFFFFF', fontSize: 14, fontFamily: 'Inter_700Bold' },
   bannerSub: { color: 'rgba(255,255,255,0.8)', fontSize: 11, fontFamily: 'Inter_400Regular', marginTop: 2 },
 });
