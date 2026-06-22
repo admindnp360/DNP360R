@@ -59,8 +59,25 @@ export default function LoginScreen() {
     try {
       const ok = await loginWithGoogle();
       if (ok) router.replace('/(tabs)');
-      else showAlert('Sign-In Failed', 'Google Sign-In failed. Ensure your account is authorised in Firebase.', undefined, 'error');
-    } catch { showAlert('Error', 'Google Sign-In error. Please try again.', undefined, 'error'); }
+      else showAlert(
+        'Setup Required',
+        'Google Sign-In needs your Firebase project domain to be authorised.\n\nGo to: Firebase Console → Authentication → Settings → Authorised Domains → Add your domain.',
+        [{ text: 'Understood', style: 'default' }],
+        'warning'
+      );
+    } catch (e: any) {
+      const code = e?.code ?? '';
+      if (code === 'auth/unauthorized-domain' || code === 'auth/operation-not-allowed') {
+        showAlert(
+          'Domain Not Authorised',
+          'Your app domain is not added to Firebase authorised domains.\n\nFix: Firebase Console → Authentication → Settings → Authorised Domains → Add your domain.',
+          [{ text: 'Got it', style: 'default' }],
+          'warning'
+        );
+      } else {
+        showAlert('Error', 'Google Sign-In is unavailable. Please use Email login.', undefined, 'error');
+      }
+    }
     finally { setGoogleLoading(false); }
   }
 
@@ -80,16 +97,46 @@ export default function LoginScreen() {
         >
           {/* ── Logo ── */}
           <View style={styles.header}>
-            <View style={styles.logoRing}>
-              <LinearGradient colors={['#6366F1', '#2563EB', '#06B6D4']} style={styles.logoGlow} />
-              <View style={styles.logoInner}>
-                <Image
-                  source={require('@/assets/images/dnp360-logo.png')}
-                  style={styles.logoImage}
-                  resizeMode="contain"
-                />
+            {/* Multi-ring vibrant logo */}
+            <View style={styles.logoContainer}>
+              {/* Outer glow blobs */}
+              <View style={styles.logoBlob1} />
+              <View style={styles.logoBlob2} />
+
+              {/* Outermost ring — 4-color border */}
+              <View style={styles.logoRingOuter} />
+
+              {/* Middle ring — gradient overlay simulation */}
+              <View style={styles.logoRingMid} />
+
+              {/* 8 colored spark dots around the ring */}
+              {[
+                { color: '#6366F1', top: 0,   left: 55 },
+                { color: '#06B6D4', top: 10,  left: 100 },
+                { color: '#10B981', top: 55,  left: 122 },
+                { color: '#F59E0B', top: 100, left: 108 },
+                { color: '#EF4444', top: 122, left: 55 },
+                { color: '#EC4899', top: 108, left: 8 },
+                { color: '#2563EB', top: 55,  left: -4 },
+                { color: '#8B5CF6', top: 8,   left: 12 },
+              ].map((dot, i) => (
+                <View key={i} style={[styles.sparkDot, { backgroundColor: dot.color, top: dot.top, left: dot.left }]} />
+              ))}
+
+              {/* Inner white ring */}
+              <View style={styles.logoRingInner}>
+                {/* Logo image — DNP360 text kept as-is */}
+                <View style={styles.logoImageWrap}>
+                  <LinearGradient colors={['rgba(99,102,241,0.2)', 'rgba(6,182,212,0.1)']} style={StyleSheet.absoluteFill} borderRadius={48} />
+                  <Image
+                    source={require('@/assets/images/dnp360-logo.png')}
+                    style={styles.logoImage}
+                    resizeMode="contain"
+                  />
+                </View>
               </View>
             </View>
+
             <Text style={styles.orgName}>Nagar Parishad Daudnagar</Text>
             <View style={styles.orgBadge}>
               <View style={styles.badgeDot} />
@@ -231,7 +278,7 @@ export default function LoginScreen() {
                   <>
                     <View style={styles.dividerRow}>
                       <View style={styles.dividerLine} />
-                      <Text style={styles.dividerText}>or continue with</Text>
+                      <Text style={styles.dividerText}>or</Text>
                       <View style={styles.dividerLine} />
                     </View>
                     <TouchableOpacity
@@ -240,11 +287,16 @@ export default function LoginScreen() {
                       disabled={loading || googleLoading}
                       activeOpacity={0.85}
                     >
-                      {googleLoading
-                        ? <ActivityIndicator color="#4285F4" size="small" />
-                        : <View style={styles.googleG}><Text style={styles.googleGText}>G</Text></View>
-                      }
-                      <Text style={styles.googleBtnText}>{googleLoading ? 'Signing in…' : 'Continue with Google'}</Text>
+                      {googleLoading ? (
+                        <ActivityIndicator color="#fff" size="small" />
+                      ) : (
+                        <View style={styles.googleIconCircle}>
+                          <Text style={styles.googleGText}>G</Text>
+                        </View>
+                      )}
+                      <Text style={styles.googleBtnText}>
+                        {googleLoading ? 'Signing in…' : 'Continue with Google'}
+                      </Text>
                     </TouchableOpacity>
                   </>
                 )}
@@ -360,11 +412,45 @@ const styles = StyleSheet.create({
 
   scroll: { flexGrow: 1, paddingHorizontal: 20, paddingTop: 52, paddingBottom: 24 },
 
-  header: { alignItems: 'center', marginBottom: 24 },
-  logoRing: { width: 110, height: 110, justifyContent: 'center', alignItems: 'center', marginBottom: 12 },
-  logoGlow: { position: 'absolute', width: 110, height: 110, borderRadius: 55, opacity: 0.4 },
-  logoInner: { width: 100, height: 100, borderRadius: 50, backgroundColor: 'rgba(255,255,255,0.04)', justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)' },
-  logoImage: { width: 86, height: 86 },
+  header: { alignItems: 'center', marginBottom: 22 },
+
+  logoContainer: { width: 130, height: 130, justifyContent: 'center', alignItems: 'center', marginBottom: 14, position: 'relative' },
+
+  logoBlob1: { position: 'absolute', width: 130, height: 130, borderRadius: 65, backgroundColor: '#6366F122' },
+  logoBlob2: { position: 'absolute', width: 110, height: 110, borderRadius: 55, backgroundColor: '#06B6D415' },
+
+  logoRingOuter: {
+    position: 'absolute', width: 126, height: 126, borderRadius: 63,
+    borderWidth: 3,
+    borderTopColor: '#6366F1',
+    borderRightColor: '#06B6D4',
+    borderBottomColor: '#10B981',
+    borderLeftColor: '#F59E0B',
+  },
+  logoRingMid: {
+    position: 'absolute', width: 112, height: 112, borderRadius: 56,
+    borderWidth: 1.5,
+    borderTopColor: '#8B5CF6AA',
+    borderRightColor: '#34D399AA',
+    borderBottomColor: '#FBBF24AA',
+    borderLeftColor: '#EC4899AA',
+  },
+
+  sparkDot: { position: 'absolute', width: 7, height: 7, borderRadius: 3.5 },
+
+  logoRingInner: {
+    width: 100, height: 100, borderRadius: 50,
+    backgroundColor: 'rgba(7,0,46,0.85)',
+    justifyContent: 'center', alignItems: 'center',
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)',
+  },
+  logoImageWrap: {
+    width: 92, height: 92, borderRadius: 46,
+    justifyContent: 'center', alignItems: 'center',
+    overflow: 'hidden',
+  },
+  logoImage: { width: 82, height: 82 },
+
   orgName: { color: '#FFFFFF', fontSize: 18, fontFamily: 'Inter_700Bold' },
   orgBadge: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 },
   badgeDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#10B981' },
@@ -413,10 +499,20 @@ const styles = StyleSheet.create({
   dividerLine: { flex: 1, height: 1, backgroundColor: 'rgba(255,255,255,0.08)' },
   dividerText: { color: '#4B5563', fontSize: 11, fontFamily: 'Inter_400Regular' },
 
-  googleBtn: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#FFFFFF', borderRadius: 14, paddingVertical: 13, paddingHorizontal: 20, justifyContent: 'center' },
-  googleG: { width: 26, height: 26, borderRadius: 13, backgroundColor: 'rgba(66,133,244,0.1)', justifyContent: 'center', alignItems: 'center' },
-  googleGText: { fontSize: 15, fontFamily: 'Inter_700Bold', color: '#4285F4' },
-  googleBtnText: { fontSize: 14, fontFamily: 'Inter_600SemiBold', color: '#1F2937', flex: 1, textAlign: 'center' },
+  googleBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    backgroundColor: 'rgba(255,255,255,0.07)',
+    borderRadius: 14, paddingVertical: 13, paddingHorizontal: 16,
+    justifyContent: 'center',
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)',
+  },
+  googleIconCircle: {
+    width: 30, height: 30, borderRadius: 15,
+    backgroundColor: '#fff',
+    justifyContent: 'center', alignItems: 'center',
+  },
+  googleGText: { fontSize: 16, fontFamily: 'Inter_700Bold', color: '#4285F4' },
+  googleBtnText: { fontSize: 14, fontFamily: 'Inter_600SemiBold', color: '#E5E7EB', flex: 1, textAlign: 'center' },
 
   codeRoleRow: { flexDirection: 'row', gap: 8, justifyContent: 'space-between' },
   codeRoleChip: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 7, backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 12, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', padding: 10 },
