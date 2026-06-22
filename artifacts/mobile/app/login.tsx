@@ -262,27 +262,22 @@ export default function LoginScreen() {
                   <Text style={styles.forgotText}>Forgot Password?</Text>
                 </Pressable>
 
-                <TouchableOpacity
-                  style={[styles.primaryBtnWrap, loading && { opacity: 0.65 }]}
-                  onPress={handleSignIn}
-                  disabled={loading || googleLoading}
-                  activeOpacity={0.85}
-                >
-                  <LinearGradient colors={['#2563EB', '#4F46E5']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.primaryBtn}>
-                    {loading ? <ActivityIndicator color="#fff" size="small" /> : <Feather name="log-in" size={16} color="#fff" />}
-                    <Text style={styles.primaryBtnText}>{loading ? 'Signing in…' : 'Sign In'}</Text>
-                  </LinearGradient>
-                </TouchableOpacity>
+                <View style={styles.signInRow}>
+                  <TouchableOpacity
+                    style={[styles.primaryBtnWrap, { flex: 1 }, loading && { opacity: 0.65 }]}
+                    onPress={handleSignIn}
+                    disabled={loading || googleLoading}
+                    activeOpacity={0.85}
+                  >
+                    <LinearGradient colors={['#2563EB', '#4F46E5']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.primaryBtn}>
+                      {loading ? <ActivityIndicator color="#fff" size="small" /> : <Feather name="log-in" size={16} color="#fff" />}
+                      <Text style={styles.primaryBtnText}>{loading ? 'Signing in…' : 'Sign In'}</Text>
+                    </LinearGradient>
+                  </TouchableOpacity>
 
-                {IS_WEB && (
-                  <>
-                    <View style={styles.dividerRow}>
-                      <View style={styles.dividerLine} />
-                      <Text style={styles.dividerText}>or</Text>
-                      <View style={styles.dividerLine} />
-                    </View>
+                  {IS_WEB && (
                     <TouchableOpacity
-                      style={[styles.googleBtn, googleLoading && { opacity: 0.7 }]}
+                      style={[styles.googleBtnSquare, googleLoading && { opacity: 0.7 }]}
                       onPress={handleGoogleSignIn}
                       disabled={loading || googleLoading}
                       activeOpacity={0.85}
@@ -294,12 +289,9 @@ export default function LoginScreen() {
                           <Text style={styles.googleGText}>G</Text>
                         </View>
                       )}
-                      <Text style={styles.googleBtnText}>
-                        {googleLoading ? 'Signing in…' : 'Continue with Google'}
-                      </Text>
                     </TouchableOpacity>
-                  </>
-                )}
+                  )}
+                </View>
               </>
             ) : (
               <>
@@ -491,27 +483,24 @@ const styles = StyleSheet.create({
   forgotRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 5 },
   forgotText: { color: '#60A5FA', fontSize: 13, fontFamily: 'Inter_500Medium' },
 
+  signInRow: { flexDirection: 'row', gap: 10, alignItems: 'center' },
+
   primaryBtnWrap: { borderRadius: 14, overflow: 'hidden' },
   primaryBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 15 },
   primaryBtnText: { color: '#FFFFFF', fontSize: 15, fontFamily: 'Inter_700Bold' },
 
-  dividerRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  dividerLine: { flex: 1, height: 1, backgroundColor: 'rgba(255,255,255,0.08)' },
-  dividerText: { color: '#4B5563', fontSize: 11, fontFamily: 'Inter_400Regular' },
-
-  googleBtn: {
-    flexDirection: 'row', alignItems: 'center', gap: 12,
-    backgroundColor: 'rgba(255,255,255,0.07)',
-    borderRadius: 14, paddingVertical: 13, paddingHorizontal: 16,
-    justifyContent: 'center',
-    borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)',
+  googleBtnSquare: {
+    width: 52, height: 52, borderRadius: 14,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.14)',
+    justifyContent: 'center', alignItems: 'center',
   },
   googleIconCircle: {
-    width: 30, height: 30, borderRadius: 15,
+    width: 32, height: 32, borderRadius: 16,
     backgroundColor: '#fff',
     justifyContent: 'center', alignItems: 'center',
   },
-  googleGText: { fontSize: 16, fontFamily: 'Inter_700Bold', color: '#4285F4' },
+  googleGText: { fontSize: 17, fontFamily: 'Inter_700Bold', color: '#4285F4' },
   googleBtnText: { fontSize: 14, fontFamily: 'Inter_600SemiBold', color: '#E5E7EB', flex: 1, textAlign: 'center' },
 
   codeRoleRow: { flexDirection: 'row', gap: 8, justifyContent: 'space-between' },
