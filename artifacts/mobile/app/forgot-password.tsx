@@ -1,8 +1,9 @@
 import { Feather } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
-import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useAlert } from '@/contexts/AlertContext';
 import { useAppData } from '@/contexts/AppContext';
 import { useColors } from '@/hooks/useColors';
 
@@ -45,9 +46,11 @@ export default function ForgotPasswordScreen() {
   const [checkEmail, setCheckEmail] = useState('');
   const [checkedRequest, setCheckedRequest] = useState<typeof passwordResetRequests[0] | null | 'not_found'>(null);
 
+  const { showAlert } = useAlert();
+
   async function handleRequest() {
     if (!email.trim() || !name.trim()) {
-      Alert.alert('Missing fields', 'Please enter your registered email and full name.');
+      showAlert('Missing fields', 'Please enter your registered email and full name.', undefined, 'warning');
       return;
     }
     setLoading(true);
@@ -61,7 +64,7 @@ export default function ForgotPasswordScreen() {
 
   function handleCheckStatus() {
     if (!checkEmail.trim()) {
-      Alert.alert('Missing email', 'Please enter your registered email.');
+      showAlert('Missing email', 'Please enter your registered email.', undefined, 'warning');
       return;
     }
     const found = passwordResetRequests.find(r => r.email.toLowerCase() === checkEmail.trim().toLowerCase());

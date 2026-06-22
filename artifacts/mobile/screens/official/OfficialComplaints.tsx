@@ -1,11 +1,12 @@
 import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ComplaintCard } from '@/components/ComplaintCard';
 import { LanguageSwitcher } from '@/components/LanguageSwitcher';
 import { SearchBar } from '@/components/SearchBar';
+import { useAlert } from '@/contexts/AlertContext';
 import { useAppData } from '@/contexts/AppContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useColors } from '@/hooks/useColors';
@@ -46,13 +47,15 @@ export default function OfficialComplaints() {
     { key: 'resolved', label: t('resolved') },
   ];
 
+  const { showAlert } = useAlert();
+
   async function handleUpdate(id: string, currentStatus: string) {
     const nextStatus = NEXT_STATUS[currentStatus];
     if (!nextStatus) return;
-    Alert.alert('Update Status', `Move to "${nextStatus.replace('_', ' ')}"?`, [
+    showAlert('Update Status', `Move to "${nextStatus.replace('_', ' ')}"?`, [
       { text: t('cancel'), style: 'cancel' },
       { text: 'Update', onPress: async () => { await updateComplaint(id, { status: nextStatus as any }); } },
-    ]);
+    ], 'info');
   }
 
   return (

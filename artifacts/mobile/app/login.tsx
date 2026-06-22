@@ -4,7 +4,6 @@ import { router } from 'expo-router';
 import React, { useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Image,
   KeyboardAvoidingView,
   Platform,
@@ -16,12 +15,14 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { useAlert } from '@/contexts/AlertContext';
 import { useAuth } from '@/contexts/AuthContext';
 
 const IS_WEB = Platform.OS === 'web';
 
 export default function LoginScreen() {
   const { login, loginWithCode, loginWithGoogle } = useAuth();
+  const { showAlert } = useAlert();
   const [mainTab, setMainTab] = useState<'signin' | 'secret'>('signin');
   const [subTab, setSubTab] = useState<'mobile' | 'email'>('email');
   const [mobile, setMobile] = useState('');
@@ -34,21 +35,21 @@ export default function LoginScreen() {
 
   async function handleSignIn() {
     const id = subTab === 'mobile' ? mobile.trim() : email.trim();
-    if (!id || !password) { Alert.alert('Missing Fields', 'Please fill in all required fields.'); return; }
+    if (!id || !password) { showAlert('Missing Fields', 'Please fill in all required fields.', undefined, 'warning'); return; }
     setLoading(true);
     try {
       const ok = await login(id, password, subTab);
-      if (!ok) Alert.alert('Login Failed', 'Invalid credentials.\n\nDemo:\ncitizen.dnp360@gmail.com / 12345678');
+      if (!ok) showAlert('Login Failed', 'Invalid credentials.\n\nDemo:\ncitizen.dnp360@gmail.com / 12345678', undefined, 'error');
       else router.replace('/(tabs)');
     } finally { setLoading(false); }
   }
 
   async function handleSecretCode() {
-    if (!secretCode.trim()) { Alert.alert('Missing Code', 'Please enter your secret code.'); return; }
+    if (!secretCode.trim()) { showAlert('Missing Code', 'Please enter your secret code.', undefined, 'warning'); return; }
     setLoading(true);
     try {
       const ok = await loginWithCode(secretCode.trim());
-      if (!ok) Alert.alert('Invalid Code', 'Secret code not recognised.\n\nDemo: SK2566F · OFF4416A · ADMIN5790X');
+      if (!ok) showAlert('Invalid Code', 'Secret code not recognised.\n\nDemo: SK2566F · OFF4416A · ADMIN5790X', undefined, 'error');
       else router.replace('/(tabs)');
     } finally { setLoading(false); }
   }
@@ -58,8 +59,8 @@ export default function LoginScreen() {
     try {
       const ok = await loginWithGoogle();
       if (ok) router.replace('/(tabs)');
-      else Alert.alert('Sign-In Failed', 'Google Sign-In failed. Ensure your Google account is authorised in Firebase Console.');
-    } catch { Alert.alert('Error', 'Google Sign-In error. Please try again.'); }
+      else showAlert('Sign-In Failed', 'Google Sign-In failed. Ensure your Google account is authorised in Firebase Console.', undefined, 'error');
+    } catch { showAlert('Error', 'Google Sign-In error. Please try again.', undefined, 'error'); }
     finally { setGoogleLoading(false); }
   }
 

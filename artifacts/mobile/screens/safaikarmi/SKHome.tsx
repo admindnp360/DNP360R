@@ -1,8 +1,9 @@
 import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import React from 'react';
-import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useAlert } from '@/contexts/AlertContext';
 import { useAppData } from '@/contexts/AppContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useColors } from '@/hooks/useColors';
@@ -16,6 +17,7 @@ function getGreeting() {
 
 export default function SKHome() {
   const { user } = useAuth();
+  const { showAlert } = useAlert();
   const { wards, getVisitsByWorker, getAttendanceByWorker, isTodayAttendanceMarked, markAttendance } = useAppData();
   const colors = useColors();
 
@@ -31,10 +33,10 @@ export default function SKHome() {
   const barColor = progressPct >= 80 ? '#34D399' : progressPct >= 40 ? '#FCD34D' : '#F87171';
 
   async function handleMarkAttendance() {
-    if (attendanceMarked) { Alert.alert('Already Marked', 'Your attendance for today is already recorded.'); return; }
+    if (attendanceMarked) { showAlert('Already Marked', 'Your attendance for today is already recorded.', undefined, 'info'); return; }
     const success = await markAttendance(user?.id ?? '', 'manual');
-    if (success) Alert.alert('✓ Attendance Marked', `Recorded at ${new Date().toLocaleTimeString()}`);
-    else Alert.alert('Error', 'Could not mark attendance. Try again.');
+    if (success) showAlert('Attendance Marked', `Recorded at ${new Date().toLocaleTimeString()}`, undefined, 'success');
+    else showAlert('Error', 'Could not mark attendance. Try again.', undefined, 'error');
   }
 
   return (

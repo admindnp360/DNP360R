@@ -2,10 +2,11 @@ import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { useState } from 'react';
 import {
-  Alert, Modal, Pressable, ScrollView, StyleSheet,
+  Modal, Pressable, ScrollView, StyleSheet,
   Text, TouchableOpacity, View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useAlert } from '@/contexts/AlertContext';
 import { useAppData } from '@/contexts/AppContext';
 import { useColors } from '@/hooks/useColors';
 import type { SecretKey } from '@/types';
@@ -42,18 +43,20 @@ export default function AdminKeys() {
     try { setNewKey(await addSecretKey(role)); } finally { setGenerating(false); }
   }
 
+  const { showAlert } = useAlert();
+
   function handleToggle(k: SecretKey) {
-    Alert.alert(k.isActive ? 'Revoke Key?' : 'Activate Key?', `Code: ${k.code}`, [
+    showAlert(k.isActive ? 'Revoke Key?' : 'Activate Key?', `Code: ${k.code}`, [
       { text: 'Cancel', style: 'cancel' },
       { text: k.isActive ? 'Revoke' : 'Activate', onPress: () => toggleSecretKey(k.id) },
-    ]);
+    ], 'warning');
   }
 
   function handleDelete(k: SecretKey) {
-    Alert.alert('Delete Key?', `Permanently delete ${k.code}?`, [
+    showAlert('Delete Key?', `Permanently delete ${k.code}?`, [
       { text: 'Cancel', style: 'cancel' },
       { text: 'Delete', style: 'destructive', onPress: () => deleteSecretKey(k.id) },
-    ]);
+    ], 'error');
   }
 
   return (

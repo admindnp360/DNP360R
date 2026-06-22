@@ -4,7 +4,6 @@ import { router } from 'expo-router';
 import React, { useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -16,10 +15,12 @@ import {
   View,
 } from 'react-native';
 import { DNP360Logo } from '@/components/DNP360Logo';
+import { useAlert } from '@/contexts/AlertContext';
 import { useAuth } from '@/contexts/AuthContext';
 
 export default function SignUpScreen() {
   const { register } = useAuth();
+  const { showAlert } = useAlert();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [mobile, setMobile] = useState('');
@@ -34,26 +35,26 @@ export default function SignUpScreen() {
 
   async function handleSignUp() {
     if (!name.trim() || !email.trim() || !mobile.trim() || !password) {
-      Alert.alert('Missing Fields', 'Please fill in Name, Email, Mobile, and Password.');
+      showAlert('Missing Fields', 'Please fill in Name, Email, Mobile, and Password.', undefined, 'warning');
       return;
     }
     if (password !== confirmPassword) {
-      Alert.alert('Password Mismatch', 'Passwords do not match.');
+      showAlert('Password Mismatch', 'Passwords do not match.', undefined, 'error');
       return;
     }
     if (password.length < 6) {
-      Alert.alert('Weak Password', 'Password must be at least 6 characters.');
+      showAlert('Weak Password', 'Password must be at least 6 characters.', undefined, 'warning');
       return;
     }
     if (!/^\d{10}$/.test(mobile.trim())) {
-      Alert.alert('Invalid Mobile', 'Please enter a valid 10-digit mobile number.');
+      showAlert('Invalid Mobile', 'Please enter a valid 10-digit mobile number.', undefined, 'warning');
       return;
     }
     setLoading(true);
     try {
       const result = await register(name.trim(), email.trim(), mobile.trim(), password, address.trim() || undefined);
       if (!result.success) {
-        Alert.alert('Registration Failed', result.error ?? 'Unable to create account. Please try again.');
+        showAlert('Registration Failed', result.error ?? 'Unable to create account. Please try again.', undefined, 'error');
       } else {
         setCreatedName(name.trim());
         setSuccess(true);

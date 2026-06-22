@@ -4,10 +4,11 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
-  Alert, Modal, Pressable, ScrollView, StyleSheet,
+  Modal, Pressable, ScrollView, StyleSheet,
   Switch, Text, TextInput, TouchableOpacity, View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useAlert } from '@/contexts/AlertContext';
 import { useAppData } from '@/contexts/AppContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useColors } from '@/hooks/useColors';
@@ -51,6 +52,7 @@ const ROLE_CONFIG: Record<string, {
 
 export default function ProfileScreen() {
   const { user, logout, updateProfile } = useAuth();
+  const { showAlert } = useAlert();
   const {
     supportDetails, complaints, users, notices,
     getComplaintsByUser, getVisitsByWorker, getAttendanceByWorker,
@@ -115,20 +117,20 @@ export default function ProfileScreen() {
   }
 
   async function handleSave() {
-    if (!editName.trim()) { Alert.alert('Missing', 'Name cannot be empty.'); return; }
+    if (!editName.trim()) { showAlert('Missing', 'Name cannot be empty.', undefined, 'warning'); return; }
     setSaving(true);
     try {
       await updateProfile({ name: editName.trim(), mobile: editMobile.trim() || undefined, address: editAddress.trim() || undefined });
       setShowEditModal(false);
-      Alert.alert('✓ Updated', 'Profile saved successfully.');
+      showAlert('Updated', 'Profile saved successfully.', undefined, 'success');
     } finally { setSaving(false); }
   }
 
   async function handleLogout() {
-    Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
+    showAlert('Sign Out', 'Are you sure you want to sign out?', [
       { text: 'Cancel', style: 'cancel' },
       { text: 'Sign Out', style: 'destructive', onPress: async () => { await logout(); router.replace('/login'); } },
-    ]);
+    ], 'warning');
   }
 
   const INFO_ROWS = [
@@ -208,61 +210,61 @@ export default function ProfileScreen() {
               <LinearGradient colors={cfg.grad as any} style={styles.sectionIcon}>
                 <Feather name="user" size={13} color="#fff" />
               </LinearGradient>
-              <Text style={[styles.sectionTitle, { color: colors.text }]}>
+              <Text style={styles.sectionTitle}>
                 {lang === 'hi' ? 'खाता जानकारी' : 'Account Information'}
               </Text>
-              <TouchableOpacity onPress={openEdit} style={[styles.editChip, { backgroundColor: cfg.accent + '15', borderColor: cfg.accent + '35' }]}>
+              <TouchableOpacity onPress={openEdit} style={[styles.editChip, { backgroundColor: cfg.accent + '22', borderColor: cfg.accent + '55' }]}>
                 <Feather name="edit-2" size={10} color={cfg.accent} />
                 <Text style={[styles.editChipText, { color: cfg.accent }]}>{lang === 'hi' ? 'संपादित' : 'Edit'}</Text>
               </TouchableOpacity>
             </View>
-            <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <LinearGradient colors={[cfg.grad[0] + '22', cfg.grad[1] + '10', 'rgba(10,18,40,0.95)']} style={styles.vibrantCard}>
               {INFO_ROWS.map((row, i, arr) => (
-                <View key={row.label} style={[styles.infoRow, i < arr.length - 1 && { borderBottomWidth: 1, borderBottomColor: colors.border }]}>
+                <View key={row.label} style={[styles.infoRow, i < arr.length - 1 && styles.infoRowDivider]}>
                   <LinearGradient colors={row.grad as any} style={styles.rowIcon}>
                     <Feather name={row.icon as any} size={13} color="#fff" />
                   </LinearGradient>
                   <View style={styles.rowText}>
-                    <Text style={[styles.rowLabel, { color: colors.mutedForeground }]}>{row.label}</Text>
-                    <Text style={[styles.rowValue, { color: colors.text }]} numberOfLines={1}>{row.value}</Text>
+                    <Text style={styles.rowLabel}>{row.label}</Text>
+                    <Text style={styles.rowValue} numberOfLines={1}>{row.value}</Text>
                   </View>
                 </View>
               ))}
-            </View>
+            </LinearGradient>
           </View>
 
           {/* ── SETTINGS ── */}
           <View style={styles.section}>
             <View style={styles.sectionHead}>
-              <LinearGradient colors={['#6B7280', '#374151']} style={styles.sectionIcon}>
+              <LinearGradient colors={['#8B5CF6', '#6366F1']} style={styles.sectionIcon}>
                 <Feather name="settings" size={13} color="#fff" />
               </LinearGradient>
-              <Text style={[styles.sectionTitle, { color: colors.text }]}>
+              <Text style={styles.sectionTitle}>
                 {lang === 'hi' ? 'सेटिंग्स' : 'Settings'}
               </Text>
             </View>
-            <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
-              <View style={[styles.infoRow, { borderBottomWidth: 1, borderBottomColor: colors.border }]}>
+            <LinearGradient colors={['rgba(139,92,246,0.18)', 'rgba(99,102,241,0.08)', 'rgba(10,18,40,0.95)']} style={styles.vibrantCard}>
+              <View style={[styles.infoRow, styles.infoRowDivider]}>
                 <LinearGradient colors={['#F59E0B', '#EF4444']} style={styles.rowIcon}>
                   <Feather name="bell" size={13} color="#fff" />
                 </LinearGradient>
                 <View style={styles.rowText}>
-                  <Text style={[styles.rowValue, { color: colors.text }]}>{lang === 'hi' ? 'सूचनाएं' : 'Notifications'}</Text>
-                  <Text style={[styles.rowLabel, { color: colors.mutedForeground }]}>{lang === 'hi' ? 'शिकायत अपडेट, नोटिस' : 'Complaints, notices, alerts'}</Text>
+                  <Text style={styles.rowValue}>{lang === 'hi' ? 'सूचनाएं' : 'Notifications'}</Text>
+                  <Text style={styles.rowLabel}>{lang === 'hi' ? 'शिकायत अपडेट, नोटिस' : 'Complaints, notices, alerts'}</Text>
                 </View>
-                <Switch value={notifEnabled} onValueChange={setNotifEnabled} trackColor={{ false: colors.border, true: cfg.accent + 'AA' }} thumbColor={notifEnabled ? cfg.accent : colors.mutedForeground} />
+                <Switch value={notifEnabled} onValueChange={setNotifEnabled} trackColor={{ false: '#2E3E55', true: '#8B5CF6AA' }} thumbColor={notifEnabled ? '#8B5CF6' : '#4B5563'} />
               </View>
               <TouchableOpacity style={styles.infoRow} onPress={() => setShowLangModal(true)} activeOpacity={0.7}>
-                <LinearGradient colors={['#8B5CF6', '#6366F1']} style={styles.rowIcon}>
+                <LinearGradient colors={['#0EA5E9', '#2563EB']} style={styles.rowIcon}>
                   <Feather name="globe" size={13} color="#fff" />
                 </LinearGradient>
                 <View style={styles.rowText}>
-                  <Text style={[styles.rowValue, { color: colors.text }]}>{lang === 'hi' ? 'भाषा' : 'Language'}</Text>
-                  <Text style={[styles.rowLabel, { color: colors.mutedForeground }]}>{lang === 'hi' ? 'हिन्दी' : 'English (India)'}</Text>
+                  <Text style={styles.rowValue}>{lang === 'hi' ? 'भाषा' : 'Language'}</Text>
+                  <Text style={styles.rowLabel}>{lang === 'hi' ? 'हिन्दी' : 'English (India)'}</Text>
                 </View>
-                <Feather name="chevron-right" size={14} color={colors.mutedForeground} />
+                <Feather name="chevron-right" size={14} color="#4B5563" />
               </TouchableOpacity>
-            </View>
+            </LinearGradient>
           </View>
 
           {/* ── SUPPORT DETAILS ── */}
@@ -271,28 +273,28 @@ export default function ProfileScreen() {
               <LinearGradient colors={['#10B981', '#059669']} style={styles.sectionIcon}>
                 <Feather name="phone-call" size={13} color="#fff" />
               </LinearGradient>
-              <Text style={[styles.sectionTitle, { color: colors.text }]}>
+              <Text style={styles.sectionTitle}>
                 {lang === 'hi' ? 'सहायता विवरण' : 'Support Details'}
               </Text>
             </View>
-            <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <LinearGradient colors={['rgba(16,185,129,0.18)', 'rgba(5,150,105,0.08)', 'rgba(10,18,40,0.95)']} style={styles.vibrantCard}>
               {[
                 { icon: 'phone',   grad: ['#10B981','#059669'] as const, label: lang === 'hi' ? 'फोन'      : 'Phone',          value: supportDetails.phone },
                 { icon: 'mail',    grad: ['#0EA5E9','#2563EB'] as const, label: lang === 'hi' ? 'ईमेल'     : 'Email',          value: supportDetails.email },
                 { icon: 'map-pin', grad: ['#EC4899','#DB2777'] as const, label: lang === 'hi' ? 'कार्यालय'  : 'Office Address', value: supportDetails.address },
                 { icon: 'clock',   grad: ['#F59E0B','#EF4444'] as const, label: lang === 'hi' ? 'समय'      : 'Office Hours',   value: supportDetails.hours },
               ].map((row, i, arr) => (
-                <View key={row.label} style={[styles.infoRow, i < arr.length - 1 && { borderBottomWidth: 1, borderBottomColor: colors.border }]}>
+                <View key={row.label} style={[styles.infoRow, i < arr.length - 1 && styles.infoRowDivider]}>
                   <LinearGradient colors={row.grad} style={styles.rowIcon}>
                     <Feather name={row.icon as any} size={13} color="#fff" />
                   </LinearGradient>
                   <View style={styles.rowText}>
-                    <Text style={[styles.rowLabel, { color: colors.mutedForeground }]}>{row.label}</Text>
-                    <Text style={[styles.rowValue, { color: colors.text }]}>{row.value}</Text>
+                    <Text style={styles.rowLabel}>{row.label}</Text>
+                    <Text style={styles.rowValue}>{row.value}</Text>
                   </View>
                 </View>
               ))}
-            </View>
+            </LinearGradient>
           </View>
 
           {/* ── ABOUT ── */}
@@ -448,16 +450,18 @@ const styles = StyleSheet.create({
   section: { gap: 10 },
   sectionHead: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   sectionIcon: { width: 30, height: 30, borderRadius: 9, justifyContent: 'center', alignItems: 'center' },
-  sectionTitle: { fontSize: 16, fontFamily: 'Inter_700Bold', flex: 1 },
+  sectionTitle: { fontSize: 16, fontFamily: 'Inter_700Bold', flex: 1, color: '#E9F1FF' },
   editChip: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 99, borderWidth: 1 },
   editChipText: { fontSize: 11, fontFamily: 'Inter_600SemiBold' },
 
   card: { borderRadius: 16, borderWidth: 1, overflow: 'hidden' },
+  vibrantCard: { borderRadius: 18, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)' },
   infoRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 14, paddingVertical: 13 },
+  infoRowDivider: { borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.06)' },
   rowIcon: { width: 32, height: 32, borderRadius: 9, justifyContent: 'center', alignItems: 'center' },
   rowText: { flex: 1 },
-  rowLabel: { fontSize: 10, fontFamily: 'Inter_400Regular', marginBottom: 1 },
-  rowValue: { fontSize: 13, fontFamily: 'Inter_600SemiBold' },
+  rowLabel: { fontSize: 10, fontFamily: 'Inter_400Regular', marginBottom: 1, color: '#8B919E' },
+  rowValue: { fontSize: 13, fontFamily: 'Inter_600SemiBold', color: '#E9F1FF' },
 
   aboutCard: { borderRadius: 20, padding: 20, gap: 12 },
   aboutTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },

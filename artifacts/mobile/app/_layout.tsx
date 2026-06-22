@@ -12,6 +12,7 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { AppProvider } from "@/contexts/AppContext";
+import { AlertProvider } from "@/contexts/AlertContext";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 
@@ -49,13 +50,15 @@ export default function RootLayout() {
     <SafeAreaProvider>
       <ErrorBoundary>
         <GestureHandlerRootView style={{ flex: 1 }}>
-          <LanguageProvider>
-            <AuthProvider>
-              <AppProvider>
-                <RootLayoutNav />
-              </AppProvider>
-            </AuthProvider>
-          </LanguageProvider>
+          <AlertProvider>
+            <LanguageProvider>
+              <AuthProvider>
+                <AppProvider>
+                  <RootLayoutNav />
+                </AppProvider>
+              </AuthProvider>
+            </LanguageProvider>
+          </AlertProvider>
         </GestureHandlerRootView>
       </ErrorBoundary>
     </SafeAreaProvider>

@@ -2,11 +2,12 @@ import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { useState } from 'react';
 import {
-  Alert, Modal, Pressable, ScrollView, StyleSheet,
+  Modal, Pressable, ScrollView, StyleSheet,
   Text, TextInput, TouchableOpacity, View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { SearchBar } from '@/components/SearchBar';
+import { useAlert } from '@/contexts/AlertContext';
 import { useAppData } from '@/contexts/AppContext';
 import { useColors } from '@/hooks/useColors';
 import type { User, UserRole } from '@/types';
@@ -41,24 +42,25 @@ export default function AdminUsers() {
 
   const activeCt  = nonCitizens.filter(u => u.isActive).length;
   const frozenCt  = nonCitizens.filter(u => !u.isActive).length;
+  const { showAlert } = useAlert();
 
   function handleFreeze(u: User) {
-    Alert.alert(u.isActive ? 'Freeze Account?' : 'Unfreeze Account?', `${u.name}`, [
+    showAlert(u.isActive ? 'Freeze Account?' : 'Unfreeze Account?', u.name, [
       { text: 'Cancel', style: 'cancel' },
       { text: u.isActive ? 'Freeze' : 'Unfreeze', onPress: () => updateUser(u.id, { isActive: !u.isActive }) },
-    ]);
+    ], 'warning');
   }
   function handleEdit(u: User) { setEditUser(u); setEditName(u.name); setEditMobile(u.mobile ?? ''); setEditEmail(u.email); }
   function handleSaveEdit() {
     if (!editUser) return;
     updateUser(editUser.id, { name: editName.trim(), mobile: editMobile.trim(), email: editEmail.trim() });
-    setEditUser(null); Alert.alert('✓ Updated', 'User details saved.');
+    setEditUser(null); showAlert('Updated', 'User details saved.', undefined, 'success');
   }
   function handleDelete(u: User) {
-    Alert.alert('Delete User?', `Permanently remove ${u.name}?`, [
+    showAlert('Delete User?', `Permanently remove ${u.name}?`, [
       { text: 'Cancel', style: 'cancel' },
       { text: 'Delete', style: 'destructive', onPress: () => deleteUser(u.id) },
-    ]);
+    ], 'error');
   }
 
   return (

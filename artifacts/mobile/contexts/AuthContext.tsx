@@ -105,7 +105,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     try {
       const cred = await signInWithEmailAndPassword(firebaseAuth, emailToUse, password);
-      let profile = await getUserProfileFromRTDB(cred.user.uid);
+      // Firebase Auth succeeded — now safely fetch/create RTDB profile
+      let profile: User | null = null;
+      try { profile = await getUserProfileFromRTDB(cred.user.uid); } catch {}
       if (!profile) {
         profile = {
           id: cred.user.uid,
@@ -115,7 +117,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           isActive: true,
           createdAt: today(),
         };
-        await saveUserProfileToRTDB(cred.user.uid, profile);
+        try { await saveUserProfileToRTDB(cred.user.uid, profile); } catch {}
       }
       setUser(profile);
       await AsyncStorage.setItem('dnp360_user', JSON.stringify(profile));

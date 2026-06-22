@@ -2,11 +2,12 @@ import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { useState } from 'react';
 import {
-  Alert, Modal, Pressable, ScrollView, StyleSheet,
+  Modal, Pressable, ScrollView, StyleSheet,
   Text, TextInput, TouchableOpacity, View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { SearchBar } from '@/components/SearchBar';
+import { useAlert } from '@/contexts/AlertContext';
 import { useAppData } from '@/contexts/AppContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useColors } from '@/hooks/useColors';
@@ -75,32 +76,34 @@ export default function AdminManagement() {
 
   function openWard(w: Ward) { setSelectedWard(w); setShowWardModal(true); }
 
+  const { showAlert } = useAlert();
+
   async function handleAssignWorker(workerId: string) {
     if (!selectedWard) return;
     await assignWorkerToWard(selectedWard.id, workerId);
     const updated = wards.find(w => w.id === selectedWard.id);
     if (updated) setSelectedWard({ ...updated, assignedWorkers: [...updated.assignedWorkers.filter(id => id !== workerId), workerId] });
-    Alert.alert('✓ Assigned', 'Worker assigned to this ward.');
+    showAlert('Assigned', 'Worker assigned to this ward.', undefined, 'success');
   }
 
   async function handleAddHouse() {
     if (!selectedWard) return;
-    if (!houseOwner.trim() || !houseAddress.trim()) { Alert.alert('Missing', 'Owner name and address are required.'); return; }
+    if (!houseOwner.trim() || !houseAddress.trim()) { showAlert('Missing', 'Owner name and address are required.', undefined, 'warning'); return; }
     const regNum = `DNPH${Date.now().toString().slice(-5)}`;
     await addHouse({ registrationNumber: regNum, ownerName: houseOwner.trim(), mobile: houseMobile.trim(), address: houseAddress.trim(), wardId: selectedWard.id, wardNumber: selectedWard.wardNumber, isActive: true });
     await updateWard(selectedWard.id, { totalHouses: selectedWard.totalHouses + 1 });
     setHouseOwner(''); setHouseMobile(''); setHouseAddress('');
     setShowAddHouseModal(false);
-    Alert.alert('✓ House Added', `Registration: ${regNum}`);
+    showAlert('House Added', `Registration: ${regNum}`, undefined, 'success');
   }
 
   async function handleAddNotice() {
-    if (!noticeTitle.trim() || !noticeContent.trim()) { Alert.alert('Missing', 'Title and content required.'); return; }
+    if (!noticeTitle.trim() || !noticeContent.trim()) { showAlert('Missing', 'Title and content required.', undefined, 'warning'); return; }
     setSaving(true);
     try {
       await addNotice({ title: noticeTitle.trim(), content: noticeContent.trim(), type: noticeType, priority: noticePriority, isActive: true });
       setShowNoticeModal(false); setNoticeTitle(''); setNoticeContent('');
-      Alert.alert('✓ Published', 'Notice is now visible to all citizens.');
+      showAlert('Published', 'Notice is now visible to all citizens.', undefined, 'success');
     } finally { setSaving(false); }
   }
 
@@ -108,22 +111,22 @@ export default function AdminManagement() {
 
   async function handleApproveReset() {
     if (!selectedRequest) return;
-    if (tempPassword.trim().length < 6) { Alert.alert('Too Short', 'Password must be at least 6 characters.'); return; }
+    if (tempPassword.trim().length < 6) { showAlert('Too Short', 'Password must be at least 6 characters.', undefined, 'warning'); return; }
     setSaving(true);
     try {
       const ok = await resetUserPassword(selectedRequest.email, tempPassword.trim());
-      if (!ok) { Alert.alert('Error', 'No user found with this email.'); return; }
+      if (!ok) { showAlert('Error', 'No user found with this email.', undefined, 'error'); return; }
       await updatePasswordResetRequest(selectedRequest.id, 'approved', adminNote.trim() || undefined);
       setShowApproveModal(false); setSelectedRequest(null); setTempPassword(''); setAdminNote('');
-      Alert.alert('✓ Approved', `Password reset for ${selectedRequest.name}.\n\nTemp password: ${tempPassword.trim()}\n\nContact them via registered mobile.`);
+      showAlert('Approved', `Password reset for ${selectedRequest.name}. Temp password: ${tempPassword.trim()}. Contact them via registered mobile.`, undefined, 'success');
     } finally { setSaving(false); }
   }
 
   async function handleRejectReset(req: PasswordResetRequest) {
-    Alert.alert('Reject Request', `Reject reset for ${req.name}?`, [
+    showAlert('Reject Request', `Reject reset for ${req.name}?`, [
       { text: 'Cancel', style: 'cancel' },
       { text: 'Reject', style: 'destructive', onPress: () => updatePasswordResetRequest(req.id, 'rejected') },
-    ]);
+    ], 'warning');
   }
 
   const activeTab = TAB_CONFIG.find(t => t.key === tab)!;
@@ -254,7 +257,7 @@ export default function AdminManagement() {
                     </View>
                     <View style={{ flex: 1 }} />
                     <TouchableOpacity
-                      onPress={() => Alert.alert('Delete?', n.title, [{ text: 'Cancel', style: 'cancel' }, { text: 'Delete', style: 'destructive', onPress: () => deleteNotice(n.id) }])}
+                      onPress={() => showAlert('Delete?', n.title, [{ text: 'Cancel', style: 'cancel' }, { text: 'Delete', style: 'destructive', onPress: () => deleteNotice(n.id) }], 'error')}
                       style={styles.deleteBtn}
                     >
                       <Feather name="trash-2" size={15} color={colors.destructive} />

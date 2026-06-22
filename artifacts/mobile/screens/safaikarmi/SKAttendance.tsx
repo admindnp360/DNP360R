@@ -1,14 +1,16 @@
 import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { useState } from 'react';
-import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useAlert } from '@/contexts/AlertContext';
 import { useAppData } from '@/contexts/AppContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useColors } from '@/hooks/useColors';
 
 export default function SKAttendance() {
   const { user } = useAuth();
+  const { showAlert } = useAlert();
   const { getAttendanceByWorker, isTodayAttendanceMarked, markAttendance } = useAppData();
   const colors = useColors();
   const [monthOffset, setMonthOffset] = useState(0);
@@ -30,10 +32,10 @@ export default function SKAttendance() {
   const firstDayOfWeek = new Date(displayDate.getFullYear(), displayDate.getMonth(), 1).getDay();
 
   async function handleMark() {
-    if (markedToday) { Alert.alert('Already Marked', 'Attendance is already recorded for today.'); return; }
+    if (markedToday) { showAlert('Already Marked', 'Attendance is already recorded for today.', undefined, 'info'); return; }
     const ok = await markAttendance(user?.id ?? '', 'manual');
-    if (ok) Alert.alert('✓ Marked!', `Attendance recorded at ${new Date().toLocaleTimeString()}`);
-    else Alert.alert('Error', 'Could not mark attendance.');
+    if (ok) showAlert('Marked!', `Attendance recorded at ${new Date().toLocaleTimeString()}`, undefined, 'success');
+    else showAlert('Error', 'Could not mark attendance.', undefined, 'error');
   }
 
   function getStatusForDate(day: number): 'present' | 'absent' | 'none' {

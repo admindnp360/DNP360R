@@ -2,12 +2,13 @@ import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { useState } from 'react';
 import {
-  Alert, KeyboardAvoidingView, Modal, Platform,
+  KeyboardAvoidingView, Modal, Platform,
   Pressable, ScrollView, StyleSheet, Text, TextInput,
   TouchableOpacity, View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { SearchBar } from '@/components/SearchBar';
+import { useAlert } from '@/contexts/AlertContext';
 import { useAppData } from '@/contexts/AppContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useColors } from '@/hooks/useColors';
@@ -35,6 +36,7 @@ const CAT_ICONS: Record<string, string> = {
 };
 
 export default function CitizenComplaints() {
+  const { showAlert } = useAlert();
   const { user } = useAuth();
   const { getComplaintsByUser, addComplaint } = useAppData();
   const colors = useColors();
@@ -56,12 +58,12 @@ export default function CitizenComplaints() {
   });
 
   async function handleSubmit() {
-    if (!description.trim() || !location.trim()) { Alert.alert('Missing fields', 'Please fill description and location.'); return; }
+    if (!description.trim() || !location.trim()) { showAlert('Missing fields', 'Please fill description and location.', undefined, 'warning'); return; }
     setSubmitting(true);
     try {
       await addComplaint({ citizenId: user?.id ?? '', citizenName: user?.name ?? '', category: category as any, description: description.trim(), location: location.trim(), status: 'submitted', wardId: user?.wardId ?? '', images: [] });
       setShowModal(false); setDescription(''); setLocation(''); setCategory('garbage_collection');
-      Alert.alert('✓ Submitted', 'Your complaint has been submitted successfully.');
+      showAlert('Submitted', 'Your complaint has been submitted successfully.', undefined, 'success');
     } finally { setSubmitting(false); }
   }
 

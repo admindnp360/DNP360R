@@ -4,16 +4,18 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
 import {
-  Alert, Modal, Pressable, ScrollView, StyleSheet,
+  Modal, Pressable, ScrollView, StyleSheet,
   Switch, Text, TextInput, TouchableOpacity, View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useAlert } from '@/contexts/AlertContext';
 import { useAppData } from '@/contexts/AppContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useColors } from '@/hooks/useColors';
 
 export default function AdminProfile() {
   const { user, logout, updateProfile } = useAuth();
+  const { showAlert } = useAlert();
   const {
     users, complaints, notices, wards, houses, secretKeys,
     supportDetails, updateSupportDetails, passwordResetRequests,
@@ -54,25 +56,25 @@ export default function AdminProfile() {
     setShowSupportModal(true);
   }
   async function handleSaveProfile() {
-    if (!editName.trim()) { Alert.alert('Missing', 'Name cannot be empty.'); return; }
+    if (!editName.trim()) { showAlert('Missing', 'Name cannot be empty.', undefined, 'warning'); return; }
     setSavingProfile(true);
     try {
       await updateProfile({ name: editName.trim(), mobile: editMobile.trim() || undefined, address: editAddress.trim() || undefined });
-      setShowEditModal(false); Alert.alert('✓ Updated', 'Profile saved successfully.');
+      setShowEditModal(false); showAlert('Updated', 'Profile saved successfully.', undefined, 'success');
     } finally { setSavingProfile(false); }
   }
   async function handleSaveSupport() {
     setSaving(true);
     try {
       await updateSupportDetails({ phone: editPhone.trim(), email: editEmail.trim(), address: editSupportAddr.trim(), hours: editHours.trim() });
-      setShowSupportModal(false); Alert.alert('✓ Saved', 'Support details updated.');
+      setShowSupportModal(false); showAlert('Saved', 'Support details updated.', undefined, 'success');
     } finally { setSaving(false); }
   }
   async function handleLogout() {
-    Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
+    showAlert('Sign Out', 'Are you sure you want to sign out?', [
       { text: 'Cancel', style: 'cancel' },
       { text: 'Sign Out', style: 'destructive', onPress: async () => { await logout(); router.replace('/login'); } },
-    ]);
+    ], 'warning');
   }
 
   const QUICK_STATS = [
