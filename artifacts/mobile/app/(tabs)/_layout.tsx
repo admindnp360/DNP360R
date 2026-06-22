@@ -2,11 +2,12 @@ import { BlurView } from 'expo-blur';
 import { Tabs } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import React from 'react';
-import { Platform, StyleSheet, useColorScheme, View } from 'react-native';
+import React, { useState } from 'react';
+import { Platform, Pressable, StyleSheet, useColorScheme, View } from 'react-native';
 import { useAuth } from '@/contexts/AuthContext';
 import { useColors } from '@/hooks/useColors';
 import { SyncStatusBar } from '@/components/SyncStatusBar';
+import { CameraScanner } from '@/components/CameraScanner';
 
 type TabName = 'index' | 'action' | 'secondary' | 'tertiary' | 'profile';
 
@@ -64,11 +65,7 @@ function ScanCenterIcon({ focused }: { focused: boolean }) {
 }
 
 const scanStyles = StyleSheet.create({
-  wrap: {
-    width: 60, height: 60,
-    marginBottom: 18,
-    justifyContent: 'center', alignItems: 'center',
-  },
+  wrap: { width: 60, height: 60, marginBottom: 18, justifyContent: 'center', alignItems: 'center' },
   circle: {
     width: 58, height: 58, borderRadius: 29,
     justifyContent: 'center', alignItems: 'center',
@@ -84,6 +81,7 @@ export default function TabLayout() {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
   const isIOS = Platform.OS === 'ios';
+  const [directCamera, setDirectCamera] = useState(false);
 
   const role = user?.role ?? 'citizen';
   const tabs = ROLE_TABS[role] ?? ROLE_TABS.citizen;
@@ -132,12 +130,33 @@ export default function TabLayout() {
                   ? ({ focused }) => <ScanCenterIcon focused={focused} />
                   : ({ color }) => <Feather name={tabs[name].icon as any} size={20} color={color} />,
                 tabBarLabel: isScanCenter ? () => null : undefined,
+                tabBarButton: isScanCenter
+                  ? (props) => (
+                      <Pressable
+                        style={props.style}
+                        onPress={props.onPress as any}
+                        onLongPress={() => setDirectCamera(true)}
+                        delayLongPress={350}
+                      >
+                        {props.children as React.ReactNode}
+                      </Pressable>
+                    )
+                  : undefined,
               }}
             />
           );
         })}
       </Tabs>
+
       <SyncStatusBar />
+
+      {/* Long-press direct camera — no scan tab UI shown */}
+      {isSafaikarmi && (
+        <CameraScanner
+          visible={directCamera}
+          onClose={() => setDirectCamera(false)}
+        />
+      )}
     </View>
   );
 }
