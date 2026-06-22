@@ -24,7 +24,7 @@ export default function LoginScreen() {
   const { login, loginWithCode, loginWithGoogle } = useAuth();
   const { showAlert } = useAlert();
   const [mainTab, setMainTab] = useState<'signin' | 'secret'>('signin');
-  const [subTab, setSubTab] = useState<'mobile' | 'email'>('email');
+  const [subTab, setSubTab] = useState<'email' | 'mobile'>('email');
   const [mobile, setMobile] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -39,7 +39,7 @@ export default function LoginScreen() {
     setLoading(true);
     try {
       const ok = await login(id, password, subTab);
-      if (!ok) showAlert('Login Failed', 'Invalid credentials.\n\nDemo:\ncitizen.dnp360@gmail.com / 12345678', undefined, 'error');
+      if (!ok) showAlert('Login Failed', 'Invalid credentials. Check your email/mobile and password.', undefined, 'error');
       else router.replace('/(tabs)');
     } finally { setLoading(false); }
   }
@@ -49,7 +49,7 @@ export default function LoginScreen() {
     setLoading(true);
     try {
       const ok = await loginWithCode(secretCode.trim());
-      if (!ok) showAlert('Invalid Code', 'Secret code not recognised.\n\nDemo: SK2566F · OFF4416A · ADMIN5790X', undefined, 'error');
+      if (!ok) showAlert('Invalid Code', 'Secret code not recognised or already inactive.', undefined, 'error');
       else router.replace('/(tabs)');
     } finally { setLoading(false); }
   }
@@ -59,13 +59,18 @@ export default function LoginScreen() {
     try {
       const ok = await loginWithGoogle();
       if (ok) router.replace('/(tabs)');
-      else showAlert('Sign-In Failed', 'Google Sign-In failed. Ensure your Google account is authorised in Firebase Console.', undefined, 'error');
+      else showAlert('Sign-In Failed', 'Google Sign-In failed. Ensure your account is authorised in Firebase.', undefined, 'error');
     } catch { showAlert('Error', 'Google Sign-In error. Please try again.', undefined, 'error'); }
     finally { setGoogleLoading(false); }
   }
 
   return (
-    <LinearGradient colors={['#031331', '#0D2350', '#031331']} style={styles.gradient}>
+    <View style={styles.root}>
+      <LinearGradient colors={['#07002E', '#100840', '#0A1550']} style={StyleSheet.absoluteFill} />
+      <View style={[styles.orb, styles.orb1]} />
+      <View style={[styles.orb, styles.orb2]} />
+      <View style={[styles.orb, styles.orb3]} />
+
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
         <ScrollView
           contentContainerStyle={styles.scroll}
@@ -75,71 +80,151 @@ export default function LoginScreen() {
         >
           {/* ── Logo ── */}
           <View style={styles.header}>
-            <View style={styles.logoWrap}>
-              <Image
-                source={require('@/assets/images/dnp360-logo.png')}
-                style={styles.logoImage}
-                resizeMode="contain"
-              />
+            <View style={styles.logoRing}>
+              <LinearGradient colors={['#6366F1', '#2563EB', '#06B6D4']} style={styles.logoGlow} />
+              <View style={styles.logoInner}>
+                <Image
+                  source={require('@/assets/images/dnp360-logo.png')}
+                  style={styles.logoImage}
+                  resizeMode="contain"
+                />
+              </View>
             </View>
             <Text style={styles.orgName}>Nagar Parishad Daudnagar</Text>
-            <Text style={styles.orgSub}>Smart Governance · Digital India</Text>
+            <View style={styles.orgBadge}>
+              <View style={styles.badgeDot} />
+              <Text style={styles.orgSub}>Smart Governance · Digital India</Text>
+            </View>
+          </View>
+
+          {/* ── Main Tab Pills ── */}
+          <View style={styles.mainTabRow}>
+            <Pressable
+              style={[styles.mainTabBtn, mainTab === 'signin' && styles.mainTabBtnActive]}
+              onPress={() => setMainTab('signin')}
+            >
+              {mainTab === 'signin'
+                ? <LinearGradient colors={['#2563EB', '#4F46E5']} style={styles.mainTabGrad}>
+                    <Feather name="log-in" size={14} color="#fff" />
+                    <Text style={styles.mainTabTextActive}>Sign In</Text>
+                  </LinearGradient>
+                : <View style={styles.mainTabPlain}>
+                    <Feather name="log-in" size={14} color="#6B7280" />
+                    <Text style={styles.mainTabText}>Sign In</Text>
+                  </View>
+              }
+            </Pressable>
+            <Pressable
+              style={[styles.mainTabBtn, mainTab === 'secret' && styles.mainTabBtnActive]}
+              onPress={() => setMainTab('secret')}
+            >
+              {mainTab === 'secret'
+                ? <LinearGradient colors={['#7C3AED', '#6366F1']} style={styles.mainTabGrad}>
+                    <Feather name="shield" size={14} color="#fff" />
+                    <Text style={styles.mainTabTextActive}>Secret Code</Text>
+                  </LinearGradient>
+                : <View style={styles.mainTabPlain}>
+                    <Feather name="shield" size={14} color="#6B7280" />
+                    <Text style={styles.mainTabText}>Secret Code</Text>
+                  </View>
+              }
+            </Pressable>
           </View>
 
           {/* ── Card ── */}
           <View style={styles.card}>
-            <Text style={styles.welcome}>Welcome Back</Text>
-            <Text style={styles.welcomeSub}>Sign in to access your DNP360 account</Text>
-
-            {/* Main tabs */}
-            <View style={styles.mainTabs}>
-              <Pressable style={[styles.mainTab, mainTab === 'signin' && styles.mainTabActive]} onPress={() => setMainTab('signin')}>
-                <Text style={[styles.mainTabText, mainTab === 'signin' && styles.mainTabTextActive]}>Sign In</Text>
-              </Pressable>
-              <Pressable style={[styles.mainTab, mainTab === 'secret' && styles.mainTabActive]} onPress={() => setMainTab('secret')}>
-                <Text style={[styles.mainTabText, mainTab === 'secret' && styles.mainTabTextActive]}>Secret Code</Text>
-              </Pressable>
-            </View>
+            <LinearGradient
+              colors={mainTab === 'signin' ? ['rgba(37,99,235,0.25)', 'rgba(79,70,229,0.08)', 'transparent'] : ['rgba(124,58,237,0.25)', 'rgba(99,102,241,0.08)', 'transparent']}
+              style={styles.cardGlow}
+            />
 
             {mainTab === 'signin' ? (
               <>
+                <Text style={styles.cardTitle}>Welcome Back</Text>
+                <Text style={styles.cardSub}>Sign in to access your DNP360 account</Text>
+
                 {/* Sub tabs */}
-                <View style={styles.subTabs}>
-                  {(['mobile', 'email'] as const).map((t) => (
-                    <Pressable key={t} style={[styles.subTab, subTab === t && styles.subTabActive]} onPress={() => setSubTab(t)}>
-                      <Feather name={t === 'mobile' ? 'smartphone' : 'mail'} size={13} color={subTab === t ? '#60A0F0' : '#8A9BB0'} />
-                      <Text style={[styles.subTabText, subTab === t && styles.subTabTextActive]}>{t === 'mobile' ? 'Mobile No.' : 'Email'}</Text>
+                <View style={styles.subTabRow}>
+                  {(['email', 'mobile'] as const).map(t => (
+                    <Pressable
+                      key={t}
+                      onPress={() => setSubTab(t)}
+                      style={[styles.subTabBtn, subTab === t && styles.subTabBtnActive]}
+                    >
+                      <Feather name={t === 'email' ? 'mail' : 'smartphone'} size={13} color={subTab === t ? '#60A5FA' : '#4B5563'} />
+                      <Text style={[styles.subTabText, subTab === t && styles.subTabTextActive]}>
+                        {t === 'email' ? 'Email' : 'Mobile No.'}
+                      </Text>
                     </Pressable>
                   ))}
                 </View>
 
-                {subTab === 'mobile' ? (
+                {subTab === 'email' ? (
                   <View style={styles.inputWrap}>
-                    <Feather name="smartphone" size={16} color="#8A9BB0" />
-                    <TextInput style={styles.input} placeholder="Mobile Number" placeholderTextColor="#8A9BB0" keyboardType="phone-pad" value={mobile} onChangeText={setMobile} />
+                    <LinearGradient colors={['#2563EB', '#6366F1']} style={styles.inputIcon}>
+                      <Feather name="mail" size={13} color="#fff" />
+                    </LinearGradient>
+                    <TextInput
+                      style={styles.input}
+                      placeholder="Email address"
+                      placeholderTextColor="#4B5563"
+                      keyboardType="email-address"
+                      autoCapitalize="none"
+                      value={email}
+                      onChangeText={setEmail}
+                    />
                   </View>
                 ) : (
                   <View style={styles.inputWrap}>
-                    <Feather name="mail" size={16} color="#8A9BB0" />
-                    <TextInput style={styles.input} placeholder="Email Address" placeholderTextColor="#8A9BB0" keyboardType="email-address" autoCapitalize="none" value={email} onChangeText={setEmail} />
+                    <LinearGradient colors={['#2563EB', '#6366F1']} style={styles.inputIcon}>
+                      <Feather name="smartphone" size={13} color="#fff" />
+                    </LinearGradient>
+                    <TextInput
+                      style={styles.input}
+                      placeholder="10-digit mobile number"
+                      placeholderTextColor="#4B5563"
+                      keyboardType="phone-pad"
+                      value={mobile}
+                      onChangeText={setMobile}
+                      maxLength={10}
+                    />
                   </View>
                 )}
 
                 <View style={styles.inputWrap}>
-                  <Feather name="lock" size={16} color="#8A9BB0" />
-                  <TextInput style={[styles.input, { flex: 1 }]} placeholder="Password" placeholderTextColor="#8A9BB0" secureTextEntry={!showPassword} value={password} onChangeText={setPassword} onSubmitEditing={handleSignIn} returnKeyType="done" />
+                  <LinearGradient colors={['#2563EB', '#6366F1']} style={styles.inputIcon}>
+                    <Feather name="lock" size={13} color="#fff" />
+                  </LinearGradient>
+                  <TextInput
+                    style={[styles.input, { flex: 1 }]}
+                    placeholder="Password"
+                    placeholderTextColor="#4B5563"
+                    secureTextEntry={!showPassword}
+                    value={password}
+                    onChangeText={setPassword}
+                    onSubmitEditing={handleSignIn}
+                    returnKeyType="done"
+                  />
                   <Pressable onPress={() => setShowPassword(p => !p)} style={{ padding: 6 }}>
-                    <Feather name={showPassword ? 'eye-off' : 'eye'} size={16} color="#8A9BB0" />
+                    <Feather name={showPassword ? 'eye-off' : 'eye'} size={15} color="#4B5563" />
                   </Pressable>
                 </View>
 
                 <Pressable onPress={() => router.push('/forgot-password')} style={styles.forgotRow}>
+                  <Feather name="help-circle" size={12} color="#60A5FA" />
                   <Text style={styles.forgotText}>Forgot Password?</Text>
                 </Pressable>
 
-                <TouchableOpacity style={[styles.primaryBtn, loading && { opacity: 0.6 }]} onPress={handleSignIn} disabled={loading || googleLoading} activeOpacity={0.85}>
-                  {loading ? <ActivityIndicator color="#fff" size="small" /> : <Feather name="log-in" size={16} color="#fff" />}
-                  <Text style={styles.primaryBtnText}>{loading ? 'Signing in…' : 'Sign In'}</Text>
+                <TouchableOpacity
+                  style={[styles.primaryBtnWrap, loading && { opacity: 0.65 }]}
+                  onPress={handleSignIn}
+                  disabled={loading || googleLoading}
+                  activeOpacity={0.85}
+                >
+                  <LinearGradient colors={['#2563EB', '#4F46E5']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.primaryBtn}>
+                    {loading ? <ActivityIndicator color="#fff" size="small" /> : <Feather name="log-in" size={16} color="#fff" />}
+                    <Text style={styles.primaryBtnText}>{loading ? 'Signing in…' : 'Sign In'}</Text>
+                  </LinearGradient>
                 </TouchableOpacity>
 
                 {IS_WEB && (
@@ -149,131 +234,206 @@ export default function LoginScreen() {
                       <Text style={styles.dividerText}>or continue with</Text>
                       <View style={styles.dividerLine} />
                     </View>
-                    <TouchableOpacity style={[styles.googleBtn, googleLoading && { opacity: 0.7 }]} onPress={handleGoogleSignIn} disabled={loading || googleLoading} activeOpacity={0.85}>
-                      {googleLoading ? <ActivityIndicator color="#4285F4" size="small" /> : (
-                        <View style={styles.googleIconWrap}><Text style={styles.googleG}>G</Text></View>
-                      )}
-                      <Text style={styles.googleBtnText}>{googleLoading ? 'Signing in with Google…' : 'Continue with Google'}</Text>
+                    <TouchableOpacity
+                      style={[styles.googleBtn, googleLoading && { opacity: 0.7 }]}
+                      onPress={handleGoogleSignIn}
+                      disabled={loading || googleLoading}
+                      activeOpacity={0.85}
+                    >
+                      {googleLoading
+                        ? <ActivityIndicator color="#4285F4" size="small" />
+                        : <View style={styles.googleG}><Text style={styles.googleGText}>G</Text></View>
+                      }
+                      <Text style={styles.googleBtnText}>{googleLoading ? 'Signing in…' : 'Continue with Google'}</Text>
                     </TouchableOpacity>
                   </>
                 )}
-
-                <TouchableOpacity style={styles.createBtn} onPress={() => router.push('/signup')} activeOpacity={0.85}>
-                  <Feather name="user-plus" size={15} color="#60A0F0" />
-                  <Text style={styles.createBtnText}>Create Citizen Account</Text>
-                </TouchableOpacity>
               </>
             ) : (
               <>
-                <View style={styles.secretInfoBox}>
-                  <LinearGradient colors={['#6366F1', '#8B5CF6']} style={styles.secretInfoIcon}>
-                    <Feather name="shield" size={16} color="#fff" />
-                  </LinearGradient>
-                  <Text style={styles.secretInfoText}>
-                    Your secret code is issued by the Nagar Parishad Admin. Each code is unique and tied to your role.
-                  </Text>
-                </View>
-                <View style={styles.inputWrap}>
-                  <Feather name="key" size={16} color="#8A9BB0" />
-                  <TextInput style={styles.input} placeholder="Secret Code (e.g. SK2566F)" placeholderTextColor="#8A9BB0" autoCapitalize="characters" value={secretCode} onChangeText={setSecretCode} onSubmitEditing={handleSecretCode} returnKeyType="done" />
-                </View>
-                <TouchableOpacity style={[styles.primaryBtn, { backgroundColor: '#6366F1' }, loading && { opacity: 0.6 }]} onPress={handleSecretCode} disabled={loading} activeOpacity={0.85}>
-                  {loading ? <ActivityIndicator color="#fff" size="small" /> : <Feather name="shield" size={16} color="#fff" />}
-                  <Text style={styles.primaryBtnText}>{loading ? 'Verifying…' : 'Authenticate with Secret Code'}</Text>
-                </TouchableOpacity>
-                <View style={styles.codeRoles}>
+                <Text style={styles.cardTitle}>Staff Authentication</Text>
+                <Text style={styles.cardSub}>Enter your secret code issued by the Admin</Text>
+
+                <View style={styles.codeRoleRow}>
                   {[
-                    { role: 'Safai Karmi', prefix: 'SK', color: '#10B981' },
-                    { role: 'Official', prefix: 'OFF', color: '#F59E0B' },
-                    { role: 'Admin', prefix: 'ADMIN', color: '#6366F1' },
+                    { role: 'Safai Karmi', prefix: 'SK…', colors: ['#10B981', '#059669'] as const, icon: 'trash-2' },
+                    { role: 'Official', prefix: 'OFF…', colors: ['#F59E0B', '#EF4444'] as const, icon: 'briefcase' },
+                    { role: 'Admin', prefix: 'ADMIN…', colors: ['#6366F1', '#8B5CF6'] as const, icon: 'shield' },
                   ].map(r => (
-                    <View key={r.role} style={[styles.codeRoleChip, { borderColor: r.color + '40' }]}>
-                      <View style={[styles.codeRoleDot, { backgroundColor: r.color }]} />
-                      <Text style={[styles.codeRolePrefix, { color: r.color }]}>{r.prefix}…</Text>
-                      <Text style={styles.codeRoleName}>{r.role}</Text>
+                    <View key={r.role} style={styles.codeRoleChip}>
+                      <LinearGradient colors={r.colors} style={styles.codeRoleIcon}>
+                        <Feather name={r.icon as any} size={10} color="#fff" />
+                      </LinearGradient>
+                      <View>
+                        <Text style={styles.codeRolePrefix}>{r.prefix}</Text>
+                        <Text style={styles.codeRoleName}>{r.role}</Text>
+                      </View>
                     </View>
                   ))}
+                </View>
+
+                <View style={styles.inputWrap}>
+                  <LinearGradient colors={['#7C3AED', '#6366F1']} style={styles.inputIcon}>
+                    <Feather name="key" size={13} color="#fff" />
+                  </LinearGradient>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Secret Code  (e.g. SK2566F)"
+                    placeholderTextColor="#4B5563"
+                    autoCapitalize="characters"
+                    value={secretCode}
+                    onChangeText={setSecretCode}
+                    onSubmitEditing={handleSecretCode}
+                    returnKeyType="done"
+                  />
+                </View>
+
+                <TouchableOpacity
+                  style={[styles.primaryBtnWrap, loading && { opacity: 0.65 }]}
+                  onPress={handleSecretCode}
+                  disabled={loading}
+                  activeOpacity={0.85}
+                >
+                  <LinearGradient colors={['#7C3AED', '#6366F1']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.primaryBtn}>
+                    {loading ? <ActivityIndicator color="#fff" size="small" /> : <Feather name="shield" size={16} color="#fff" />}
+                    <Text style={styles.primaryBtnText}>{loading ? 'Verifying…' : 'Authenticate'}</Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+
+                <View style={styles.secretNote}>
+                  <Feather name="info" size={13} color="#6366F1" />
+                  <Text style={styles.secretNoteText}>
+                    First-time use creates your account automatically. Subsequent logins use the same code.
+                  </Text>
                 </View>
               </>
             )}
           </View>
 
+          {/* ── Quick Links — always visible ── */}
+          <View style={styles.quickLinks}>
+            <TouchableOpacity style={styles.quickLinkBtn} onPress={() => router.push('/signup')} activeOpacity={0.85}>
+              <LinearGradient colors={['rgba(16,185,129,0.15)', 'rgba(5,150,105,0.05)']} style={styles.quickLinkGrad}>
+                <Feather name="user-plus" size={16} color="#10B981" />
+                <Text style={styles.quickLinkText}>Create Citizen Account</Text>
+                <Feather name="arrow-right" size={14} color="#10B981" />
+              </LinearGradient>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.quickLinkBtn} onPress={() => router.push('/forgot-password')} activeOpacity={0.85}>
+              <LinearGradient colors={['rgba(245,158,11,0.12)', 'rgba(239,68,68,0.04)']} style={styles.quickLinkGrad}>
+                <Feather name="unlock" size={16} color="#F59E0B" />
+                <Text style={[styles.quickLinkText, { color: '#F59E0B' }]}>Reset Password</Text>
+                <Feather name="arrow-right" size={14} color="#F59E0B" />
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
+
+          {/* ── Footer trust badges ── */}
           <View style={styles.footer}>
-            {[{ icon: 'shield', label: 'Firebase Auth' }, { icon: 'database', label: 'Firebase DB' }, { icon: 'zap', label: 'Real-time' }, { icon: 'award', label: 'Trusted' }].map((f) => (
+            {[
+              { icon: 'shield', label: 'Firebase Auth', color: '#60A5FA' },
+              { icon: 'database', label: 'Real-time DB', color: '#34D399' },
+              { icon: 'zap', label: 'Instant Sync', color: '#FBBF24' },
+              { icon: 'award', label: 'Govt. Trusted', color: '#A78BFA' },
+            ].map(f => (
               <View key={f.label} style={styles.footerItem}>
-                <Feather name={f.icon as any} size={14} color="#5F8BC0" />
-                <Text style={styles.footerText}>{f.label}</Text>
+                <Feather name={f.icon as any} size={13} color={f.color} />
+                <Text style={[styles.footerText, { color: f.color + 'AA' }]}>{f.label}</Text>
               </View>
             ))}
           </View>
-          <Text style={styles.version}>DNP360 v1.0 · Firebase · Bihar, India</Text>
+          <Text style={styles.version}>DNP360 v1.0 · Nagar Parishad Daudnagar · Bihar</Text>
         </ScrollView>
       </KeyboardAvoidingView>
-    </LinearGradient>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  gradient: { flex: 1 },
-  scroll: { flexGrow: 1, paddingHorizontal: 24, paddingTop: 52, paddingBottom: 20 },
+  root: { flex: 1 },
 
-  header: { alignItems: 'center', marginBottom: 22 },
-  logoWrap: {
-    width: 130, height: 130,
-    marginBottom: 10,
-    justifyContent: 'center', alignItems: 'center',
-  },
-  logoImage: { width: 130, height: 130 },
+  orb: { position: 'absolute', borderRadius: 999 },
+  orb1: { width: 280, height: 280, backgroundColor: '#3B0FAA18', top: -80, right: -80 },
+  orb2: { width: 200, height: 200, backgroundColor: '#06B6D410', bottom: 100, left: -60 },
+  orb3: { width: 140, height: 140, backgroundColor: '#7C3AED15', top: '45%', right: 20 },
+
+  scroll: { flexGrow: 1, paddingHorizontal: 20, paddingTop: 52, paddingBottom: 24 },
+
+  header: { alignItems: 'center', marginBottom: 24 },
+  logoRing: { width: 110, height: 110, justifyContent: 'center', alignItems: 'center', marginBottom: 12 },
+  logoGlow: { position: 'absolute', width: 110, height: 110, borderRadius: 55, opacity: 0.4 },
+  logoInner: { width: 100, height: 100, borderRadius: 50, backgroundColor: 'rgba(255,255,255,0.04)', justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)' },
+  logoImage: { width: 86, height: 86 },
   orgName: { color: '#FFFFFF', fontSize: 18, fontFamily: 'Inter_700Bold' },
-  orgSub: { color: '#8AB0D8', fontSize: 12, fontFamily: 'Inter_400Regular', marginTop: 3 },
+  orgBadge: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 },
+  badgeDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#10B981' },
+  orgSub: { color: '#6B7280', fontSize: 12, fontFamily: 'Inter_400Regular' },
 
-  card: { backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 20, borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)', padding: 22, marginBottom: 22, gap: 13 },
-  welcome: { color: '#FFFFFF', fontSize: 22, fontFamily: 'Inter_700Bold', textAlign: 'center' },
-  welcomeSub: { color: '#8AB0D8', fontSize: 12, fontFamily: 'Inter_400Regular', textAlign: 'center' },
+  mainTabRow: { flexDirection: 'row', gap: 10, marginBottom: 14 },
+  mainTabBtn: { flex: 1, borderRadius: 14, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)' },
+  mainTabBtnActive: { borderColor: 'transparent' },
+  mainTabGrad: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, paddingVertical: 12 },
+  mainTabPlain: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, paddingVertical: 12, backgroundColor: 'rgba(255,255,255,0.04)' },
+  mainTabText: { color: '#6B7280', fontSize: 13, fontFamily: 'Inter_600SemiBold' },
+  mainTabTextActive: { color: '#FFFFFF', fontSize: 13, fontFamily: 'Inter_600SemiBold' },
 
-  mainTabs: { flexDirection: 'row', backgroundColor: 'rgba(255,255,255,0.07)', borderRadius: 12, padding: 4 },
-  mainTab: { flex: 1, paddingVertical: 9, borderRadius: 10, alignItems: 'center' },
-  mainTabActive: { backgroundColor: '#1264E8' },
-  mainTabText: { color: '#8AB0D8', fontSize: 13, fontFamily: 'Inter_600SemiBold' },
-  mainTabTextActive: { color: '#FFFFFF' },
+  card: {
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.09)',
+    padding: 22,
+    gap: 14,
+    marginBottom: 16,
+    overflow: 'hidden',
+  },
+  cardGlow: { position: 'absolute', top: 0, left: 0, right: 0, height: 120, borderRadius: 24 },
+  cardTitle: { color: '#FFFFFF', fontSize: 22, fontFamily: 'Inter_700Bold', textAlign: 'center' },
+  cardSub: { color: '#6B7280', fontSize: 12, fontFamily: 'Inter_400Regular', textAlign: 'center', marginTop: -6 },
 
-  subTabs: { flexDirection: 'row', gap: 8 },
-  subTab: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, paddingVertical: 9, borderRadius: 10, backgroundColor: 'rgba(255,255,255,0.07)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)' },
-  subTabActive: { borderColor: '#60A0F0', backgroundColor: 'rgba(18,100,232,0.2)' },
-  subTabText: { color: '#8A9BB0', fontSize: 12, fontFamily: 'Inter_500Medium' },
-  subTabTextActive: { color: '#60A0F0' },
+  subTabRow: { flexDirection: 'row', gap: 8 },
+  subTabBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 10, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.04)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)' },
+  subTabBtnActive: { borderColor: '#60A5FA', backgroundColor: 'rgba(37,99,235,0.18)' },
+  subTabText: { color: '#4B5563', fontSize: 12, fontFamily: 'Inter_600SemiBold' },
+  subTabTextActive: { color: '#60A5FA' },
 
-  inputWrap: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: 'rgba(255,255,255,0.07)', borderRadius: 12, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)', paddingHorizontal: 14 },
+  inputWrap: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 14, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', paddingHorizontal: 12, paddingVertical: 2 },
+  inputIcon: { width: 30, height: 30, borderRadius: 9, justifyContent: 'center', alignItems: 'center' },
   input: { flex: 1, color: '#FFFFFF', fontSize: 14, fontFamily: 'Inter_400Regular', paddingVertical: 13 },
-  forgotRow: { alignItems: 'flex-end' },
-  forgotText: { color: '#5F8BC0', fontSize: 13, fontFamily: 'Inter_500Medium' },
 
-  primaryBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#1264E8', borderRadius: 14, paddingVertical: 15 },
-  primaryBtnText: { color: '#FFFFFF', fontSize: 15, fontFamily: 'Inter_600SemiBold' },
+  forgotRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 5 },
+  forgotText: { color: '#60A5FA', fontSize: 13, fontFamily: 'Inter_500Medium' },
+
+  primaryBtnWrap: { borderRadius: 14, overflow: 'hidden' },
+  primaryBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 15 },
+  primaryBtnText: { color: '#FFFFFF', fontSize: 15, fontFamily: 'Inter_700Bold' },
 
   dividerRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  dividerLine: { flex: 1, height: 1, backgroundColor: 'rgba(255,255,255,0.12)' },
-  dividerText: { color: '#5F8BC0', fontSize: 11, fontFamily: 'Inter_400Regular' },
+  dividerLine: { flex: 1, height: 1, backgroundColor: 'rgba(255,255,255,0.08)' },
+  dividerText: { color: '#4B5563', fontSize: 11, fontFamily: 'Inter_400Regular' },
 
   googleBtn: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#FFFFFF', borderRadius: 14, paddingVertical: 13, paddingHorizontal: 20, justifyContent: 'center' },
-  googleIconWrap: { width: 24, height: 24, borderRadius: 12, backgroundColor: 'rgba(66,133,244,0.1)', justifyContent: 'center', alignItems: 'center' },
-  googleG: { fontSize: 15, fontFamily: 'Inter_700Bold', color: '#4285F4' },
+  googleG: { width: 26, height: 26, borderRadius: 13, backgroundColor: 'rgba(66,133,244,0.1)', justifyContent: 'center', alignItems: 'center' },
+  googleGText: { fontSize: 15, fontFamily: 'Inter_700Bold', color: '#4285F4' },
   googleBtnText: { fontSize: 14, fontFamily: 'Inter_600SemiBold', color: '#1F2937', flex: 1, textAlign: 'center' },
 
-  createBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, backgroundColor: 'rgba(96,160,240,0.1)', borderRadius: 14, paddingVertical: 13, borderWidth: 1, borderColor: 'rgba(96,160,240,0.3)' },
-  createBtnText: { color: '#60A0F0', fontSize: 13, fontFamily: 'Inter_600SemiBold' },
+  codeRoleRow: { flexDirection: 'row', gap: 8, justifyContent: 'space-between' },
+  codeRoleChip: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 7, backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 12, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', padding: 10 },
+  codeRoleIcon: { width: 26, height: 26, borderRadius: 8, justifyContent: 'center', alignItems: 'center' },
+  codeRolePrefix: { color: '#E9F1FF', fontSize: 10, fontFamily: 'Inter_700Bold' },
+  codeRoleName: { color: '#4B5563', fontSize: 9, fontFamily: 'Inter_400Regular' },
 
-  secretInfoBox: { flexDirection: 'row', gap: 12, backgroundColor: 'rgba(99,102,241,0.12)', borderRadius: 14, padding: 14, alignItems: 'flex-start', borderWidth: 1, borderColor: 'rgba(99,102,241,0.3)' },
-  secretInfoIcon: { width: 34, height: 34, borderRadius: 10, justifyContent: 'center', alignItems: 'center', flexShrink: 0 },
-  secretInfoText: { flex: 1, color: '#A5B4FC', fontSize: 12, fontFamily: 'Inter_400Regular', lineHeight: 18 },
-  codeRoles: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
-  codeRoleChip: { flexDirection: 'row', alignItems: 'center', gap: 5, borderRadius: 99, borderWidth: 1, paddingHorizontal: 10, paddingVertical: 6, backgroundColor: 'rgba(255,255,255,0.04)' },
-  codeRoleDot: { width: 6, height: 6, borderRadius: 3 },
-  codeRolePrefix: { fontSize: 11, fontFamily: 'Inter_700Bold' },
-  codeRoleName: { color: 'rgba(255,255,255,0.5)', fontSize: 10, fontFamily: 'Inter_400Regular' },
+  secretNote: { flexDirection: 'row', gap: 8, backgroundColor: 'rgba(99,102,241,0.1)', borderRadius: 12, padding: 12, borderWidth: 1, borderColor: 'rgba(99,102,241,0.2)', alignItems: 'flex-start' },
+  secretNoteText: { flex: 1, color: '#A5B4FC', fontSize: 11, fontFamily: 'Inter_400Regular', lineHeight: 17 },
 
-  footer: { flexDirection: 'row', justifyContent: 'center', gap: 24, marginBottom: 10 },
+  quickLinks: { gap: 10, marginBottom: 20 },
+  quickLinkBtn: { borderRadius: 16, overflow: 'hidden' },
+  quickLinkGrad: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 16, borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)', borderRadius: 16 },
+  quickLinkText: { flex: 1, color: '#10B981', fontSize: 14, fontFamily: 'Inter_600SemiBold' },
+
+  footer: { flexDirection: 'row', justifyContent: 'center', gap: 20, marginBottom: 10, flexWrap: 'wrap' },
   footerItem: { alignItems: 'center', gap: 4 },
-  footerText: { color: '#5F8BC0', fontSize: 10, fontFamily: 'Inter_400Regular' },
-  version: { textAlign: 'center', color: '#3D5E82', fontSize: 10, fontFamily: 'Inter_400Regular' },
+  footerText: { fontSize: 9, fontFamily: 'Inter_400Regular' },
+  version: { textAlign: 'center', color: '#374151', fontSize: 9, fontFamily: 'Inter_400Regular' },
 });

@@ -34,7 +34,23 @@ description: Key architecture decisions and conventions for the DNP360 Expo app
 
 **Why:** User explicitly requested ember-orange/gold for all official role screens.
 
+## Secret code → Firebase user creation
+- New unused RTDB key: creates Firebase user `{code.toLowerCase()}.dnp360@gmail.com` / password=code
+- Marks key `usedBy: newUid` in RTDB after creation
+- Subsequent logins: signs into Firebase with same email/code, gets RTDB profile
+- Hardcoded demo codes (SK2566F, OFF4416A, ADMIN5790X) still map to DEMO_USERS directly
+
+## Login order (fixed)
+- `login()` now checks demo users FIRST (sync), then tries Firebase — prevents Firebase fallback failing for citizens
+- `loginWithCode` creates new Firebase user for unused keys; retrieves RTDB profile for used keys
+
 ## Forgot password
 - Two-tab UI: Submit Request + Check Status
 - Check Status looks up by email from local `passwordResetRequests` state
 - Admin can add an optional `adminNote` when approving — shown to user in Check Status tab
+
+## Login/Signup/ForgotPassword design
+- Background: deep purple-indigo `['#07002E','#100840','#0A1550']` with decorative orbs
+- Both "Create Citizen Account" and "Reset Password" always visible on login page (below main card)
+- Quick link cards with role-colored gradients (green/amber)
+- Vibrant gradient tab pills for Sign In / Secret Code

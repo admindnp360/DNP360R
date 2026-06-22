@@ -38,14 +38,16 @@ const SECRET_CODES: Record<string, { role: UserRole; userId: string }> = {
   'ADMIN5790X': { role: 'admin', userId: 'AD001' },
 };
 
+const ROLE_NAMES: Record<string, string> = {
+  safaikarmi: 'Safai Karmi',
+  official: 'Official',
+  admin: 'Administrator',
+};
+
 const RTDB_BASE = 'dnp360';
 
 function today() {
   return new Date().toISOString().split('T')[0];
-}
-
-function uid() {
-  return 'U' + Date.now().toString(36).toUpperCase() + Math.random().toString(36).slice(2, 5).toUpperCase();
 }
 
 async function getUserProfileFromRTDB(uid: string): Promise<User | null> {
@@ -89,6 +91,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (profile) {
           setUser(profile);
           await AsyncStorage.setItem('dnp360_user', JSON.stringify(profile));
+        } else {
+          const stored = await AsyncStorage.getItem('dnp360_user').catch(() => null);
+          if (stored) { try { setUser(JSON.parse(stored)); } catch {} }
         }
       }
       setIsLoading(false);
@@ -98,16 +103,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   async function login(identifier: string, password: string, method: 'email' | 'mobile' = 'email'): Promise<boolean> {
+    const trimmed = identifier.trim();
+
+    const demoResult = loginWithDemoUser(trimmed, password, method);
+    if (demoResult) return demoResult;
+
     const emailToUse = method === 'mobile'
-      ? await resolveEmailByMobile(identifier)
-      : identifier.trim().toLowerCase();
+      ? await resolveEmailByMobile(trimmed)
+      : trimmed.toLowerCase();
     if (!emailToUse) return false;
 
     try {
       const cred = await signInWithEmailAndPassword(firebaseAuth, emailToUse, password);
-      // Firebase Auth succeeded — now safely fetch/create RTDB profile
       let profile: User | null = null;
       try { profile = await getUserProfileFromRTDB(cred.user.uid); } catch {}
+      if (!profile) {
+        const stored = await AsyncStorage.getItem('dnp360_user').catch(() => null);
+        if (stored) { try { profile = JSON.parse(stored); } catch {} }
+      }
       if (!profile) {
         profile = {
           id: cred.user.uid,
@@ -117,14 +130,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           isActive: true,
           createdAt: today(),
         };
-        try { await saveUserProfileToRTDB(cred.user.uid, profile); } catch {}
+        saveUserProfileToRTDB(cred.user.uid, profile);
       }
       setUser(profile);
       await AsyncStorage.setItem('dnp360_user', JSON.stringify(profile));
       return true;
-    } catch {}
-
-    return loginWithDemoUser(identifier, password, method);
+    } catch (e: any) {
+      const code = e?.code ?? '';
+      if (code === 'auth/wrong-password' || code === 'auth/invalid-credential' || code === 'auth/invalid-email') return false;
+      return false;
+    }
   }
 
   async function resolveEmailByMobile(mobile: string): Promise<string | null> {
@@ -137,7 +152,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return null;
   }
 
-  async function loginWithDemoUser(identifier: string, password: string, method: 'email' | 'mobile'): Promise<boolean> {
+  function loginWithDemoUser(identifier: string, password: string, method: 'email' | 'mobile'): boolean {
     const found = DEMO_USERS.find(u =>
       method === 'email'
         ? u.email.toLowerCase() === identifier.toLowerCase()
@@ -146,7 +161,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!found || found.password !== password) return false;
     const { password: _, ...userData } = found;
     setUser(userData);
-    await AsyncStorage.setItem('dnp360_user', JSON.stringify(userData));
+    AsyncStorage.setItem('dnp360_user', JSON.stringify(userData));
     return true;
   }
 
@@ -169,23 +184,62 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (snap.exists()) {
         const keys = Object.values(snap.val()) as Array<{ id: string; code: string; role: string; isActive: boolean; usedBy?: string }>;
         const matched = keys.find(k => k.code.toUpperCase() === code && k.isActive);
-        if (matched?.usedBy) {
-          const profile = await getUserProfileFromRTDB(matched.usedBy);
-          if (profile) {
-            setUser(profile);
-            await AsyncStorage.setItem('dnp360_user', JSON.stringify(profile));
-            return true;
-          }
-          const demo = DEMO_USERS.find(u => u.id === matched.usedBy);
-          if (demo) {
-            const { password: _, ...userData } = demo;
-            setUser(userData);
-            await AsyncStorage.setItem('dnp360_user', JSON.stringify(userData));
+
+        if (matched) {
+          const codeEmail = `${code.toLowerCase()}.dnp360@gmail.com`;
+
+          if (matched.usedBy) {
+            let profile = await getUserProfileFromRTDB(matched.usedBy);
+            if (profile) {
+              try { await signInWithEmailAndPassword(firebaseAuth, codeEmail, code); } catch {}
+              setUser(profile);
+              await AsyncStorage.setItem('dnp360_user', JSON.stringify(profile));
+              return true;
+            }
+            try {
+              const cred = await signInWithEmailAndPassword(firebaseAuth, codeEmail, code);
+              profile = await getUserProfileFromRTDB(cred.user.uid);
+              if (profile) {
+                setUser(profile);
+                await AsyncStorage.setItem('dnp360_user', JSON.stringify(profile));
+                return true;
+              }
+            } catch {}
+          } else {
+            let newUid: string;
+            try {
+              const cred = await createUserWithEmailAndPassword(firebaseAuth, codeEmail, code);
+              newUid = cred.user.uid;
+            } catch (e: any) {
+              if (e?.code === 'auth/email-already-in-use') {
+                try {
+                  const cred = await signInWithEmailAndPassword(firebaseAuth, codeEmail, code);
+                  newUid = cred.user.uid;
+                } catch { return false; }
+              } else { return false; }
+            }
+
+            const newUser: User = {
+              id: newUid,
+              name: ROLE_NAMES[matched.role] ?? matched.role,
+              email: codeEmail,
+              role: matched.role as UserRole,
+              isActive: true,
+              createdAt: today(),
+            };
+
+            await saveUserProfileToRTDB(newUid, newUser);
+            try { await set(ref(rtdb, `${RTDB_BASE}/secretKeys/${matched.id}/usedBy`), newUid); } catch {}
+
+            setUser(newUser);
+            await AsyncStorage.setItem('dnp360_user', JSON.stringify(newUser));
             return true;
           }
         }
       }
-    } catch {}
+    } catch (e) {
+      console.warn('loginWithCode error:', e);
+    }
 
     return false;
   }
@@ -267,7 +321,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await saveUserProfileToRTDB(user.id, updated);
   }
 
-  async function resetUserPassword(email: string, newPassword: string): Promise<boolean> {
+  async function resetUserPassword(_email: string, _newPassword: string): Promise<boolean> {
     return true;
   }
 
