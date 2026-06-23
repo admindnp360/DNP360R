@@ -131,7 +131,7 @@ export default function SignUpScreen() {
                 <TextInput
                   style={s.input}
                   placeholder="Your full name"
-                  placeholderTextColor="#1E3A2F"
+                  placeholderTextColor="#94A3B8"
                   autoCapitalize="words"
                   value={name}
                   onChangeText={setName}
@@ -146,7 +146,7 @@ export default function SignUpScreen() {
                 <TextInput
                   style={s.input}
                   placeholder="your@email.com"
-                  placeholderTextColor="#1E3A2F"
+                  placeholderTextColor="#94A3B8"
                   keyboardType="email-address"
                   autoCapitalize="none"
                   value={email}
@@ -162,7 +162,7 @@ export default function SignUpScreen() {
                 <TextInput
                   style={s.input}
                   placeholder="10-digit mobile number"
-                  placeholderTextColor="#1E3A2F"
+                  placeholderTextColor="#94A3B8"
                   keyboardType="phone-pad"
                   value={mobile}
                   onChangeText={setMobile}
@@ -178,7 +178,7 @@ export default function SignUpScreen() {
                 <TextInput
                   style={s.input}
                   placeholder="Ward / Area, Daudnagar"
-                  placeholderTextColor="#1E3A2F"
+                  placeholderTextColor="#94A3B8"
                   autoCapitalize="sentences"
                   value={address}
                   onChangeText={setAddress}
@@ -200,7 +200,7 @@ export default function SignUpScreen() {
                 <TextInput
                   style={[s.input, { flex: 1 }]}
                   placeholder="Min. 6 characters"
-                  placeholderTextColor="#2A1E40"
+                  placeholderTextColor="#94A3B8"
                   secureTextEntry={!showPw}
                   value={password}
                   onChangeText={setPassword}
@@ -218,7 +218,7 @@ export default function SignUpScreen() {
                 <TextInput
                   style={[s.input, { flex: 1 }]}
                   placeholder="Re-enter password"
-                  placeholderTextColor="#2A1E40"
+                  placeholderTextColor="#94A3B8"
                   secureTextEntry={!showCPw}
                   value={confirmPassword}
                   onChangeText={setConfirmPassword}

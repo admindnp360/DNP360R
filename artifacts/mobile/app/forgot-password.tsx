@@ -143,7 +143,7 @@ export default function ForgotPasswordScreen() {
                       <TextInput
                         style={s.input}
                         placeholder="Your registered full name"
-                        placeholderTextColor="#2D2009"
+                        placeholderTextColor="#94A3B8"
                         autoCapitalize="words"
                         value={name}
                         onChangeText={setName}
@@ -158,7 +158,7 @@ export default function ForgotPasswordScreen() {
                       <TextInput
                         style={s.input}
                         placeholder="your@email.com"
-                        placeholderTextColor="#2D2009"
+                        placeholderTextColor="#94A3B8"
                         keyboardType="email-address"
                         autoCapitalize="none"
                         value={email}
@@ -245,7 +245,7 @@ export default function ForgotPasswordScreen() {
                     <TextInput
                       style={s.input}
                       placeholder="your@email.com"
-                      placeholderTextColor="#0D1829"
+                      placeholderTextColor="#94A3B8"
                       keyboardType="email-address"
                       autoCapitalize="none"
                       value={checkEmail}

@@ -238,7 +238,7 @@ export default function LoginScreen() {
                     <TextInput
                       style={s.input}
                       placeholder="Email address"
-                      placeholderTextColor="#2D3A52"
+                      placeholderTextColor="#94A3B8"
                       keyboardType="email-address"
                       autoCapitalize="none"
                       value={email}
@@ -251,7 +251,7 @@ export default function LoginScreen() {
                     <TextInput
                       style={s.input}
                       placeholder="10-digit mobile number"
-                      placeholderTextColor="#2D3A52"
+                      placeholderTextColor="#94A3B8"
                       keyboardType="phone-pad"
                       value={mobile}
                       onChangeText={setMobile}
@@ -265,7 +265,7 @@ export default function LoginScreen() {
                   <TextInput
                     style={[s.input, { flex: 1 }]}
                     placeholder="Password"
-                    placeholderTextColor="#2D3A52"
+                    placeholderTextColor="#94A3B8"
                     secureTextEntry={!showPassword}
                     value={password}
                     onChangeText={setPassword}
@@ -339,7 +339,7 @@ export default function LoginScreen() {
                     ref={codeRef}
                     style={[s.input, { flex: 1, fontFamily: 'Inter_700Bold', letterSpacing: 1.5 }]}
                     placeholder={selectedRole ? `${ROLES.find(r=>r.key===selectedRole)?.prefix}…` : 'Select role above first'}
-                    placeholderTextColor="#2D3A52"
+                    placeholderTextColor="#94A3B8"
                     autoCapitalize="characters"
                     autoCorrect={false}
                     secureTextEntry={!showSecret}
