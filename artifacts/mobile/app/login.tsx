@@ -23,55 +23,66 @@ const IS_WEB = Platform.OS === 'web';
 type RoleKey = 'ADMIN' | 'OFFICIAL' | 'SAFAI KARMI' | 'CITIZEN';
 
 const ROLES: { key: RoleKey; prefix: string; grad: readonly [string, string]; icon: string }[] = [
-  { key: 'ADMIN',      prefix: 'ADMIN', grad: ['#7C3AED', '#6366F1'], icon: 'shield' },
-  { key: 'OFFICIAL',   prefix: 'OF',    grad: ['#0EA5E9', '#2563EB'], icon: 'briefcase' },
-  { key: 'SAFAI KARMI',prefix: 'SK',    grad: ['#10B981', '#059669'], icon: 'trash-2' },
-  { key: 'CITIZEN',    prefix: 'C',     grad: ['#F59E0B', '#EF4444'], icon: 'user' },
+  { key: 'ADMIN',       prefix: 'ADMIN', grad: ['#7C3AED', '#6366F1'], icon: 'shield' },
+  { key: 'OFFICIAL',    prefix: 'OF',    grad: ['#0EA5E9', '#2563EB'], icon: 'briefcase' },
+  { key: 'SAFAI KARMI', prefix: 'SK',    grad: ['#10B981', '#059669'], icon: 'trash-2' },
+  { key: 'CITIZEN',     prefix: 'C',     grad: ['#F59E0B', '#EF4444'], icon: 'user' },
 ];
 
 function DNPLogo() {
   return (
-    <View style={logo.wrap}>
-      <View style={logo.outerRing}>
-        <View style={logo.seg1} />
-        <View style={logo.seg2} />
-        <View style={logo.seg3} />
-        <View style={logo.seg4} />
-      </View>
+    <View style={lg.wrap}>
+      <LinearGradient
+        colors={['#0A1628', '#122360', '#0D4A7A']}
+        start={{ x: 0.1, y: 0 }}
+        end={{ x: 0.9, y: 1 }}
+        style={lg.badge}
+      >
+        <View style={lg.topAccentRow}>
+          {[0,1,2,3,4].map(i => (
+            <View key={i} style={[lg.accentDot, { opacity: 0.4 + i * 0.12 }]} />
+          ))}
+        </View>
 
-      {[0,1,2,3,4,5,6,7].map(i => {
-        const angle = (i * 45 * Math.PI) / 180;
-        const r = 62;
-        const cx = 72, cy = 72;
-        const x = cx + r * Math.cos(angle) - 4;
-        const y = cy + r * Math.sin(angle) - 4;
-        const colors = ['#6366F1','#06B6D4','#10B981','#FBBF24','#EF4444','#EC4899','#2563EB','#8B5CF6'];
-        return (
-          <View key={i} style={[logo.dot, { left: x, top: y, backgroundColor: colors[i] }]} />
-        );
-      })}
-
-      <View style={logo.innerRing}>
-        <LinearGradient colors={['#0E1628','#141E38']} style={logo.face}>
-          <View style={logo.faceAccent} />
-
-          <Text style={logo.dnpTxt}>DNP</Text>
-
-          <View style={logo.threeRow}>
-            <View style={logo.threeBar} />
-            <Text style={logo.threeTxt}>360</Text>
-            <View style={logo.threeBar} />
+        <View style={lg.letterRow}>
+          <Text style={lg.dLetter}>D</Text>
+          <View style={lg.npStack}>
+            <Text style={lg.npTop}>N</Text>
+            <Text style={lg.npBot}>P</Text>
           </View>
+        </View>
 
-          <View style={logo.bottomLine} />
-        </LinearGradient>
-      </View>
+        <View style={lg.rulerRow}>
+          <View style={lg.rulerTick} />
+          <View style={lg.rulerLine} />
+          <View style={lg.rulerCenter}>
+            <View style={lg.rulerDiamond} />
+          </View>
+          <View style={lg.rulerLine} />
+          <View style={lg.rulerTick} />
+        </View>
+
+        <Text style={lg.threeSixty}>360°</Text>
+
+        <View style={lg.bottomDots}>
+          {[0,1,2].map(i => (
+            <View key={i} style={lg.bottomDot} />
+          ))}
+        </View>
+
+        <View style={[lg.cornerDecor, { top: 8, left: 8 }]} />
+        <View style={[lg.cornerDecor, { top: 8, right: 8 }]} />
+        <View style={[lg.cornerDecor, { bottom: 8, left: 8 }]} />
+        <View style={[lg.cornerDecor, { bottom: 8, right: 8 }]} />
+      </LinearGradient>
+
+      <View style={lg.glowBelow} />
     </View>
   );
 }
 
 export default function LoginScreen() {
-  const { login, loginWithCode } = useAuth();
+  const { login, loginWithCode, loginWithGoogle } = useAuth();
   const { showAlert } = useAlert();
   const [tab, setTab] = useState<'citizen' | 'staff'>('citizen');
   const [subTab, setSubTab] = useState<'email' | 'mobile'>('email');
@@ -84,6 +95,7 @@ export default function LoginScreen() {
   const [showSecret, setShowSecret] = useState(false);
   const [copied, setCopied] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const codeRef = useRef<TextInput>(null);
 
   function handleRoleSelect(role: typeof ROLES[0]) {
@@ -116,6 +128,19 @@ export default function LoginScreen() {
       if (!ok) showAlert('Login Failed', 'Invalid credentials. Please check your details.', undefined, 'error');
       else router.replace('/(tabs)');
     } finally { setLoading(false); }
+  }
+
+  async function handleGoogleSignIn() {
+    setGoogleLoading(true);
+    try {
+      const ok = await loginWithGoogle();
+      if (ok) router.replace('/(tabs)');
+      else showAlert('Sign-In Failed', IS_WEB
+        ? 'Google Sign-In failed. Ensure your domain is authorised in Firebase Console.'
+        : 'Google Sign-In is only available on the web version.', undefined, 'warning');
+    } catch {
+      showAlert('Error', 'Google Sign-In is unavailable. Please use Email login.', undefined, 'error');
+    } finally { setGoogleLoading(false); }
   }
 
   async function handleSecretCode() {
@@ -256,17 +281,33 @@ export default function LoginScreen() {
                   <Text style={s.forgotTxt}>Forgot Password?</Text>
                 </Pressable>
 
-                <TouchableOpacity
-                  onPress={handleSignIn}
-                  disabled={loading}
-                  activeOpacity={0.88}
-                  style={[s.btnWrap, loading && { opacity: 0.65 }]}
-                >
-                  <LinearGradient colors={['#2563EB','#4F46E5']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={s.btn}>
-                    {loading ? <ActivityIndicator color="#fff" size="small" /> : <Feather name="log-in" size={17} color="#fff" />}
-                    <Text style={s.btnTxt}>{loading ? 'Signing in…' : 'Sign In'}</Text>
-                  </LinearGradient>
-                </TouchableOpacity>
+                <View style={s.signInRow}>
+                  <TouchableOpacity
+                    onPress={handleSignIn}
+                    disabled={loading || googleLoading}
+                    activeOpacity={0.88}
+                    style={[s.btnWrap, { flex: 1 }, loading && { opacity: 0.65 }]}
+                  >
+                    <LinearGradient colors={['#2563EB','#4F46E5']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={s.btn}>
+                      {loading ? <ActivityIndicator color="#fff" size="small" /> : <Feather name="log-in" size={16} color="#fff" />}
+                      <Text style={s.btnTxt}>{loading ? 'Signing in…' : 'Sign In'}</Text>
+                    </LinearGradient>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    onPress={handleGoogleSignIn}
+                    disabled={loading || googleLoading}
+                    activeOpacity={0.88}
+                    style={[s.btnWrap, { flex: 1 }, googleLoading && { opacity: 0.65 }]}
+                  >
+                    <LinearGradient colors={['#DB4437','#EA4335']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={s.btn}>
+                      {googleLoading
+                        ? <ActivityIndicator color="#fff" size="small" />
+                        : <Text style={s.googleG}>G</Text>}
+                      <Text style={s.btnTxt}>{googleLoading ? 'Opening…' : 'Google'}</Text>
+                    </LinearGradient>
+                  </TouchableOpacity>
+                </View>
               </>
             ) : (
               <>
@@ -280,11 +321,11 @@ export default function LoginScreen() {
                       <Pressable key={r.key} style={s.roleCardWrap} onPress={() => handleRoleSelect(r)}>
                         {active
                           ? <LinearGradient colors={r.grad} style={s.roleCardActive}>
-                              <Feather name={r.icon as any} size={18} color="#fff" />
+                              <Feather name={r.icon as any} size={15} color="#fff" />
                               <Text style={s.roleCardTxtActive}>{r.key}</Text>
                             </LinearGradient>
                           : <View style={s.roleCardInactive}>
-                              <Feather name={r.icon as any} size={18} color="#475569" />
+                              <Feather name={r.icon as any} size={15} color="#475569" />
                               <Text style={s.roleCardTxt}>{r.key}</Text>
                             </View>}
                       </Pressable>
@@ -327,7 +368,7 @@ export default function LoginScreen() {
                   <View style={s.prefixHint}>
                     <Text style={s.prefixHintLabel}>Prefix locked: </Text>
                     <Text style={s.prefixHintCode}>{ROLES.find(r=>r.key===selectedRole)?.prefix}</Text>
-                    <Text style={s.prefixHintLabel}> — only digits &amp; uppercase letters</Text>
+                    <Text style={s.prefixHintLabel}> · digits &amp; UPPERCASE only</Text>
                   </View>
                 )}
 
@@ -342,7 +383,7 @@ export default function LoginScreen() {
                     start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
                     style={s.btn}
                   >
-                    {loading ? <ActivityIndicator color="#fff" size="small" /> : <Feather name="shield" size={17} color="#fff" />}
+                    {loading ? <ActivityIndicator color="#fff" size="small" /> : <Feather name="shield" size={16} color="#fff" />}
                     <Text style={s.btnTxt}>{loading ? 'Verifying…' : 'Authenticate'}</Text>
                   </LinearGradient>
                 </TouchableOpacity>
@@ -379,94 +420,50 @@ export default function LoginScreen() {
   );
 }
 
-const logo = StyleSheet.create({
-  wrap: {
-    width: 144, height: 144,
-    justifyContent: 'center', alignItems: 'center',
-    position: 'relative',
-    marginBottom: 16,
-  },
-  outerRing: {
-    position: 'absolute',
-    width: 144, height: 144,
-    borderRadius: 72,
-    overflow: 'hidden',
-  },
-  seg1: {
-    position: 'absolute', top: 0, left: 0, right: 0, height: '50%',
-    borderTopLeftRadius: 72, borderTopRightRadius: 72,
-    borderWidth: 3, borderBottomWidth: 0,
-    borderColor: '#2563EB',
-  },
-  seg2: {
-    position: 'absolute', bottom: 0, left: 0, right: 0, height: '50%',
-    borderBottomLeftRadius: 72, borderBottomRightRadius: 72,
-    borderWidth: 3, borderTopWidth: 0,
-    borderColor: '#7C3AED',
-  },
-  seg3: {
-    position: 'absolute', top: 0, left: 0, bottom: 0, width: '50%',
-    borderTopLeftRadius: 72, borderBottomLeftRadius: 72,
-    borderWidth: 3, borderRightWidth: 0,
-    borderColor: '#10B981',
-  },
-  seg4: {
-    position: 'absolute', top: 0, right: 0, bottom: 0, width: '50%',
-    borderTopRightRadius: 72, borderBottomRightRadius: 72,
-    borderWidth: 3, borderLeftWidth: 0,
-    borderColor: '#06B6D4',
-  },
-  dot: {
-    position: 'absolute',
-    width: 8, height: 8, borderRadius: 4,
-  },
-  innerRing: {
-    width: 118, height: 118, borderRadius: 59,
-    justifyContent: 'center', alignItems: 'center',
-    overflow: 'hidden',
-    borderWidth: 1.5,
-    borderTopColor: 'rgba(99,102,241,0.6)',
-    borderRightColor: 'rgba(6,182,212,0.6)',
-    borderBottomColor: 'rgba(16,185,129,0.6)',
-    borderLeftColor: 'rgba(245,158,11,0.6)',
-  },
-  face: {
-    width: '100%', height: '100%',
-    borderRadius: 59,
+const lg = StyleSheet.create({
+  wrap: { alignItems: 'center', marginBottom: 16, position: 'relative' },
+  badge: {
+    width: 120, height: 120,
+    borderRadius: 28,
     justifyContent: 'center', alignItems: 'center',
     gap: 2,
+    overflow: 'hidden',
+    shadowColor: '#1B3FA8',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.7,
+    shadowRadius: 20,
+    elevation: 16,
   },
-  faceAccent: {
-    width: 56, height: 2, borderRadius: 1,
-    backgroundColor: '#2563EB',
-    marginBottom: 2,
-  },
-  dnpTxt: {
+  topAccentRow: { flexDirection: 'row', gap: 5, marginBottom: 4 },
+  accentDot: { width: 5, height: 5, borderRadius: 2.5, backgroundColor: '#06B6D4' },
+  letterRow: { flexDirection: 'row', alignItems: 'center', gap: 0 },
+  dLetter: {
     color: '#FFFFFF',
-    fontSize: 28,
+    fontSize: 44,
     fontFamily: 'Inter_700Bold',
-    letterSpacing: 4,
-    lineHeight: 30,
+    lineHeight: 44,
+    letterSpacing: -1,
   },
-  threeRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-  },
-  threeBar: {
-    width: 14, height: 1.5, borderRadius: 1,
-    backgroundColor: '#06B6D4',
-  },
-  threeTxt: {
-    color: '#06B6D4',
-    fontSize: 16,
-    fontFamily: 'Inter_700Bold',
-    letterSpacing: 2,
-  },
-  bottomLine: {
-    width: 40, height: 2, borderRadius: 1,
-    backgroundColor: '#7C3AED',
-    marginTop: 2,
+  npStack: { justifyContent: 'center', gap: -4, marginLeft: 2 },
+  npTop: { color: '#60A5FA', fontSize: 19, fontFamily: 'Inter_700Bold', lineHeight: 21 },
+  npBot: { color: '#06B6D4', fontSize: 19, fontFamily: 'Inter_700Bold', lineHeight: 21 },
+  rulerRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginVertical: 3 },
+  rulerLine: { flex: 1, height: 1.5, backgroundColor: 'rgba(255,255,255,0.25)', maxWidth: 16 },
+  rulerTick: { width: 1.5, height: 6, borderRadius: 1, backgroundColor: 'rgba(255,255,255,0.3)' },
+  rulerCenter: { width: 8, height: 8, justifyContent: 'center', alignItems: 'center' },
+  rulerDiamond: { width: 6, height: 6, borderRadius: 1, backgroundColor: '#F59E0B', transform: [{ rotate: '45deg' }] },
+  threeSixty: { color: '#06B6D4', fontSize: 15, fontFamily: 'Inter_700Bold', letterSpacing: 3 },
+  bottomDots: { flexDirection: 'row', gap: 4, marginTop: 4 },
+  bottomDot: { width: 4, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.25)' },
+  cornerDecor: { position: 'absolute', width: 10, height: 10, borderColor: 'rgba(255,255,255,0.2)', borderWidth: 1.5, borderRadius: 2 },
+  glowBelow: {
+    position: 'absolute',
+    bottom: -10,
+    width: 80, height: 20,
+    backgroundColor: '#1B3FA8',
+    opacity: 0.25,
+    borderRadius: 40,
+    alignSelf: 'center',
   },
 });
 
@@ -523,9 +520,11 @@ const s = StyleSheet.create({
   forgotRow: { alignSelf: 'flex-end' },
   forgotTxt: { color: '#60A5FA', fontSize: 13, fontFamily: 'Inter_500Medium' },
 
-  btnWrap: { borderRadius: 14, overflow: 'hidden', marginTop: 2 },
-  btn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 9, paddingVertical: 16 },
-  btnTxt: { color: '#FFFFFF', fontSize: 16, fontFamily: 'Inter_700Bold' },
+  signInRow: { flexDirection: 'row', gap: 10, marginTop: 2 },
+  btnWrap: { borderRadius: 14, overflow: 'hidden' },
+  btn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 16 },
+  btnTxt: { color: '#FFFFFF', fontSize: 15, fontFamily: 'Inter_700Bold' },
+  googleG: { color: '#fff', fontSize: 16, fontFamily: 'Inter_700Bold' },
 
   roleGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   roleCardWrap: { width: '47.5%', borderRadius: 14, overflow: 'hidden' },

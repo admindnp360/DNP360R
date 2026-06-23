@@ -39,6 +39,7 @@ interface AppContextType {
   addSecretKey: (role: SecretKey['role']) => Promise<SecretKey>;
   toggleSecretKey: (id: string) => Promise<void>;
   deleteSecretKey: (id: string) => Promise<void>;
+  updateSecretKeyCode: (keyId: string, newCode: string) => Promise<void>;
   updateSupportDetails: (updates: Partial<SupportDetails>) => Promise<void>;
   addPasswordResetRequest: (email: string, name: string) => Promise<void>;
   updatePasswordResetRequest: (id: string, status: 'approved' | 'rejected', adminNote?: string) => Promise<void>;
@@ -441,6 +442,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setSecretKeys(updated); await rtdbSave('secretKeys', updated);
   }
 
+  async function updateSecretKeyCode(keyId: string, newCode: string) {
+    const updated = secretKeys.map(k => k.id === keyId ? { ...k, code: newCode.trim().toUpperCase() } : k);
+    setSecretKeys(updated); await rtdbSave('secretKeys', updated);
+  }
+
   async function updateSupportDetails(updates: Partial<SupportDetails>) {
     const updated = { ...supportDetails, ...updates };
     setSupportDetails(updated); await rtdbSaveObj('support', updated);
@@ -484,7 +490,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       addWard, updateWard, assignWorkerToWard,
       addNotice, updateNotice, deleteNotice,
       addUser, updateUser, deleteUser,
-      addSecretKey, toggleSecretKey, deleteSecretKey,
+      addSecretKey, toggleSecretKey, deleteSecretKey, updateSecretKeyCode,
       updateSupportDetails,
       addPasswordResetRequest, updatePasswordResetRequest,
       getHouseByRegistration, getComplaintsByUser,
