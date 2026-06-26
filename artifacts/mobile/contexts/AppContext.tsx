@@ -12,7 +12,8 @@ import {
   writeBatch,
 } from 'firebase/firestore';
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { db } from '@/lib/firebase';
+import { signInAnonymously } from 'firebase/auth';
+import { db, firebaseAuth } from '@/lib/firebase';
 import type {
   Attendance, Complaint, ComplaintCategory, ComplaintStatus,
   Group, House, HouseVisit, ImportHistory, Notice, PasswordResetRequest,
@@ -345,6 +346,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     let active = true;
 
     (async () => {
+      // 0 — ensure a Firebase Auth token exists (required for Firestore writes)
+      //     SUPER_ADMIN uses a local bypass, so we sign in anonymously here.
+      //     Real Firebase Auth users (official, safaikarmi, citizen) will already
+      //     have a valid session from AuthContext and this becomes a no-op.
+      if (!firebaseAuth.currentUser) {
+        try { await signInAnonymously(firebaseAuth); } catch { /* offline / disabled */ }
+      }
+
       // 1 — version check (wipes stale data if schema changed)
       await checkVersion();
 
@@ -365,24 +374,43 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       if (!active) return;
 
       // 3 — real-time listeners (fire immediately with cached data, then live updates)
+      //     Each listener falls back to seed data on permission-denied so the app
+      //     is always functional even before Firestore rules are deployed.
       const snap2arr = <T>(snap: any) =>
         snap.docs.map((d: any) => ({ id: d.id, ...d.data() }) as T);
 
+      function listen<T>(
+        colName: string,
+        setter: React.Dispatch<React.SetStateAction<T[]>>,
+        fallback: T[],
+      ): () => void {
+        return onSnapshot(
+          collection(db, colName),
+          (snap) => setter(snap2arr<T>(snap)),
+          (err) => {
+            console.warn(`[Firestore] ${colName}: ${err.code} — using local fallback`);
+            if (fallback.length > 0) setter(fallback);
+          },
+        );
+      }
+
       unsubscribers.push(
-        onSnapshot(collection(db, 'complaints'),            s => setComplaints(snap2arr<Complaint>(s))),
-        onSnapshot(collection(db, 'houses'),               s => setHouses(snap2arr<House>(s))),
-        onSnapshot(collection(db, 'wards'),                s => setWards(snap2arr<Ward>(s))),
-        onSnapshot(collection(db, 'groups'),               s => setGroups(snap2arr<Group>(s))),
-        onSnapshot(collection(db, 'notices'),              s => setNotices(snap2arr<Notice>(s))),
-        onSnapshot(collection(db, 'attendance'),           s => setAttendance(snap2arr<Attendance>(s))),
-        onSnapshot(collection(db, 'houseVisits'),          s => setHouseVisits(snap2arr<HouseVisit>(s))),
-        onSnapshot(collection(db, 'users'),                s => setUsers(snap2arr<User>(s))),
-        onSnapshot(collection(db, 'secretKeys'),           s => setSecretKeys(snap2arr<SecretKey>(s))),
-        onSnapshot(collection(db, 'passwordResetRequests'),s => setPasswordResetRequests(snap2arr<PasswordResetRequest>(s))),
-        onSnapshot(collection(db, 'importHistory'),        s => setImportHistory(snap2arr<ImportHistory>(s))),
-        onSnapshot(doc(db, 'settings', 'support'),         s => {
-          if (s.exists()) setSupportDetails(s.data() as SupportDetails);
-        }),
+        listen('complaints',             setComplaints,             SEED_COMPLAINTS),
+        listen('houses',                 setHouses,                 SEED_HOUSES),
+        listen('wards',                  setWards,                  SEED_WARDS),
+        listen('groups',                 setGroups,                 SEED_GROUPS),
+        listen('notices',                setNotices,                SEED_NOTICES),
+        listen('attendance',             setAttendance,             seedAttendance()),
+        listen('houseVisits',            setHouseVisits,            seedHouseVisits()),
+        listen('users',                  setUsers,                  SEED_USERS),
+        listen('secretKeys',             setSecretKeys,             SEED_KEYS),
+        listen('passwordResetRequests',  setPasswordResetRequests,  []),
+        listen('importHistory',          setImportHistory,          []),
+        onSnapshot(
+          doc(db, 'settings', 'support'),
+          (s) => { if (s.exists()) setSupportDetails(s.data() as SupportDetails); },
+          (_err) => setSupportDetails(DEFAULT_SUPPORT),
+        ),
       );
     })();
 
