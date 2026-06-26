@@ -1,0 +1,148 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── Helpers ────────────────────────────────────────────────────────────────
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // Fetch the caller's role from their Firestore user document.
+    // Works for real Firebase-Auth users whose doc ID == auth UID.
+    function callerDoc() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function callerRole() {
+      return isSignedIn() ? callerDoc().role : null;
+    }
+
+    function isAdmin()      { return isSignedIn() && callerRole() == 'admin'; }
+    function isOfficial()   { return isSignedIn() && callerRole() == 'official'; }
+    function isSafaikarmi() { return isSignedIn() && callerRole() == 'safaikarmi'; }
+    function isCitizen()    { return isSignedIn() && callerRole() == 'citizen'; }
+
+    function isAdminOrOfficial() { return isAdmin() || isOfficial(); }
+    function isStaff()           { return isAdmin() || isOfficial() || isSafaikarmi(); }
+
+    // ── Schema version / metadata ──────────────────────────────────────────────
+    match /meta/{docId} {
+      allow read:  if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    // ── Users ──────────────────────────────────────────────────────────────────
+    // Citizens / workers / officials can read their own profile.
+    // Admins and officials can read any profile.
+    // Anyone signed-in can create their own profile (registration).
+    // Only the owner or an admin can update. Only admin can delete.
+    match /users/{userId} {
+      allow read:   if isSignedIn() && (request.auth.uid == userId || isAdminOrOfficial());
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+      allow delete: if isAdmin();
+    }
+
+    // Mobile → email lookup (needed for mobile-number login)
+    match /usersByMobile/{mobile} {
+      allow read:  if isSignedIn();
+      allow write: if isSignedIn();
+    }
+
+    // ── Houses ─────────────────────────────────────────────────────────────────
+    // All staff can read. Admin and officials can write (add/update/delete).
+    match /houses/{houseId} {
+      allow read:   if isSignedIn() && isStaff();
+      allow create: if isAdminOrOfficial();
+      allow update: if isAdminOrOfficial();
+      allow delete: if isAdmin();
+    }
+
+    // ── Wards ──────────────────────────────────────────────────────────────────
+    match /wards/{wardId} {
+      allow read:  if isSignedIn() && isStaff();
+      allow write: if isAdmin();
+    }
+
+    // ── Groups ─────────────────────────────────────────────────────────────────
+    match /groups/{groupId} {
+      allow read:  if isSignedIn() && isStaff();
+      allow write: if isAdminOrOfficial();
+    }
+
+    // ── Notices ────────────────────────────────────────────────────────────────
+    // Every authenticated user (including citizens) can read notices.
+    // Only admins can create/edit/delete.
+    match /notices/{noticeId} {
+      allow read:  if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    // ── Complaints ─────────────────────────────────────────────────────────────
+    // Citizens can read and create their own complaints.
+    // Officials and admins can read/update all complaints.
+    match /complaints/{complaintId} {
+      allow read: if isSignedIn() && (
+        resource.data.citizenId == request.auth.uid || isAdminOrOfficial()
+      );
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() && (
+        resource.data.citizenId == request.auth.uid || isAdminOrOfficial()
+      );
+      allow delete: if isAdmin();
+    }
+
+    // ── Attendance ─────────────────────────────────────────────────────────────
+    // Safaikarmi can create their own. Admin/official can read all. Admin deletes.
+    match /attendance/{attendanceId} {
+      allow read: if isSignedIn() && (
+        resource.data.workerId == request.auth.uid || isAdminOrOfficial()
+      );
+      allow create: if isSignedIn() && (isSafaikarmi() || isAdmin());
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // ── House Visits ───────────────────────────────────────────────────────────
+    match /houseVisits/{visitId} {
+      allow read: if isSignedIn() && (
+        resource.data.workerId == request.auth.uid || isAdminOrOfficial()
+      );
+      allow create: if isSignedIn() && (isSafaikarmi() || isAdmin());
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // ── Secret Keys ────────────────────────────────────────────────────────────
+    // Only admins can view, generate, assign, toggle, or delete secret keys.
+    match /secretKeys/{keyId} {
+      allow read:  if isAdmin();
+      allow write: if isAdmin();
+    }
+
+    // ── Settings (support details, etc.) ───────────────────────────────────────
+    match /settings/{docId} {
+      allow read:  if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    // ── Password Reset Requests ────────────────────────────────────────────────
+    // Any signed-in user can submit a request.
+    // Users can read their own request (matched by email). Admins read all.
+    match /passwordResetRequests/{reqId} {
+      allow read: if isSignedIn() && (
+        resource.data.email == request.auth.token.email || isAdmin()
+      );
+      allow create: if isSignedIn();
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // ── Import History ─────────────────────────────────────────────────────────
+    match /importHistory/{histId} {
+      allow read:  if isAdmin();
+      allow write: if isAdmin();
+    }
+
+  }
+}
