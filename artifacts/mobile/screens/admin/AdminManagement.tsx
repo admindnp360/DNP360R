@@ -10,8 +10,7 @@ import { useAlert } from '@/contexts/AlertContext';
 import { useAppData } from '@/contexts/AppContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useColors } from '@/hooks/useColors';
-import type { PasswordResetRequest } from '@/types';
-import AdminKeys from './AdminKeys';
+import type { PasswordResetRequest, SecretKey } from '@/types';
 
 type Tab = 'genkey' | 'notices' | 'resets';
 
@@ -32,9 +31,25 @@ export default function AdminManagement() {
     notices, passwordResetRequests,
     addNotice, deleteNotice,
     updatePasswordResetRequest,
+    addSecretKey,
   } = useAppData();
   const { resetUserPassword } = useAuth();
   const colors = useColors();
+  const [generating, setGenerating] = useState(false);
+  const [newKey, setNewKey] = useState<SecretKey | null>(null);
+
+  const ROLE_LABELS: Record<string, string> = { safaikarmi: 'Safai Karmi', official: 'Official', admin: 'Admin' };
+  const ROLE_GRADS: Record<string, readonly [string, string]> = {
+    safaikarmi: ['#10B981', '#059669'],
+    official:   ['#F59E0B', '#EF4444'],
+    admin:      ['#6366F1', '#8B5CF6'],
+  };
+  const ROLE_ICONS: Record<string, string> = { safaikarmi: 'trash-2', official: 'briefcase', admin: 'shield' };
+
+  async function handleGenerate(role: SecretKey['role']) {
+    setGenerating(true);
+    try { setNewKey(await addSecretKey(role)); } finally { setGenerating(false); }
+  }
 
   const [tab, setTab] = useState<Tab>('notices');
   const [showNoticeModal, setShowNoticeModal] = useState(false);
@@ -127,10 +142,72 @@ export default function AdminManagement() {
 
       {/* ── GEN KEY TAB ── */}
       {tab === 'genkey' && (
-        <View style={{ flex: 1 }}>
-          <AdminKeys />
-        </View>
+        <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 110 }}>
+          <LinearGradient colors={['#0D1B4B', '#1A237E']} style={styles.genCard}>
+            <View style={styles.genCardTop}>
+              <LinearGradient colors={['rgba(255,255,255,0.15)','rgba(255,255,255,0.05)']} style={styles.genCardIcon}>
+                <Feather name="menu" size={18} color="#fff" />
+              </LinearGradient>
+              <View>
+                <Text style={styles.genCardTitle}>Generate New Key</Text>
+                <Text style={styles.genCardSub}>Unique access code for registration</Text>
+              </View>
+            </View>
+            <View style={styles.genBtnRow}>
+              {(['safaikarmi', 'official', 'admin'] as const).map(role => (
+                <TouchableOpacity
+                  key={role}
+                  style={[styles.genBtnWrap, { opacity: generating ? 0.5 : 1 }]}
+                  onPress={() => handleGenerate(role)}
+                  disabled={generating}
+                  activeOpacity={0.8}
+                >
+                  <LinearGradient colors={ROLE_GRADS[role]} style={styles.genBtn}>
+                    <Feather name={ROLE_ICONS[role] as any} size={14} color="#fff" />
+                    <Text style={styles.genBtnText}>{ROLE_LABELS[role]}</Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+              ))}
+            </View>
+            {generating && (
+              <View style={styles.genLoading}>
+                <Feather name="loader" size={14} color="rgba(255,255,255,0.7)" />
+                <Text style={styles.genLoadingText}>Generating…</Text>
+              </View>
+            )}
+          </LinearGradient>
+        </ScrollView>
       )}
+
+      {/* ── NEW KEY MODAL (gen key tab) ── */}
+      <Modal visible={!!newKey} animationType="slide" transparent>
+        <View style={styles.overlay}>
+          <LinearGradient colors={['#050818', '#0D1B4B']} style={styles.newKeySheet}>
+            <View style={styles.celebRing}>
+              <LinearGradient colors={ROLE_GRADS[newKey?.role ?? 'admin']} style={styles.celebGrad}>
+                <Feather name="key" size={32} color="#fff" />
+              </LinearGradient>
+            </View>
+            <Text style={styles.celebTitle}>Key Generated!</Text>
+            <Text style={[styles.celebRole, { color: 'rgba(255,255,255,0.65)' }]}>
+              {ROLE_LABELS[newKey?.role ?? 'admin']} Access Code
+            </Text>
+            <LinearGradient colors={ROLE_GRADS[newKey?.role ?? 'admin']} style={styles.codeReveal}>
+              <Feather name="key" size={16} color="rgba(255,255,255,0.7)" />
+              <Text style={styles.codeRevealText}>{newKey?.code}</Text>
+            </LinearGradient>
+            <View style={[styles.celebNote, { backgroundColor: 'rgba(255,255,255,0.06)', borderColor: 'rgba(255,255,255,0.1)' }]}>
+              <Feather name="alert-circle" size={13} color="rgba(255,255,255,0.5)" />
+              <Text style={styles.celebNoteText}>Share this code securely. It will not be shown again after closing.</Text>
+            </View>
+            <TouchableOpacity onPress={() => setNewKey(null)} activeOpacity={0.85}>
+              <LinearGradient colors={ROLE_GRADS[newKey?.role ?? 'admin']} style={styles.celebDoneBtn}>
+                <Text style={styles.celebDoneText}>Done</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          </LinearGradient>
+        </View>
+      </Modal>
 
       {/* ── NOTICES TAB ── */}
       {tab === 'notices' && (
@@ -438,4 +515,29 @@ const styles = StyleSheet.create({
   requestAvatarLetter: { color: '#fff', fontSize: 20, fontFamily: 'Inter_700Bold' },
   requestName: { fontSize: 15, fontFamily: 'Inter_700Bold' },
   requestEmail: { fontSize: 12, fontFamily: 'Inter_400Regular', marginTop: 2 },
+
+  genCard: { borderRadius: 20, padding: 18, gap: 16 },
+  genCardTop: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  genCardIcon: { width: 44, height: 44, borderRadius: 13, justifyContent: 'center', alignItems: 'center' },
+  genCardTitle: { color: '#fff', fontSize: 16, fontFamily: 'Inter_700Bold' },
+  genCardSub: { color: 'rgba(255,255,255,0.55)', fontSize: 11, fontFamily: 'Inter_400Regular', marginTop: 2 },
+  genBtnRow: { flexDirection: 'row', gap: 8 },
+  genBtnWrap: { flex: 1 },
+  genBtn: { borderRadius: 12, paddingVertical: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
+  genBtnText: { color: '#fff', fontSize: 11, fontFamily: 'Inter_700Bold' },
+  genLoading: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
+  genLoadingText: { color: 'rgba(255,255,255,0.6)', fontSize: 12, fontFamily: 'Inter_400Regular' },
+
+  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.75)', justifyContent: 'flex-end' },
+  newKeySheet: { borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 28, gap: 16, alignItems: 'center' },
+  celebRing: { width: 90, height: 90, borderRadius: 45, borderWidth: 2, borderColor: 'rgba(255,255,255,0.15)', justifyContent: 'center', alignItems: 'center' },
+  celebGrad: { width: 74, height: 74, borderRadius: 37, justifyContent: 'center', alignItems: 'center' },
+  celebTitle: { color: '#fff', fontSize: 26, fontFamily: 'Inter_700Bold' },
+  celebRole: { fontSize: 14, fontFamily: 'Inter_400Regular' },
+  codeReveal: { borderRadius: 16, flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 24, paddingVertical: 18, alignSelf: 'stretch', justifyContent: 'center' },
+  codeRevealText: { color: '#fff', fontSize: 30, fontFamily: 'Inter_700Bold', letterSpacing: 4 },
+  celebNote: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, borderRadius: 12, borderWidth: 1, padding: 12, alignSelf: 'stretch' },
+  celebNoteText: { color: 'rgba(255,255,255,0.55)', fontSize: 12, fontFamily: 'Inter_400Regular', flex: 1, lineHeight: 18 },
+  celebDoneBtn: { borderRadius: 14, paddingVertical: 14, paddingHorizontal: 60 },
+  celebDoneText: { color: '#fff', fontSize: 16, fontFamily: 'Inter_700Bold' },
 });

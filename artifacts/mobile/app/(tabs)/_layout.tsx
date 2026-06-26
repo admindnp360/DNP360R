@@ -36,7 +36,7 @@ const ROLE_TABS: Record<string, Record<TabName, { icon: string; label: string }>
   admin: {
     index:     { icon: 'grid',        label: 'Dashboard' },
     action:    { icon: 'users',       label: 'Users' },
-    secondary: { icon: 'key',         label: 'Keys' },
+    secondary: { icon: 'database',    label: 'House DB' },
     tertiary:  { icon: 'settings',    label: 'Manage' },
     profile:   { icon: 'user',        label: 'Profile' },
   },
