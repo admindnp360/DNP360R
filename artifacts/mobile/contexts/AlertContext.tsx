@@ -88,7 +88,7 @@ export function AlertProvider({ children }: { children: React.ReactNode }) {
                       onPress={() => dismiss(btn)}
                       style={({ pressed }) => [
                         styles.btn,
-                        state.buttons.length === 1 && { flex: 0, paddingHorizontal: 20 },
+                        state.buttons.length === 1 && { flex: 0, minWidth: 140 },
                         pressed && { opacity: 0.75 },
                       ]}
                     >
@@ -151,8 +151,8 @@ const styles = StyleSheet.create({
   },
   divider: { height: 1, marginTop: 18, marginHorizontal: 20 },
   btnRow: { flexDirection: 'row', padding: 16, gap: 10 },
-  btn: { flex: 1, borderRadius: 14, overflow: 'hidden' },
-  gradBtn: { paddingVertical: 14, alignItems: 'center', borderRadius: 14 },
+  btn: { flex: 1, borderRadius: 14 },
+  gradBtn: { paddingVertical: 14, alignItems: 'center', borderRadius: 14, overflow: 'hidden' },
   gradTxt: { color: '#fff', fontSize: 14, fontFamily: 'Inter_700Bold' },
   cancelBtn: { paddingVertical: 14, alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.07)', borderRadius: 14, borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)' },
   cancelTxt: { color: 'rgba(255,255,255,0.55)', fontSize: 14, fontFamily: 'Inter_600SemiBold' },

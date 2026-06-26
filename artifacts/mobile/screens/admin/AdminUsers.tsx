@@ -392,7 +392,7 @@ export default function AdminUsers() {
                         delayLongPress={400}
                       >
                         <View style={[s.codePill, { backgroundColor: currentTab.grad[0] + '18' }]}>
-                          <Text style={[s.codeText, { color: currentTab.grad[0] }]}>{linkedKey.code}</Text>
+                          <Text style={[s.codeText, { color: currentTab.grad[0] }]} numberOfLines={1}>{linkedKey.code}</Text>
                         </View>
                       </TouchableOpacity>
                     ) : (
@@ -843,9 +843,9 @@ const s = StyleSheet.create({
   statusDot: { width: 5, height: 5, borderRadius: 3 },
   statusLabel: { fontSize: 9, fontFamily: 'Inter_600SemiBold' },
   tdId:     { width: 72, fontSize: 11, fontFamily: 'Inter_500Medium' },
-  tdCodeCell: { width: 84, alignItems: 'flex-start' },
-  codePill: { borderRadius: 6, paddingHorizontal: 6, paddingVertical: 3 },
-  codeText: { fontSize: 10, fontFamily: 'Inter_700Bold', letterSpacing: 0.8 },
+  tdCodeCell: { width: 96, alignItems: 'flex-start' },
+  codePill: { borderRadius: 6, paddingHorizontal: 6, paddingVertical: 3, maxWidth: 94 },
+  codeText: { fontSize: 9, fontFamily: 'Inter_700Bold', letterSpacing: 0.5 },
   noCode:   { fontSize: 12 },
 
   /* empty */
