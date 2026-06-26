@@ -57,6 +57,7 @@ interface AppContextType {
   removeGroupFromHouses: (houseIds: string[]) => Promise<void>;
   addWard: (w: Omit<Ward, 'id'>) => Promise<void>;
   updateWard: (id: string, updates: Partial<Ward>) => Promise<void>;
+  deleteWard: (id: string) => Promise<void>;
   assignWorkerToWard: (wardId: string, workerId: string) => Promise<void>;
   addGroup: (g: Omit<Group, 'id'>) => Promise<Group>;
   updateGroup: (id: string, updates: Partial<Group>) => Promise<void>;
@@ -624,6 +625,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     await fsSaveDoc('wards', updatedItem);
   }
 
+  async function deleteWard(id: string) {
+    setWards(prev => prev.filter(w => w.id !== id));
+    await _fsDelete('wards', id);
+  }
+
   async function assignWorkerToWard(wardId: string, workerId: string) {
     const updatedWard = wards.find(w => w.id === wardId)!;
     const workers = updatedWard.assignedWorkers.includes(workerId)
@@ -837,7 +843,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       addComplaint, updateComplaint, addHouseVisit, markAttendance,
       addHouse, addMultipleHouses, updateHouse, deleteHouse, bulkImportHouses,
       assignGroupToHouses, removeGroupFromHouses,
-      addWard, updateWard, assignWorkerToWard,
+      addWard, updateWard, deleteWard, assignWorkerToWard,
       addGroup, updateGroup, deleteGroup,
       addNotice, updateNotice, deleteNotice,
       addUser, updateUser, deleteUser,
