@@ -1,2 +1,3 @@
-- [DNP360 mobile architecture](dnp360-arch.md) — Expo Router file-based routing, pnpm monorepo, AsyncStorage for all data, no real backend.
+- [DNP360 mobile architecture](dnp360-arch.md) — Expo Router file-based routing, pnpm monorepo, AsyncStorage for session cache, Firestore as primary DB.
 - [DNP360 House DB module](dnp360-housedb.md) — Super Admin House DB tab: 3 inner-tab pattern, positions, and storage version rules.
+- [DNP360 Firestore migration](dnp360-firestore.md) — Migrated from RTDB to Firestore; collection layout, offline persistence setup, and version key.

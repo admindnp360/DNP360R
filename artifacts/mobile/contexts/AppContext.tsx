@@ -1,7 +1,17 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { get, ref, set } from 'firebase/database';
+import {
+  collection,
+  deleteDoc,
+  doc,
+  getDocs,
+  getDoc,
+  serverTimestamp,
+  setDoc,
+  updateDoc,
+  writeBatch,
+} from 'firebase/firestore';
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { rtdb } from '@/lib/firebase';
+import { db } from '@/lib/firebase';
 import type {
   Attendance, Complaint, ComplaintCategory, ComplaintStatus,
   Group, House, HouseVisit, ImportHistory, Notice, PasswordResetRequest,
@@ -74,8 +84,7 @@ interface AppContextType {
   isTodayAttendanceMarked: (workerId: string) => boolean;
 }
 
-const STORAGE_VERSION = '6';
-const RTDB_BASE = 'dnp360';
+const STORAGE_VERSION = '7';
 
 function uid() {
   return Date.now().toString(36).toUpperCase() + Math.random().toString(36).slice(2, 6).toUpperCase();
@@ -104,13 +113,8 @@ export function genUserId(role: string): string {
   return `${prefix}${digits}${letter}`;
 }
 
-const EMPTY_ARRAY_SENTINEL = '__ea__';
-
 function clean<T>(data: T): T {
-  return JSON.parse(JSON.stringify(data, (_k, v) => {
-    if (Array.isArray(v) && v.length === 0) return EMPTY_ARRAY_SENTINEL;
-    return v === undefined ? null : v;
-  }));
+  return JSON.parse(JSON.stringify(data, (_k, v) => (v === undefined ? null : v)));
 }
 
 const d = (daysAgo: number) => {
@@ -129,57 +133,57 @@ const SEED_WARDS: Ward[] = [
 ];
 
 const SEED_GROUPS: Group[] = [
-  { id: 'G001', name: 'Main Market', wardId: 'W1', wardNumber: '1', description: 'Main market area of Ward 1', color: '#10B981', createdAt: d(30), createdBy: 'SA001' },
-  { id: 'G002', name: 'Hospital Area', wardId: 'W1', wardNumber: '1', description: 'Near district hospital', color: '#EF4444', createdAt: d(30), createdBy: 'SA001' },
-  { id: 'G003', name: 'School Area', wardId: 'W1', wardNumber: '1', description: 'Near government school', color: '#F97316', createdAt: d(28), createdBy: 'SA001' },
-  { id: 'G004', name: 'Market Zone A', wardId: 'W2', wardNumber: '2', description: 'Market Road Zone', color: '#8B5CF6', createdAt: d(25), createdBy: 'SA001' },
-  { id: 'G005', name: 'Sector 7 Group 1', wardId: 'W42', wardNumber: '42', description: 'Near Temple', color: '#0EA5E9', createdAt: d(20), createdBy: 'SA001' },
-  { id: 'G006', name: 'Green Park Zone', wardId: 'W12', wardNumber: '12', description: 'Green Park area', color: '#EC4899', createdAt: d(15), createdBy: 'SA001' },
+  { id: 'G001', name: 'Main Market',    wardId: 'W1',  wardNumber: '1',  description: 'Main market area of Ward 1', color: '#10B981', createdAt: d(30), createdBy: 'SA001' },
+  { id: 'G002', name: 'Hospital Area',  wardId: 'W1',  wardNumber: '1',  description: 'Near district hospital',     color: '#EF4444', createdAt: d(30), createdBy: 'SA001' },
+  { id: 'G003', name: 'School Area',    wardId: 'W1',  wardNumber: '1',  description: 'Near government school',     color: '#F97316', createdAt: d(28), createdBy: 'SA001' },
+  { id: 'G004', name: 'Market Zone A',  wardId: 'W2',  wardNumber: '2',  description: 'Market Road Zone',           color: '#8B5CF6', createdAt: d(25), createdBy: 'SA001' },
+  { id: 'G005', name: 'Sector 7 Group 1', wardId: 'W42', wardNumber: '42', description: 'Near Temple',             color: '#0EA5E9', createdAt: d(20), createdBy: 'SA001' },
+  { id: 'G006', name: 'Green Park Zone', wardId: 'W12', wardNumber: '12', description: 'Green Park area',          color: '#EC4899', createdAt: d(15), createdBy: 'SA001' },
 ];
 
 const SEED_HOUSES: House[] = [
-  { id: 'H001', registrationNumber: 'DNPH001', ownerName: 'Ramesh Prasad', fatherOrHusband: 'Shiv Prasad', mobile: '9934512300', address: 'Ward 42, Near Temple, Daudnagar', wardId: 'W42', wardNumber: '42', groupId: 'G005', groupName: 'Sector 7 Group 1', propertyType: 'Residential', status: 'Active', isActive: true, createdAt: d(30) },
-  { id: 'H002', registrationNumber: 'DNPH002', ownerName: 'Sunita Devi', fatherOrHusband: 'Ram Kumar', mobile: '9934512301', address: 'Ward 42, Main Road, Daudnagar', wardId: 'W42', wardNumber: '42', groupId: 'G005', groupName: 'Sector 7 Group 1', propertyType: 'Residential', status: 'Active', isActive: true, createdAt: d(29) },
-  { id: 'H003', registrationNumber: 'DNPH003', ownerName: 'Manoj Kumar Singh', fatherOrHusband: 'Vijay Singh', mobile: '9934512302', address: 'Ward 42, Shiv Nagar, Daudnagar', wardId: 'W42', wardNumber: '42', propertyType: 'Commercial', status: 'Active', isActive: true, createdAt: d(28) },
-  { id: 'H004', registrationNumber: 'DNPH004', ownerName: 'Geeta Kumari', fatherOrHusband: 'Suresh Kumar', mobile: '9934512303', address: 'Ward 1, Station Road, Daudnagar', wardId: 'W1', wardNumber: '1', groupId: 'G001', groupName: 'Main Market', propertyType: 'Residential', status: 'Active', isActive: true, createdAt: d(27) },
-  { id: 'H005', registrationNumber: 'DNPH005', ownerName: 'Vijay Kumar', mobile: '9934512304', address: 'Ward 1, Near School, Daudnagar', wardId: 'W1', wardNumber: '1', groupId: 'G003', groupName: 'School Area', propertyType: 'Residential', status: 'Active', isActive: true, createdAt: d(26) },
-  { id: 'H006', registrationNumber: 'DNPH006', ownerName: 'Anjali Singh', fatherOrHusband: 'Deepak Singh', mobile: '9934512305', address: 'Ward 12, Civil Area, Daudnagar', wardId: 'W12', wardNumber: '12', groupId: 'G006', groupName: 'Green Park Zone', propertyType: 'Residential', status: 'Active', isActive: true, createdAt: d(25) },
-  { id: 'H007', registrationNumber: 'DNPH007', ownerName: 'Pradeep Yadav', mobile: '9934512306', address: 'Ward 12, Green Park, Daudnagar', wardId: 'W12', wardNumber: '12', propertyType: 'Government', status: 'Active', isActive: true, createdAt: d(24) },
-  { id: 'H008', registrationNumber: 'DNPH008', ownerName: 'Kavita Devi', fatherOrHusband: 'Mohan Prasad', mobile: '9934512307', address: 'Ward 2, Market Road, Daudnagar', wardId: 'W2', wardNumber: '2', groupId: 'G004', groupName: 'Market Zone A', propertyType: 'Commercial', status: 'Active', isActive: true, createdAt: d(23) },
+  { id: 'H001', registrationNumber: 'DNPH001', ownerName: 'Ramesh Prasad',    fatherOrHusband: 'Shiv Prasad',  mobile: '9934512300', address: 'Ward 42, Near Temple, Daudnagar',  wardId: 'W42', wardNumber: '42', groupId: 'G005', groupName: 'Sector 7 Group 1', propertyType: 'Residential', status: 'Active', isActive: true, createdAt: d(30) },
+  { id: 'H002', registrationNumber: 'DNPH002', ownerName: 'Sunita Devi',      fatherOrHusband: 'Ram Kumar',    mobile: '9934512301', address: 'Ward 42, Main Road, Daudnagar',    wardId: 'W42', wardNumber: '42', groupId: 'G005', groupName: 'Sector 7 Group 1', propertyType: 'Residential', status: 'Active', isActive: true, createdAt: d(29) },
+  { id: 'H003', registrationNumber: 'DNPH003', ownerName: 'Manoj Kumar Singh', fatherOrHusband: 'Vijay Singh', mobile: '9934512302', address: 'Ward 42, Shiv Nagar, Daudnagar',  wardId: 'W42', wardNumber: '42', propertyType: 'Commercial',  status: 'Active', isActive: true, createdAt: d(28) },
+  { id: 'H004', registrationNumber: 'DNPH004', ownerName: 'Geeta Kumari',     fatherOrHusband: 'Suresh Kumar', mobile: '9934512303', address: 'Ward 1, Station Road, Daudnagar', wardId: 'W1',  wardNumber: '1',  groupId: 'G001', groupName: 'Main Market',      propertyType: 'Residential', status: 'Active', isActive: true, createdAt: d(27) },
+  { id: 'H005', registrationNumber: 'DNPH005', ownerName: 'Vijay Kumar',      mobile: '9934512304',            address: 'Ward 1, Near School, Daudnagar',  wardId: 'W1',  wardNumber: '1',  groupId: 'G003', groupName: 'School Area',      propertyType: 'Residential', status: 'Active', isActive: true, createdAt: d(26) },
+  { id: 'H006', registrationNumber: 'DNPH006', ownerName: 'Anjali Singh',     fatherOrHusband: 'Deepak Singh', mobile: '9934512305', address: 'Ward 12, Civil Area, Daudnagar',  wardId: 'W12', wardNumber: '12', groupId: 'G006', groupName: 'Green Park Zone',  propertyType: 'Residential', status: 'Active', isActive: true, createdAt: d(25) },
+  { id: 'H007', registrationNumber: 'DNPH007', ownerName: 'Pradeep Yadav',    mobile: '9934512306',            address: 'Ward 12, Green Park, Daudnagar',  wardId: 'W12', wardNumber: '12', propertyType: 'Government',  status: 'Active', isActive: true, createdAt: d(24) },
+  { id: 'H008', registrationNumber: 'DNPH008', ownerName: 'Kavita Devi',      fatherOrHusband: 'Mohan Prasad', mobile: '9934512307', address: 'Ward 2, Market Road, Daudnagar',  wardId: 'W2',  wardNumber: '2',  groupId: 'G004', groupName: 'Market Zone A',    propertyType: 'Commercial',  status: 'Active', isActive: true, createdAt: d(23) },
 ];
 
 const SEED_NOTICES: Notice[] = [
-  { id: 'N001', title: 'Property Tax Due', content: 'All property holders are requested to pay their annual property tax before 31st March 2025 to avoid penalty.', type: 'notice', priority: 'high', createdAt: '2025-01-10', isActive: true },
-  { id: 'N002', title: 'Water Supply Interruption', content: 'Due to maintenance work, water supply will be interrupted in Ward 3, 4, and 5 on 25th January from 9 AM to 5 PM.', type: 'alert', priority: 'high', createdAt: '2025-01-20', isActive: true },
-  { id: 'N003', title: 'Cleanliness Drive - Swachh Bharat', content: 'Nagar Parishad Daudnagar is organizing a Swachh Bharat cleanliness drive on 26th January.', type: 'announcement', priority: 'medium', createdAt: '2025-01-18', isActive: true },
-  { id: 'N004', title: 'Ward Committee Meeting', content: 'Monthly ward committee meeting will be held on 28th January at 11 AM in the Municipal Hall.', type: 'notice', priority: 'low', createdAt: '2025-01-15', isActive: true },
+  { id: 'N001', title: 'Property Tax Due',           content: 'All property holders are requested to pay their annual property tax before 31st March 2025.',         type: 'notice',       priority: 'high',   createdAt: '2025-01-10', isActive: true },
+  { id: 'N002', title: 'Water Supply Interruption',  content: 'Due to maintenance work, water supply will be interrupted in Ward 3, 4, and 5 on 25th January.',     type: 'alert',        priority: 'high',   createdAt: '2025-01-20', isActive: true },
+  { id: 'N003', title: 'Cleanliness Drive',          content: 'Nagar Parishad Daudnagar is organizing a Swachh Bharat cleanliness drive on 26th January.',           type: 'announcement', priority: 'medium', createdAt: '2025-01-18', isActive: true },
+  { id: 'N004', title: 'Ward Committee Meeting',     content: 'Monthly ward committee meeting will be held on 28th January at 11 AM in the Municipal Hall.',          type: 'notice',       priority: 'low',    createdAt: '2025-01-15', isActive: true },
 ];
 
 const SEED_COMPLAINTS: Complaint[] = [
   { id: 'CPL001', citizenId: 'CT4821M', citizenName: 'Rahul Kumar',  category: 'garbage_collection', description: 'Garbage has not been collected from our street for 3 days.', location: 'Ward 5, Near Post Office, Daudnagar', status: 'submitted',   createdAt: d(2),  updatedAt: d(2),  wardId: 'W1',  wardNumber: '1'  },
-  { id: 'CPL002', citizenId: 'CT4821M', citizenName: 'Rahul Kumar',  category: 'drainage',           description: 'Open drain near our house is blocked and overflowing during rain.', location: 'Ward 5, Ram Nagar, Daudnagar',     status: 'assigned',    createdAt: d(5),  updatedAt: d(3),  assignedTo: 'SK1538Q', assignedToName: 'Amit Kumar', wardId: 'W1',  wardNumber: '1'  },
-  { id: 'CPL003', citizenId: 'CT4821M', citizenName: 'Rahul Kumar',  category: 'street_light',       description: 'Street light near our house is not working for a week.',           location: 'Ward 5, Main Road, Daudnagar',       status: 'resolved',    createdAt: d(15), updatedAt: d(8),  wardId: 'W1',  wardNumber: '1'  },
-  { id: 'CPL004', citizenId: 'CT5629N', citizenName: 'Priya Singh',  category: 'water_supply',       description: 'No water supply for 2 days in our area.',                          location: 'Ward 12, Civil Line, Daudnagar',     status: 'in_progress', createdAt: d(1),  updatedAt: d(0),  assignedTo: 'SK1538Q', assignedToName: 'Amit Kumar', wardId: 'W12', wardNumber: '12' },
-  { id: 'CPL005', citizenId: 'CT8834P', citizenName: 'Suresh Yadav', category: 'road_damage',        description: 'Large pothole on main road causing accidents.',                      location: 'Ward 3, Station Road, Daudnagar',    status: 'submitted',   createdAt: d(0),  updatedAt: d(0),  wardId: 'W3',  wardNumber: '3'  },
-  { id: 'CPL006', citizenId: 'CT2017K', citizenName: 'Meena Devi',   category: 'cleanliness',        description: 'Public park is very dirty. Garbage piled up near the gate.',        location: 'Ward 2, Central Park, Daudnagar',    status: 'assigned',    createdAt: d(3),  updatedAt: d(2),  wardId: 'W2',  wardNumber: '2'  },
+  { id: 'CPL002', citizenId: 'CT4821M', citizenName: 'Rahul Kumar',  category: 'drainage',           description: 'Open drain near our house is blocked and overflowing.',        location: 'Ward 5, Ram Nagar, Daudnagar',       status: 'assigned',    createdAt: d(5),  updatedAt: d(3),  assignedTo: 'SK1538Q', assignedToName: 'Amit Kumar', wardId: 'W1', wardNumber: '1' },
+  { id: 'CPL003', citizenId: 'CT4821M', citizenName: 'Rahul Kumar',  category: 'street_light',       description: 'Street light near our house is not working for a week.',        location: 'Ward 5, Main Road, Daudnagar',       status: 'resolved',    createdAt: d(15), updatedAt: d(8),  wardId: 'W1',  wardNumber: '1'  },
+  { id: 'CPL004', citizenId: 'CT5629N', citizenName: 'Priya Singh',  category: 'water_supply',       description: 'No water supply for 2 days in our area.',                       location: 'Ward 12, Civil Line, Daudnagar',     status: 'in_progress', createdAt: d(1),  updatedAt: d(0),  assignedTo: 'SK1538Q', assignedToName: 'Amit Kumar', wardId: 'W12', wardNumber: '12' },
+  { id: 'CPL005', citizenId: 'CT8834P', citizenName: 'Suresh Yadav', category: 'road_damage',        description: 'Large pothole on main road causing accidents.',                  location: 'Ward 3, Station Road, Daudnagar',    status: 'submitted',   createdAt: d(0),  updatedAt: d(0),  wardId: 'W3',  wardNumber: '3'  },
+  { id: 'CPL006', citizenId: 'CT2017K', citizenName: 'Meena Devi',   category: 'cleanliness',        description: 'Public park is very dirty. Garbage piled up near the gate.',    location: 'Ward 2, Central Park, Daudnagar',    status: 'assigned',    createdAt: d(3),  updatedAt: d(2),  wardId: 'W2',  wardNumber: '2'  },
 ];
 
 const SEED_USERS: User[] = [
-  { id: 'CT4821M', name: 'Rahul Kumar',   email: 'citizen.dnp360@gmail.com',   mobile: '9876543210', role: 'citizen',    address: 'Ward 5, Daudnagar', isActive: true,  createdAt: '2024-01-15' },
-  { id: 'CT5629N', name: 'Priya Singh',   email: 'priya.singh@gmail.com',      mobile: '9876543220', role: 'citizen',    isActive: true,  createdAt: '2024-02-20' },
-  { id: 'CT8834P', name: 'Suresh Yadav', email: 'suresh.yadav@gmail.com',     mobile: '9876543221', role: 'citizen',    isActive: true,  createdAt: '2024-03-10' },
-  { id: 'CT2017K', name: 'Meena Devi',   email: 'meena.devi@gmail.com',       mobile: '9876543222', role: 'citizen',    isActive: true,  createdAt: '2024-04-05' },
-  { id: 'SK1538Q', name: 'Amit Kumar',   email: 'sk1538q.dnp360@gmail.com',   mobile: '9876543211', role: 'safaikarmi', wardId: 'W42',  employeeId: 'SK2291', isActive: true,  createdAt: '2023-06-01' },
-  { id: 'SK7291R', name: 'Raju Prasad',  email: 'sk7291r.dnp360@gmail.com',   mobile: '9876543215', role: 'safaikarmi', wardId: 'W1',   employeeId: 'SK2292', isActive: true,  createdAt: '2023-07-01' },
-  { id: 'SK4403S', name: 'Bholu Kumar',  email: 'sk4403s.dnp360@gmail.com',   mobile: '9876543216', role: 'safaikarmi', wardId: 'W3',   employeeId: 'SK2293', isActive: false, createdAt: '2023-08-01' },
-  { id: 'OF7642B', name: 'Rajesh Gupta', email: 'of7642b.dnp360@gmail.com',   mobile: '9876543212', role: 'official',   wardId: 'W12',  employeeId: 'OF4412', isActive: true,  createdAt: '2022-03-10' },
-  { id: 'OF3815C', name: 'Deepak Sinha', email: 'of3815c.dnp360@gmail.com',   mobile: '9876543217', role: 'official',   wardId: 'W2',   employeeId: 'OF4413', isActive: true,  createdAt: '2022-05-15' },
-  { id: 'AD9305X', name: 'Sandeep Kumar',email: 'ad9305x.dnp360@gmail.com',   mobile: '9876543213', role: 'admin',      employeeId: 'AD9305X', isActive: true,  createdAt: '2021-01-01' },
+  { id: 'CT4821M', name: 'Rahul Kumar',   email: 'citizen.dnp360@gmail.com',  mobile: '9876543210', role: 'citizen',    address: 'Ward 5, Daudnagar', isActive: true,  createdAt: '2024-01-15' },
+  { id: 'CT5629N', name: 'Priya Singh',   email: 'priya.singh@gmail.com',     mobile: '9876543220', role: 'citizen',    isActive: true,  createdAt: '2024-02-20' },
+  { id: 'CT8834P', name: 'Suresh Yadav',  email: 'suresh.yadav@gmail.com',    mobile: '9876543221', role: 'citizen',    isActive: true,  createdAt: '2024-03-10' },
+  { id: 'CT2017K', name: 'Meena Devi',    email: 'meena.devi@gmail.com',      mobile: '9876543222', role: 'citizen',    isActive: true,  createdAt: '2024-04-05' },
+  { id: 'SK1538Q', name: 'Amit Kumar',    email: 'sk1538q.dnp360@gmail.com',  mobile: '9876543211', role: 'safaikarmi', wardId: 'W42', employeeId: 'SK2291', isActive: true,  createdAt: '2023-06-01' },
+  { id: 'SK7291R', name: 'Raju Prasad',   email: 'sk7291r.dnp360@gmail.com',  mobile: '9876543215', role: 'safaikarmi', wardId: 'W1',  employeeId: 'SK2292', isActive: true,  createdAt: '2023-07-01' },
+  { id: 'SK4403S', name: 'Bholu Kumar',   email: 'sk4403s.dnp360@gmail.com',  mobile: '9876543216', role: 'safaikarmi', wardId: 'W3',  employeeId: 'SK2293', isActive: false, createdAt: '2023-08-01' },
+  { id: 'OF7642B', name: 'Rajesh Gupta',  email: 'of7642b.dnp360@gmail.com',  mobile: '9876543212', role: 'official',   wardId: 'W12', employeeId: 'OF4412', isActive: true,  createdAt: '2022-03-10' },
+  { id: 'OF3815C', name: 'Deepak Sinha',  email: 'of3815c.dnp360@gmail.com',  mobile: '9876543217', role: 'official',   wardId: 'W2',  employeeId: 'OF4413', isActive: true,  createdAt: '2022-05-15' },
+  { id: 'AD9305X', name: 'Sandeep Kumar', email: 'ad9305x.dnp360@gmail.com',  mobile: '9876543213', role: 'admin',      employeeId: 'AD9305X', isActive: true,  createdAt: '2021-01-01' },
 ];
 
 const SEED_KEYS: SecretKey[] = [
-  { id: 'KEY001', code: 'SK-2566-F000', role: 'safaikarmi', isActive: true,  usedBy: 'SK1538Q', usedByName: 'Amit Kumar',    createdAt: d(30) },
-  { id: 'KEY002', code: 'OF-4416-A000', role: 'official',   isActive: true,  usedBy: 'OF7642B', usedByName: 'Rajesh Gupta',  createdAt: d(30) },
+  { id: 'KEY001', code: 'SK-2566-F000', role: 'safaikarmi', isActive: true,  usedBy: 'SK1538Q', usedByName: 'Amit Kumar',   createdAt: d(30) },
+  { id: 'KEY002', code: 'OF-4416-A000', role: 'official',   isActive: true,  usedBy: 'OF7642B', usedByName: 'Rajesh Gupta', createdAt: d(30) },
   { id: 'KEY003', code: 'SK-3891-B000', role: 'safaikarmi', isActive: false, createdAt: d(10) },
   { id: 'KEY004', code: 'OF-7234-C000', role: 'official',   isActive: true,  createdAt: d(5)  },
 ];
@@ -238,84 +242,84 @@ function seedHouseVisits(): HouseVisit[] {
   return visits;
 }
 
-function normalizeFromRTDB(val: any): any {
-  if (val === null || val === undefined) return val;
-  if (val === EMPTY_ARRAY_SENTINEL) return [];
-  if (Array.isArray(val)) return val.map(normalizeFromRTDB);
-  if (typeof val === 'object') {
-    const keys = Object.keys(val);
-    const allNumeric = keys.length > 0 && keys.every(k => /^\d+$/.test(k));
-    if (allNumeric) {
-      return keys
-        .sort((a, b) => Number(a) - Number(b))
-        .map(k => normalizeFromRTDB(val[k]));
+async function fsLoadCollection<T extends { id: string }>(col: string, seed: T[]): Promise<T[]> {
+  try {
+    const snap = await getDocs(collection(db, col));
+    if (!snap.empty) {
+      return snap.docs.map(d => ({ id: d.id, ...d.data() }) as T);
     }
-    const out: any = {};
-    for (const k of keys) out[k] = normalizeFromRTDB(val[k]);
-    return out;
-  }
-  return val;
-}
-
-function toArray<T>(val: any): T[] {
-  if (!val) return [];
-  return (Object.values(val) as any[]).map(normalizeFromRTDB) as T[];
-}
-
-function toMap<T extends { id: string }>(arr: T[]): Record<string, T> {
-  const map: Record<string, T> = {};
-  arr.forEach(item => { map[item.id] = item; });
-  return map;
-}
-
-async function rtdbLoad<T extends { id: string }>(path: string, seed: T[]): Promise<T[]> {
-  try {
-    const snap = await get(ref(rtdb, `${RTDB_BASE}/${path}`));
-    if (snap.exists()) return toArray<T>(snap.val());
-    await set(ref(rtdb, `${RTDB_BASE}/${path}`), clean(toMap(seed)));
+    const b = writeBatch(db);
+    for (const item of seed) {
+      const { id, ...rest } = item as any;
+      b.set(doc(db, col, id), clean({ ...rest, _createdAt: serverTimestamp() }));
+    }
+    await b.commit();
     return seed;
   } catch {
-    const stored = await AsyncStorage.getItem(`dnp360_${path}`).catch(() => null);
+    const stored = await AsyncStorage.getItem(`dnp360_${col}`).catch(() => null);
     return stored ? JSON.parse(stored) : seed;
   }
 }
 
-async function rtdbLoadObj<T>(path: string, seed: T): Promise<T> {
+async function fsLoadDoc<T>(col: string, docId: string, seed: T): Promise<T> {
   try {
-    const snap = await get(ref(rtdb, `${RTDB_BASE}/${path}`));
-    if (snap.exists()) return snap.val() as T;
-    await set(ref(rtdb, `${RTDB_BASE}/${path}`), clean(seed));
+    const snap = await getDoc(doc(db, col, docId));
+    if (snap.exists()) return snap.data() as T;
+    await setDoc(doc(db, col, docId), clean({ ...(seed as any), _createdAt: serverTimestamp() }));
     return seed;
   } catch {
-    const stored = await AsyncStorage.getItem(`dnp360_${path}`).catch(() => null);
+    const stored = await AsyncStorage.getItem(`dnp360_${col}_${docId}`).catch(() => null);
     return stored ? JSON.parse(stored) : seed;
   }
 }
 
-async function rtdbSave<T extends { id: string }>(path: string, data: T[]): Promise<void> {
+async function fsSaveDoc<T extends { id: string }>(col: string, item: T): Promise<void> {
   try {
-    await set(ref(rtdb, `${RTDB_BASE}/${path}`), clean(toMap(data)));
+    const { id, ...rest } = item as any;
+    await setDoc(doc(db, col, id), clean({ ...rest, _updatedAt: serverTimestamp() }));
   } catch {
-    await AsyncStorage.setItem(`dnp360_${path}`, JSON.stringify(data)).catch(() => {});
+    console.warn(`Firestore write failed for ${col}/${(item as any).id}`);
   }
 }
 
-async function rtdbSaveObj<T>(path: string, data: T): Promise<void> {
+async function fsUpdateDocFields(col: string, docId: string, fields: Record<string, any>): Promise<void> {
   try {
-    await set(ref(rtdb, `${RTDB_BASE}/${path}`), clean(data));
+    await updateDoc(doc(db, col, docId), { ...clean(fields), _updatedAt: serverTimestamp() });
   } catch {
-    await AsyncStorage.setItem(`dnp360_${path}`, JSON.stringify(data)).catch(() => {});
+    console.warn(`Firestore update failed for ${col}/${docId}`);
   }
 }
 
-const DATA_COLLECTIONS = ['complaints', 'houses', 'wards', 'groups', 'notices', 'attendance', 'houseVisits', 'secretKeys', 'support', 'passwordResetRequests', 'importHistory'];
+async function fsDeleteDoc(col: string, docId: string): Promise<void> {
+  try {
+    await deleteDoc(doc(db, col, docId));
+  } catch {
+    console.warn(`Firestore delete failed for ${col}/${docId}`);
+  }
+}
+
+async function fsUpdateSingleDoc<T>(col: string, docId: string, data: T): Promise<void> {
+  try {
+    await setDoc(doc(db, col, docId), clean({ ...(data as any), _updatedAt: serverTimestamp() }));
+  } catch {
+    console.warn(`Firestore update failed for ${col}/${docId}`);
+  }
+}
 
 async function checkVersion(): Promise<void> {
   try {
-    const snap = await get(ref(rtdb, `${RTDB_BASE}/meta/version`));
-    if (snap.exists() && snap.val() === STORAGE_VERSION) return;
-    await Promise.all(DATA_COLLECTIONS.map(c => set(ref(rtdb, `${RTDB_BASE}/${c}`), null)));
-    await set(ref(rtdb, `${RTDB_BASE}/meta/version`), STORAGE_VERSION);
+    const snap = await getDoc(doc(db, 'meta', 'version'));
+    if (snap.exists() && snap.data().value === STORAGE_VERSION) return;
+    const cols = ['complaints', 'houses', 'wards', 'groups', 'notices', 'attendance', 'houseVisits', 'users', 'secretKeys', 'passwordResetRequests', 'importHistory'];
+    for (const col of cols) {
+      const colSnap = await getDocs(collection(db, col));
+      if (!colSnap.empty) {
+        const b = writeBatch(db);
+        colSnap.docs.forEach(d => b.delete(d.ref));
+        await b.commit();
+      }
+    }
+    await setDoc(doc(db, 'meta', 'version'), { value: STORAGE_VERSION, _updatedAt: serverTimestamp() });
   } catch {
     const v = await AsyncStorage.getItem('dnp360_version').catch(() => null);
     if (v !== STORAGE_VERSION) {
@@ -344,18 +348,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     (async () => {
       await checkVersion();
       const [c, h, w, g, n, a, v, u, k, s, r, ih] = await Promise.all([
-        rtdbLoad<Complaint>('complaints', SEED_COMPLAINTS),
-        rtdbLoad<House>('houses', SEED_HOUSES),
-        rtdbLoad<Ward>('wards', SEED_WARDS),
-        rtdbLoad<Group>('groups', SEED_GROUPS),
-        rtdbLoad<Notice>('notices', SEED_NOTICES),
-        rtdbLoad<Attendance>('attendance', seedAttendance()),
-        rtdbLoad<HouseVisit>('houseVisits', seedHouseVisits()),
-        rtdbLoad<User>('users', SEED_USERS),
-        rtdbLoad<SecretKey>('secretKeys', SEED_KEYS),
-        rtdbLoadObj<SupportDetails>('support', DEFAULT_SUPPORT),
-        rtdbLoad<PasswordResetRequest>('passwordResetRequests', []),
-        rtdbLoad<ImportHistory>('importHistory', []),
+        fsLoadCollection<Complaint>('complaints', SEED_COMPLAINTS),
+        fsLoadCollection<House>('houses', SEED_HOUSES),
+        fsLoadCollection<Ward>('wards', SEED_WARDS),
+        fsLoadCollection<Group>('groups', SEED_GROUPS),
+        fsLoadCollection<Notice>('notices', SEED_NOTICES),
+        fsLoadCollection<Attendance>('attendance', seedAttendance()),
+        fsLoadCollection<HouseVisit>('houseVisits', seedHouseVisits()),
+        fsLoadCollection<User>('users', SEED_USERS),
+        fsLoadCollection<SecretKey>('secretKeys', SEED_KEYS),
+        fsLoadDoc<SupportDetails>('settings', 'support', DEFAULT_SUPPORT),
+        fsLoadCollection<PasswordResetRequest>('passwordResetRequests', []),
+        fsLoadCollection<ImportHistory>('importHistory', []),
       ]);
       setComplaints(c); setHouses(h); setWards(w); setGroups(g); setNotices(n);
       setAttendance(a); setHouseVisits(v); setUsers(u); setSecretKeys(k);
@@ -366,50 +370,57 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   async function addComplaint(c: Omit<Complaint, 'id' | 'createdAt' | 'updatedAt'>) {
     const now = today();
     const item: Complaint = { ...c, id: uid(), createdAt: now, updatedAt: now };
-    const updated = [item, ...complaints];
-    setComplaints(updated); await rtdbSave('complaints', updated);
+    setComplaints(prev => [item, ...prev]);
+    await fsSaveDoc('complaints', item);
   }
 
   async function updateComplaint(id: string, updates: Partial<Complaint>) {
-    const updated = complaints.map(c => c.id === id ? { ...c, ...updates, updatedAt: today() } : c);
-    setComplaints(updated); await rtdbSave('complaints', updated);
+    const updatedItem = { ...complaints.find(c => c.id === id)!, ...updates, updatedAt: today() };
+    setComplaints(prev => prev.map(c => c.id === id ? updatedItem : c));
+    await fsSaveDoc('complaints', updatedItem);
   }
 
   async function addHouseVisit(visit: Omit<HouseVisit, 'id'>) {
     const item: HouseVisit = { ...visit, id: uid() };
-    const updated = [item, ...houseVisits];
-    setHouseVisits(updated); await rtdbSave('houseVisits', updated);
+    setHouseVisits(prev => [item, ...prev]);
+    await fsSaveDoc('houseVisits', item);
   }
 
   async function markAttendance(workerId: string, method: 'qr' | 'manual' = 'qr'): Promise<boolean> {
     const todayStr = today();
     if (attendance.some(a => a.workerId === workerId && a.date === todayStr)) return false;
     const item: Attendance = { id: uid(), workerId, date: todayStr, status: 'present', checkInTime: nowTime(), method };
-    const updated = [item, ...attendance];
-    setAttendance(updated); await rtdbSave('attendance', updated);
+    setAttendance(prev => [item, ...prev]);
+    await fsSaveDoc('attendance', item);
     return true;
   }
 
   async function addHouse(h: Omit<House, 'id'>) {
     const item: House = { ...h, id: uid(), createdAt: today() };
-    const updated = [...houses, item];
-    setHouses(updated); await rtdbSave('houses', updated);
+    setHouses(prev => [...prev, item]);
+    await fsSaveDoc('houses', item);
   }
 
   async function addMultipleHouses(newHouses: Omit<House, 'id'>[]) {
     const items: House[] = newHouses.map(h => ({ ...h, id: uid(), createdAt: today() }));
-    const updated = [...houses, ...items];
-    setHouses(updated); await rtdbSave('houses', updated);
+    setHouses(prev => [...prev, ...items]);
+    const b = writeBatch(db);
+    for (const item of items) {
+      const { id, ...rest } = item as any;
+      b.set(doc(db, 'houses', id), clean({ ...rest, _updatedAt: serverTimestamp() }));
+    }
+    await b.commit().catch(e => console.warn('Batch write failed:', e));
   }
 
   async function updateHouse(id: string, updates: Partial<House>) {
-    const updated = houses.map(h => h.id === id ? { ...h, ...updates, updatedAt: today() } : h);
-    setHouses(updated); await rtdbSave('houses', updated);
+    const updatedItem = { ...houses.find(h => h.id === id)!, ...updates, updatedAt: today() };
+    setHouses(prev => prev.map(h => h.id === id ? updatedItem : h));
+    await fsSaveDoc('houses', updatedItem);
   }
 
   async function deleteHouse(id: string) {
-    const updated = houses.filter(h => h.id !== id);
-    setHouses(updated); await rtdbSave('houses', updated);
+    setHouses(prev => prev.filter(h => h.id !== id));
+    await fsDeleteDoc('houses', id);
   }
 
   async function bulkImportHouses(
@@ -419,6 +430,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   ): Promise<BulkImportResult> {
     const result: BulkImportResult = { imported: 0, skipped: 0, failed: 0, errors: [] };
     let currentHouses = [...houses];
+    const toWrite: House[] = [];
     const BATCH = 50;
 
     for (let i = 0; i < rows.length; i++) {
@@ -431,9 +443,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         if (duplicateMode === 'skip') {
           result.skipped++;
         } else {
-          const existing = currentHouses[existingIdx];
           const merged: House = {
-            ...existing,
+            ...currentHouses[existingIdx],
             ownerName: row.ownerName,
             fatherOrHusband: row.fatherOrHusband,
             address: row.address,
@@ -444,11 +455,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             updatedAt: today(),
           };
           currentHouses[existingIdx] = merged;
+          toWrite.push(merged);
           result.imported++;
         }
       } else {
         const item: House = { ...row, id: uid(), createdAt: today(), status: 'Active', isActive: true };
         currentHouses = [...currentHouses, item];
+        toWrite.push(item);
         result.imported++;
       }
 
@@ -459,189 +472,238 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
 
     setHouses(currentHouses);
-    await rtdbSave('houses', currentHouses);
+
+    const FIRESTORE_BATCH = 500;
+    for (let i = 0; i < toWrite.length; i += FIRESTORE_BATCH) {
+      const chunk = toWrite.slice(i, i + FIRESTORE_BATCH);
+      const b = writeBatch(db);
+      for (const item of chunk) {
+        const { id, ...rest } = item as any;
+        b.set(doc(db, 'houses', id), clean({ ...rest, _updatedAt: serverTimestamp() }));
+      }
+      await b.commit().catch(e => console.warn('Bulk batch failed:', e));
+    }
+
     onProgress?.(rows.length, rows.length);
     return result;
   }
 
   async function assignGroupToHouses(houseIds: string[], groupId: string, groupName: string) {
-    const updated = houses.map(h =>
+    setHouses(prev => prev.map(h =>
       houseIds.includes(h.id) ? { ...h, groupId, groupName, updatedAt: today() } : h
-    );
-    setHouses(updated); await rtdbSave('houses', updated);
+    ));
+    const b = writeBatch(db);
+    for (const houseId of houseIds) {
+      b.update(doc(db, 'houses', houseId), { groupId, groupName, updatedAt: today(), _updatedAt: serverTimestamp() });
+    }
+    await b.commit().catch(e => console.warn('assignGroup batch failed:', e));
   }
 
   async function removeGroupFromHouses(houseIds: string[]) {
-    const updated = houses.map(h =>
-      houseIds.includes(h.id) ? { ...h, groupId: undefined, groupName: undefined, updatedAt: today() } : h
-    );
-    setHouses(updated); await rtdbSave('houses', updated);
+    setHouses(prev => prev.map(h =>
+      houseIds.includes(h.id) ? { ...h, groupId: null, groupName: null, updatedAt: today() } : h
+    ));
+    const b = writeBatch(db);
+    for (const houseId of houseIds) {
+      b.update(doc(db, 'houses', houseId), { groupId: null, groupName: null, updatedAt: today(), _updatedAt: serverTimestamp() });
+    }
+    await b.commit().catch(e => console.warn('removeGroup batch failed:', e));
   }
 
   async function addWard(w: Omit<Ward, 'id'>) {
     const item: Ward = { ...w, id: uid() };
-    const updated = [...wards, item];
-    setWards(updated); await rtdbSave('wards', updated);
+    setWards(prev => [...prev, item]);
+    await fsSaveDoc('wards', item);
   }
 
   async function updateWard(id: string, updates: Partial<Ward>) {
-    const updated = wards.map(w => w.id === id ? { ...w, ...updates } : w);
-    setWards(updated); await rtdbSave('wards', updated);
+    const updatedItem = { ...wards.find(w => w.id === id)!, ...updates };
+    setWards(prev => prev.map(w => w.id === id ? updatedItem : w));
+    await fsSaveDoc('wards', updatedItem);
   }
 
   async function assignWorkerToWard(wardId: string, workerId: string) {
-    const updatedWards = wards.map(w => {
-      if (w.id === wardId) {
-        const workers = w.assignedWorkers.includes(workerId) ? w.assignedWorkers : [...w.assignedWorkers, workerId];
-        return { ...w, assignedWorkers: workers };
-      }
-      return w;
-    });
-    setWards(updatedWards); await rtdbSave('wards', updatedWards);
-    const updatedUsers = users.map(u => u.id === workerId ? { ...u, wardId } : u);
-    setUsers(updatedUsers); await rtdbSave('users', updatedUsers);
+    const updatedWard = wards.find(w => w.id === wardId)!;
+    const workers = updatedWard.assignedWorkers.includes(workerId)
+      ? updatedWard.assignedWorkers
+      : [...updatedWard.assignedWorkers, workerId];
+    const newWard = { ...updatedWard, assignedWorkers: workers };
+    setWards(prev => prev.map(w => w.id === wardId ? newWard : w));
+    await fsSaveDoc('wards', newWard);
+
+    const updatedUser = { ...users.find(u => u.id === workerId)!, wardId };
+    setUsers(prev => prev.map(u => u.id === workerId ? updatedUser : u));
+    await fsSaveDoc('users', updatedUser);
   }
 
   async function addGroup(g: Omit<Group, 'id'>): Promise<Group> {
     const item: Group = { ...g, id: uid() };
-    const updated = [...groups, item];
-    setGroups(updated); await rtdbSave('groups', updated);
+    setGroups(prev => [...prev, item]);
+    await fsSaveDoc('groups', item);
     return item;
   }
 
   async function updateGroup(id: string, updates: Partial<Group>) {
-    const updated = groups.map(g => g.id === id ? { ...g, ...updates } : g);
-    setGroups(updated); await rtdbSave('groups', updated);
+    const updatedItem = { ...groups.find(g => g.id === id)!, ...updates };
+    setGroups(prev => prev.map(g => g.id === id ? updatedItem : g));
+    await fsSaveDoc('groups', updatedItem);
   }
 
   async function deleteGroup(id: string) {
-    const updated = groups.filter(g => g.id !== id);
-    setGroups(updated); await rtdbSave('groups', updated);
-    const updatedHouses = houses.map(h => h.groupId === id ? { ...h, groupId: undefined, groupName: undefined } : h);
-    setHouses(updatedHouses); await rtdbSave('houses', updatedHouses);
+    setGroups(prev => prev.filter(g => g.id !== id));
+    await fsDeleteDoc('groups', id);
+    const affected = houses.filter(h => h.groupId === id);
+    if (affected.length > 0) {
+      setHouses(prev => prev.map(h => h.groupId === id ? { ...h, groupId: undefined, groupName: undefined } : h));
+      const b = writeBatch(db);
+      for (const house of affected) {
+        b.update(doc(db, 'houses', house.id), { groupId: null, groupName: null, _updatedAt: serverTimestamp() });
+      }
+      await b.commit().catch(e => console.warn('deleteGroup batch failed:', e));
+    }
   }
 
   async function addNotice(n: Omit<Notice, 'id' | 'createdAt'>) {
     const item: Notice = { ...n, id: uid(), createdAt: today() };
-    const updated = [item, ...notices];
-    setNotices(updated); await rtdbSave('notices', updated);
+    setNotices(prev => [item, ...prev]);
+    await fsSaveDoc('notices', item);
   }
 
   async function updateNotice(id: string, updates: Partial<Notice>) {
-    const updated = notices.map(n => n.id === id ? { ...n, ...updates } : n);
-    setNotices(updated); await rtdbSave('notices', updated);
+    const updatedItem = { ...notices.find(n => n.id === id)!, ...updates };
+    setNotices(prev => prev.map(n => n.id === id ? updatedItem : n));
+    await fsSaveDoc('notices', updatedItem);
   }
 
   async function deleteNotice(id: string) {
-    const updated = notices.filter(n => n.id !== id);
-    setNotices(updated); await rtdbSave('notices', updated);
+    setNotices(prev => prev.filter(n => n.id !== id));
+    await fsDeleteDoc('notices', id);
   }
 
   async function addUser(u: User) {
-    const updated = [...users, u];
-    setUsers(updated); await rtdbSave('users', updated);
+    setUsers(prev => [...prev, u]);
+    await fsSaveDoc('users', u);
   }
 
   async function updateUser(id: string, updates: Partial<User>) {
-    const updated = users.map(u => u.id === id ? { ...u, ...updates } : u);
-    setUsers(updated); await rtdbSave('users', updated);
+    const updatedItem = { ...users.find(u => u.id === id)!, ...updates };
+    setUsers(prev => prev.map(u => u.id === id ? updatedItem : u));
+    await fsSaveDoc('users', updatedItem);
   }
 
   async function deleteUser(id: string) {
-    const updated = users.filter(u => u.id !== id);
-    setUsers(updated); await rtdbSave('users', updated);
+    setUsers(prev => prev.filter(u => u.id !== id));
+    await fsDeleteDoc('users', id);
   }
 
   async function addSecretKey(role: SecretKey['role']): Promise<SecretKey> {
     const code = genSecretKey(role);
     const item: SecretKey = { id: uid(), code, role, isActive: true, createdAt: today() };
-    const updated = [...secretKeys, item];
-    setSecretKeys(updated); await rtdbSave('secretKeys', updated);
+    setSecretKeys(prev => [...prev, item]);
+    await fsSaveDoc('secretKeys', item);
     return item;
   }
 
   async function toggleSecretKey(id: string) {
-    const updated = secretKeys.map(k => k.id === id ? { ...k, isActive: !k.isActive } : k);
-    setSecretKeys(updated); await rtdbSave('secretKeys', updated);
+    const current = secretKeys.find(k => k.id === id)!;
+    const updatedItem = { ...current, isActive: !current.isActive };
+    setSecretKeys(prev => prev.map(k => k.id === id ? updatedItem : k));
+    await fsUpdateDocFields('secretKeys', id, { isActive: updatedItem.isActive });
   }
 
   async function deleteSecretKey(id: string) {
-    const updated = secretKeys.filter(k => k.id !== id);
-    setSecretKeys(updated); await rtdbSave('secretKeys', updated);
+    setSecretKeys(prev => prev.filter(k => k.id !== id));
+    await fsDeleteDoc('secretKeys', id);
   }
 
   async function assignSecretKeyToUser(userId: string, userName: string, role: SecretKey['role']): Promise<SecretKey> {
     const code = genSecretKey(role);
     const item: SecretKey = { id: uid(), code, role, isActive: true, createdAt: today(), usedBy: userId, usedByName: userName };
-    const updated = [...secretKeys, item];
-    setSecretKeys(updated); await rtdbSave('secretKeys', updated);
+    setSecretKeys(prev => [...prev, item]);
+    await fsSaveDoc('secretKeys', item);
     return item;
   }
 
   async function updateSecretKeyCode(keyId: string, newCode: string) {
-    const updated = secretKeys.map(k => k.id === keyId ? { ...k, code: newCode.trim().toUpperCase() } : k);
-    setSecretKeys(updated); await rtdbSave('secretKeys', updated);
+    const updatedItem = { ...secretKeys.find(k => k.id === keyId)!, code: newCode.trim().toUpperCase() };
+    setSecretKeys(prev => prev.map(k => k.id === keyId ? updatedItem : k));
+    await fsUpdateDocFields('secretKeys', keyId, { code: updatedItem.code });
   }
 
   async function updateUserId(oldId: string, newId: string) {
     const trimNew = newId.trim().toUpperCase();
     if (!trimNew || trimNew === oldId) return;
-    const updatedUsers = users.map(u => u.id === oldId ? { ...u, id: trimNew } : u);
-    setUsers(updatedUsers); await rtdbSave('users', updatedUsers);
-    const updatedKeys = secretKeys.map(k =>
-      k.usedBy === oldId ? { ...k, usedBy: trimNew } : k
-    );
-    setSecretKeys(updatedKeys); await rtdbSave('secretKeys', updatedKeys);
+    const oldUser = users.find(u => u.id === oldId);
+    if (!oldUser) return;
+    const newUser = { ...oldUser, id: trimNew };
+    setUsers(prev => prev.map(u => u.id === oldId ? newUser : u));
+    const b = writeBatch(db);
+    b.delete(doc(db, 'users', oldId));
+    const { id: _id, ...rest } = newUser as any;
+    b.set(doc(db, 'users', trimNew), clean({ ...rest, _updatedAt: serverTimestamp() }));
+    const affectedKeys = secretKeys.filter(k => k.usedBy === oldId);
+    const updatedKeys = secretKeys.map(k => k.usedBy === oldId ? { ...k, usedBy: trimNew } : k);
+    setSecretKeys(updatedKeys);
+    for (const k of affectedKeys) {
+      b.update(doc(db, 'secretKeys', k.id), { usedBy: trimNew, _updatedAt: serverTimestamp() });
+    }
+    await b.commit().catch(e => console.warn('updateUserId batch failed:', e));
   }
 
   async function updateUserFull(oldId: string, newId: string, updates: Partial<User>) {
     const trimNew = newId.trim().toUpperCase();
     const targetId = trimNew && trimNew !== oldId ? trimNew : oldId;
-
-    /* Build updated users in one pass — rename ID + apply field updates atomically */
-    const updatedUsers = users.map(u =>
-      u.id === oldId ? { ...u, ...updates, id: targetId } : u
-    );
-    setUsers(updatedUsers);
-    await rtdbSave('users', updatedUsers);
-
-    /* Update secret key references if ID changed */
+    const oldUser = users.find(u => u.id === oldId)!;
+    const updatedUser = { ...oldUser, ...updates, id: targetId };
+    setUsers(prev => prev.map(u => u.id === oldId ? updatedUser : u));
+    const b = writeBatch(db);
     if (targetId !== oldId) {
-      const updatedKeys = secretKeys.map(k =>
-        k.usedBy === oldId ? { ...k, usedBy: targetId } : k
-      );
-      setSecretKeys(updatedKeys);
-      await rtdbSave('secretKeys', updatedKeys);
+      b.delete(doc(db, 'users', oldId));
     }
+    const { id: _id, ...rest } = updatedUser as any;
+    b.set(doc(db, 'users', targetId), clean({ ...rest, _updatedAt: serverTimestamp() }));
+    if (targetId !== oldId) {
+      const affectedKeys = secretKeys.filter(k => k.usedBy === oldId);
+      const updatedKeys = secretKeys.map(k => k.usedBy === oldId ? { ...k, usedBy: targetId } : k);
+      setSecretKeys(updatedKeys);
+      for (const k of affectedKeys) {
+        b.update(doc(db, 'secretKeys', k.id), { usedBy: targetId, _updatedAt: serverTimestamp() });
+      }
+    }
+    await b.commit().catch(e => console.warn('updateUserFull batch failed:', e));
   }
 
   async function updateSupportDetails(updates: Partial<SupportDetails>) {
     const updated = { ...supportDetails, ...updates };
-    setSupportDetails(updated); await rtdbSaveObj('support', updated);
+    setSupportDetails(updated);
+    await fsUpdateSingleDoc('settings', 'support', updated);
   }
 
   async function addPasswordResetRequest(email: string, name: string) {
     const item: PasswordResetRequest = { id: uid(), email, name, requestedAt: today(), status: 'pending' };
-    const updated = [item, ...passwordResetRequests];
-    setPasswordResetRequests(updated); await rtdbSave('passwordResetRequests', updated);
+    setPasswordResetRequests(prev => [item, ...prev]);
+    await fsSaveDoc('passwordResetRequests', item);
   }
 
   async function updatePasswordResetRequest(id: string, status: 'approved' | 'rejected', adminNote?: string) {
-    const updated = passwordResetRequests.map(r =>
-      r.id === id ? { ...r, status, ...(adminNote ? { adminNote } : {}) } : r
-    );
-    setPasswordResetRequests(updated); await rtdbSave('passwordResetRequests', updated);
+    const updatedItem = {
+      ...passwordResetRequests.find(r => r.id === id)!,
+      status,
+      ...(adminNote ? { adminNote } : {}),
+    };
+    setPasswordResetRequests(prev => prev.map(r => r.id === id ? updatedItem : r));
+    await fsSaveDoc('passwordResetRequests', updatedItem);
   }
 
   async function addImportHistory(h: Omit<ImportHistory, 'id'>) {
     const item: ImportHistory = { ...h, id: uid() };
-    const updated = [item, ...importHistory];
-    setImportHistory(updated); await rtdbSave('importHistory', updated);
+    setImportHistory(prev => [item, ...prev]);
+    await fsSaveDoc('importHistory', item);
   }
 
   async function deleteImportHistory(id: string) {
-    const updated = importHistory.filter(h => h.id !== id);
-    setImportHistory(updated); await rtdbSave('importHistory', updated);
+    setImportHistory(prev => prev.filter(h => h.id !== id));
+    await fsDeleteDoc('importHistory', id);
   }
 
   const getHouseByRegistration = (regNum: string) =>

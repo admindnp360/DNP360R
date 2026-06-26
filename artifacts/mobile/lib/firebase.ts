@@ -1,11 +1,11 @@
 import { getApp, getApps, initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
-import { getDatabase } from 'firebase/database';
+import { getFirestore, initializeFirestore, persistentLocalCache } from 'firebase/firestore';
+import { Platform } from 'react-native';
 
 const firebaseConfig = {
   apiKey: 'AIzaSyDc-IHNbnlOA4rlDZVdCXn8ZaXuGwm2S5E',
   authDomain: 'admin-dnp360.firebaseapp.com',
-  databaseURL: 'https://admin-dnp360-default-rtdb.asia-southeast1.firebasedatabase.app',
   projectId: 'admin-dnp360',
   storageBucket: 'admin-dnp360.firebasestorage.app',
   messagingSenderId: '150388145428',
@@ -15,5 +15,21 @@ const firebaseConfig = {
 
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 export const firebaseAuth = getAuth(app);
-export const rtdb = getDatabase(app);
+
+function buildFirestore() {
+  try {
+    if (Platform.OS === 'web') {
+      return initializeFirestore(app, {
+        localCache: persistentLocalCache(),
+      });
+    }
+    return initializeFirestore(app, {
+      experimentalForceLongPolling: true,
+    });
+  } catch {
+    return getFirestore(app);
+  }
+}
+
+export const db = buildFirestore();
 export default app;

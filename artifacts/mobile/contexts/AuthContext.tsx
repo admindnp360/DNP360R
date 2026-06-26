@@ -7,10 +7,20 @@ import {
   signInWithPopup,
   signOut,
 } from 'firebase/auth';
-import { get, ref, set } from 'firebase/database';
+import {
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  query,
+  serverTimestamp,
+  setDoc,
+  updateDoc,
+  where,
+} from 'firebase/firestore';
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { Platform } from 'react-native';
-import { firebaseAuth, rtdb } from '@/lib/firebase';
+import { db, firebaseAuth } from '@/lib/firebase';
 import type { User, UserRole } from '@/types';
 
 interface AuthContextType {
@@ -42,10 +52,10 @@ const SUPER_ADMIN: User & { password: string; secretCode: string; mobile: string
 };
 
 const DEMO_USERS: (User & { password: string })[] = [
-  { id: 'CT4821M', name: 'Rahul Kumar',   email: 'citizen.dnp360@gmail.com',    mobile: '9876543210', role: 'citizen',     address: 'Ward 5, Daudnagar, Bihar', isActive: true, createdAt: '2024-01-15', password: '12345678' },
-  { id: 'SK1538Q', name: 'Amit Kumar',    email: 'sk1538q.dnp360@gmail.com',    mobile: '9876543211', role: 'safaikarmi', wardId: 'W42', employeeId: 'SK2291', isActive: true, createdAt: '2023-06-01', password: '12345678' },
-  { id: 'OF7642B', name: 'Rajesh Gupta', email: 'of7642b.dnp360@gmail.com',    mobile: '9876543212', role: 'official',   wardId: 'W12', employeeId: 'OF4412', isActive: true, createdAt: '2022-03-10', password: '12345678' },
-  { id: 'AD9305X', name: 'Sandeep Kumar',email: 'ad9305x.dnp360@gmail.com',    mobile: '9876543213', role: 'admin',      employeeId: 'AD9305X', isActive: true, createdAt: '2021-01-01', password: '12345678' },
+  { id: 'CT4821M', name: 'Rahul Kumar',   email: 'citizen.dnp360@gmail.com',  mobile: '9876543210', role: 'citizen',    address: 'Ward 5, Daudnagar, Bihar', isActive: true, createdAt: '2024-01-15', password: '12345678' },
+  { id: 'SK1538Q', name: 'Amit Kumar',    email: 'sk1538q.dnp360@gmail.com',  mobile: '9876543211', role: 'safaikarmi', wardId: 'W42', employeeId: 'SK2291', isActive: true, createdAt: '2023-06-01', password: '12345678' },
+  { id: 'OF7642B', name: 'Rajesh Gupta',  email: 'of7642b.dnp360@gmail.com',  mobile: '9876543212', role: 'official',   wardId: 'W12', employeeId: 'OF4412', isActive: true, createdAt: '2022-03-10', password: '12345678' },
+  { id: 'AD9305X', name: 'Sandeep Kumar', email: 'ad9305x.dnp360@gmail.com',  mobile: '9876543213', role: 'admin',      employeeId: 'AD9305X', isActive: true, createdAt: '2021-01-01', password: '12345678' },
 ];
 
 const SECRET_CODES: Record<string, { role: UserRole; userId: string }> = {
@@ -66,24 +76,26 @@ const ROLE_NAMES: Record<string, string> = {
   admin: 'Administrator',
 };
 
-const RTDB_BASE = 'dnp360';
-
 function today() {
   return new Date().toISOString().split('T')[0];
 }
 
-async function getUserProfileFromRTDB(uid: string): Promise<User | null> {
+async function getUserFromFirestore(uid: string): Promise<User | null> {
   try {
-    const snap = await get(ref(rtdb, `${RTDB_BASE}/users/${uid}`));
-    return snap.exists() ? (snap.val() as User) : null;
+    const snap = await getDoc(doc(db, 'users', uid));
+    if (snap.exists()) return { id: snap.id, ...snap.data() } as User;
+    return null;
   } catch { return null; }
 }
 
-async function saveUserProfileToRTDB(uid: string, data: User): Promise<void> {
+async function saveUserToFirestore(uid: string, data: User): Promise<void> {
   try {
-    const clean = JSON.parse(JSON.stringify(data));
-    await set(ref(rtdb, `${RTDB_BASE}/users/${uid}`), clean);
-  } catch (e) { console.warn('RTDB write failed:', e); }
+    const { id: _id, ...rest } = data as any;
+    await setDoc(doc(db, 'users', uid), {
+      ...JSON.parse(JSON.stringify(rest)),
+      _updatedAt: serverTimestamp(),
+    });
+  } catch (e) { console.warn('Firestore user write failed:', e); }
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -105,7 +117,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const unsub = onAuthStateChanged(firebaseAuth, async (firebaseUser) => {
       settled = true;
       if (firebaseUser) {
-        let profile = await getUserProfileFromRTDB(firebaseUser.uid);
+        let profile = await getUserFromFirestore(firebaseUser.uid);
         if (!profile) {
           const stored = await AsyncStorage.getItem('dnp360_user').catch(() => null);
           if (stored) { try { profile = JSON.parse(stored); } catch {} }
@@ -150,8 +162,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     try {
       const cred = await signInWithEmailAndPassword(firebaseAuth, emailToUse, password);
-      let profile: User | null = null;
-      try { profile = await getUserProfileFromRTDB(cred.user.uid); } catch {}
+      let profile: User | null = await getUserFromFirestore(cred.user.uid);
       if (!profile) {
         const stored = await AsyncStorage.getItem('dnp360_user').catch(() => null);
         if (stored) { try { profile = JSON.parse(stored); } catch {} }
@@ -165,7 +176,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           isActive: true,
           createdAt: today(),
         };
-        saveUserProfileToRTDB(cred.user.uid, profile);
+        await saveUserToFirestore(cred.user.uid, profile);
       }
       setUser(profile);
       await AsyncStorage.setItem('dnp360_user', JSON.stringify(profile));
@@ -182,8 +193,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const demo = DEMO_USERS.find(u => u.mobile === mobile);
     if (demo) return demo.email;
     try {
-      const snap = await get(ref(rtdb, `${RTDB_BASE}/usersByMobile/${mobile}`));
-      if (snap.exists()) return snap.val() as string;
+      const snap = await getDoc(doc(db, 'usersByMobile', mobile));
+      if (snap.exists()) return snap.data().email as string;
     } catch {}
     return null;
   }
@@ -223,14 +234,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     try {
-      const snap = await get(ref(rtdb, `${RTDB_BASE}/secretKeys`));
-      if (snap.exists()) {
-        const keys = Object.values(snap.val()) as Array<{ id: string; code: string; role: string; isActive: boolean; usedBy?: string }>;
+      const keysSnap = await getDocs(collection(db, 'secretKeys'));
+      if (!keysSnap.empty) {
+        const keys = keysSnap.docs.map(d => ({ id: d.id, ...d.data() })) as Array<{
+          id: string; code: string; role: string; isActive: boolean; usedBy?: string;
+        }>;
         const matched = keys.find(k => k.code.toUpperCase() === code && k.isActive);
 
         if (matched) {
           if (matched.usedBy) {
-            let profile = await getUserProfileFromRTDB(matched.usedBy);
+            const profile = await getUserFromFirestore(matched.usedBy);
             if (profile) {
               const profileEmail = profile.email ?? `${matched.usedBy.toLowerCase()}.dnp360@gmail.com`;
               try { await signInWithEmailAndPassword(firebaseAuth, profileEmail, code); } catch {}
@@ -263,8 +276,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               createdAt: today(),
             };
 
-            await saveUserProfileToRTDB(newUid, newUser);
-            try { await set(ref(rtdb, `${RTDB_BASE}/secretKeys/${matched.id}/usedBy`), newUid); } catch {}
+            await saveUserToFirestore(newUid!, newUser);
+            try {
+              await updateDoc(doc(db, 'secretKeys', matched.id), {
+                usedBy: newUid!,
+                _updatedAt: serverTimestamp(),
+              });
+            } catch {}
 
             setUser(newUser);
             await AsyncStorage.setItem('dnp360_user', JSON.stringify(newUser));
@@ -286,7 +304,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const result = await signInWithPopup(firebaseAuth, provider);
       const fu = result.user;
 
-      let profile = await getUserProfileFromRTDB(fu.uid);
+      let profile = await getUserFromFirestore(fu.uid);
       if (!profile) {
         profile = {
           id: fu.uid,
@@ -297,9 +315,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           isActive: true,
           createdAt: today(),
         };
-        await saveUserProfileToRTDB(fu.uid, profile);
+        await saveUserToFirestore(fu.uid, profile);
         if (profile.mobile) {
-          await set(ref(rtdb, `${RTDB_BASE}/usersByMobile/${profile.mobile}`), profile.email);
+          await setDoc(doc(db, 'usersByMobile', profile.mobile), {
+            email: profile.email,
+            _updatedAt: serverTimestamp(),
+          });
         }
       }
 
@@ -332,8 +353,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         isActive: true,
         createdAt: today(),
       };
-      await saveUserProfileToRTDB(cred.user.uid, newUser);
-      await set(ref(rtdb, `${RTDB_BASE}/usersByMobile/${mobile.trim()}`), normalEmail);
+      await saveUserToFirestore(cred.user.uid, newUser);
+      await setDoc(doc(db, 'usersByMobile', mobile.trim()), {
+        email: normalEmail,
+        _updatedAt: serverTimestamp(),
+      });
       setUser(newUser);
       await AsyncStorage.setItem('dnp360_user', JSON.stringify(newUser));
       return { success: true };
@@ -356,7 +380,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const updated = { ...user, ...updates };
     setUser(updated);
     await AsyncStorage.setItem('dnp360_user', JSON.stringify(updated));
-    await saveUserProfileToRTDB(user.id, updated);
+    await saveUserToFirestore(user.id, updated);
   }
 
   async function resetUserPassword(_email: string, _newPassword: string): Promise<boolean> {
@@ -366,14 +390,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   async function updateSecretKey(userId: string, newCode: string): Promise<boolean> {
     if (!user?.isSuperAdmin) return false;
     try {
-      const snap = await get(ref(rtdb, `${RTDB_BASE}/secretKeys`));
-      if (snap.exists()) {
-        const keys = snap.val() as Record<string, { id: string; code: string; role: string; isActive: boolean; usedBy?: string }>;
-        for (const [keyId, keyData] of Object.entries(keys)) {
-          if (keyData.usedBy === userId) {
-            await set(ref(rtdb, `${RTDB_BASE}/secretKeys/${keyId}/code`), newCode.toUpperCase());
-            return true;
-          }
+      const keysSnap = await getDocs(collection(db, 'secretKeys'));
+      if (!keysSnap.empty) {
+        const matched = keysSnap.docs.find(d => d.data().usedBy === userId);
+        if (matched) {
+          await updateDoc(doc(db, 'secretKeys', matched.id), {
+            code: newCode.toUpperCase(),
+            _updatedAt: serverTimestamp(),
+          });
+          return true;
         }
       }
       return false;
