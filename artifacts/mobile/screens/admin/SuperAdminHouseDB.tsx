@@ -1,8 +1,10 @@
 import { Feather } from '@expo/vector-icons';
+import * as FileSystem from 'expo-file-system/legacy';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as Sharing from 'expo-sharing';
 import React, { useState } from 'react';
 import {
-  Alert, Modal, Pressable, ScrollView, StyleSheet,
+  ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet,
   Text, TextInput, TouchableOpacity, View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -45,6 +47,8 @@ export default function SuperAdminHouseDB() {
   const [houseForm, setHouseForm] = useState({ ownerName: '', fatherOrHusband: '', mobile: '', address: '', propertyType: 'Residential' as any });
   const [groupForm, setGroupForm] = useState({ name: '', description: '', color: GROUP_COLORS[0] });
   const [saving, setSaving] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const [showExportModal, setShowExportModal] = useState(false);
 
   const totalHouses = houses.length;
   const activeHouses = houses.filter(h => h.isActive).length;
@@ -191,6 +195,53 @@ export default function SuperAdminHouseDB() {
       setEditingHouse(null);
       showAlert('Updated', 'House details saved.', undefined, 'success');
     } finally { setSaving(false); }
+  }
+
+  function buildCSV(list: House[]): string {
+    const escape = (v: string) => `"${(v ?? '').replace(/"/g, '""')}"`;
+    const headers = ['S.No', 'Registration No', 'Owner Name', 'Father/Husband', 'Ward No', 'Group', 'Address', 'Mobile', 'Property Type', 'Status', 'Added On'];
+    const rows = list.map((h, i) => [
+      String(i + 1),
+      escape(h.registrationNumber),
+      escape(h.ownerName),
+      escape(h.fatherOrHusband || ''),
+      escape(`Ward ${h.wardNumber}`),
+      escape(h.groupName || 'Ungrouped'),
+      escape(h.address),
+      escape(h.mobile || ''),
+      escape(h.propertyType || 'Residential'),
+      escape(h.status || 'Active'),
+      escape(h.createdAt || ''),
+    ].join(','));
+    return [headers.join(','), ...rows].join('\n');
+  }
+
+  async function handleExportCSV() {
+    if (houseList.length === 0) {
+      showAlert('Nothing to Export', 'No houses match the current filter.', undefined, 'warning');
+      return;
+    }
+    const canShare = await Sharing.isAvailableAsync();
+    if (!canShare) {
+      showAlert('Not Supported', 'Sharing is not available on this device.', undefined, 'error');
+      return;
+    }
+    setExporting(true);
+    setShowExportModal(false);
+    try {
+      const csv = buildCSV(houseList);
+      const ward = selectedWard ? `Ward${selectedWard.wardNumber}` : 'AllWards';
+      const grp = selectedGroup ? `_${selectedGroup.name.replace(/\s+/g, '')}` : '';
+      const date = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+      const filename = `HouseDB_${ward}${grp}_${date}.csv`;
+      const path = FileSystem.cacheDirectory + filename;
+      await FileSystem.writeAsStringAsync(path, csv, { encoding: FileSystem.EncodingType.UTF8 });
+      await Sharing.shareAsync(path, { mimeType: 'text/csv', dialogTitle: `Export ${filename}`, UTI: 'public.comma-separated-values-text' });
+    } catch (e: any) {
+      showAlert('Export Failed', e?.message ?? 'Unknown error.', undefined, 'error');
+    } finally {
+      setExporting(false);
+    }
   }
 
   return (
@@ -385,20 +436,32 @@ export default function SuperAdminHouseDB() {
       {/* ── HOUSES VIEW ── */}
       {view === 'houses' && selectedWard && (
         <View style={{ flex: 1 }}>
-          <View style={[s.searchBox, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            <Feather name="search" size={16} color={colors.mutedForeground} />
-            <TextInput
-              style={[s.searchInput, { color: colors.text }]}
-              placeholder="Search reg no, owner, address..."
-              placeholderTextColor={colors.mutedForeground}
-              value={search}
-              onChangeText={setSearch}
-            />
-            {search.length > 0 && (
-              <TouchableOpacity onPress={() => setSearch('')}>
-                <Feather name="x" size={16} color={colors.mutedForeground} />
-              </TouchableOpacity>
-            )}
+          <View style={[s.searchRow, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
+            <View style={[s.searchBox, { backgroundColor: colors.background, borderColor: colors.border, flex: 1 }]}>
+              <Feather name="search" size={16} color={colors.mutedForeground} />
+              <TextInput
+                style={[s.searchInput, { color: colors.text }]}
+                placeholder="Search reg no, owner, address..."
+                placeholderTextColor={colors.mutedForeground}
+                value={search}
+                onChangeText={setSearch}
+              />
+              {search.length > 0 && (
+                <TouchableOpacity onPress={() => setSearch('')}>
+                  <Feather name="x" size={16} color={colors.mutedForeground} />
+                </TouchableOpacity>
+              )}
+            </View>
+            <TouchableOpacity
+              style={[s.exportBtn, { backgroundColor: exporting ? '#6366F130' : '#6366F120', borderColor: '#6366F150' }]}
+              onPress={() => setShowExportModal(true)}
+              disabled={exporting}
+              activeOpacity={0.75}
+            >
+              {exporting
+                ? <ActivityIndicator size={14} color="#6366F1" />
+                : <Feather name="download-cloud" size={16} color="#6366F1" />}
+            </TouchableOpacity>
           </View>
 
           {/* Column Headers */}
@@ -596,6 +659,96 @@ export default function SuperAdminHouseDB() {
         </SafeAreaView>
       </Modal>
 
+      {/* ── EXPORT PREVIEW MODAL ── */}
+      <Modal visible={showExportModal} animationType="fade" transparent>
+        <View style={s.exportOverlay}>
+          <View style={[s.exportSheet, { backgroundColor: colors.card }]}>
+            <LinearGradient colors={['#4F46E5', '#7C3AED']} style={s.exportHeader}>
+              <View style={s.exportHeaderRow}>
+                <View style={s.exportHeaderIcon}>
+                  <Feather name="download-cloud" size={20} color="#fff" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={s.exportTitle}>Export CSV</Text>
+                  <Text style={s.exportSubtitle}>House Database</Text>
+                </View>
+                <Pressable onPress={() => setShowExportModal(false)} style={s.closeBtn}>
+                  <Feather name="x" size={18} color="#fff" />
+                </Pressable>
+              </View>
+            </LinearGradient>
+
+            <View style={{ padding: 20, gap: 14 }}>
+              {/* Scope info */}
+              <View style={[s.exportScopeBox, { backgroundColor: colors.background, borderColor: colors.border }]}>
+                <Text style={[s.exportScopeLabel, { color: colors.mutedForeground }]}>Exporting from</Text>
+                <View style={s.exportScopeRow}>
+                  <Feather name="map-pin" size={13} color="#6366F1" />
+                  <Text style={[s.exportScopeValue, { color: colors.text }]}>
+                    Ward {selectedWard?.wardNumber} — {selectedWard?.name}
+                  </Text>
+                </View>
+                {selectedGroup && (
+                  <View style={s.exportScopeRow}>
+                    <Feather name="layers" size={13} color="#10B981" />
+                    <Text style={[s.exportScopeValue, { color: colors.text }]}>{selectedGroup.name}</Text>
+                  </View>
+                )}
+                {search.trim().length > 0 && (
+                  <View style={s.exportScopeRow}>
+                    <Feather name="filter" size={13} color="#F97316" />
+                    <Text style={[s.exportScopeValue, { color: colors.text }]}>Filter: "{search}"</Text>
+                  </View>
+                )}
+              </View>
+
+              {/* Count pill */}
+              <View style={[s.exportCountPill, { backgroundColor: '#6366F115' }]}>
+                <Feather name="home" size={14} color="#6366F1" />
+                <Text style={[s.exportCountText, { color: '#6366F1' }]}>
+                  {houseList.length} house{houseList.length !== 1 ? 's' : ''} will be exported
+                </Text>
+              </View>
+
+              {/* Column preview */}
+              <Text style={[s.exportColTitle, { color: colors.mutedForeground }]}>COLUMNS INCLUDED</Text>
+              <View style={s.exportColGrid}>
+                {['S.No', 'Registration No', 'Owner Name', 'Father/Husband', 'Ward No', 'Group', 'Address', 'Mobile', 'Property Type', 'Status', 'Added On'].map(col => (
+                  <View key={col} style={[s.exportColChip, { backgroundColor: colors.background, borderColor: colors.border }]}>
+                    <Feather name="check" size={10} color="#10B981" />
+                    <Text style={[s.exportColChipText, { color: colors.text }]}>{col}</Text>
+                  </View>
+                ))}
+              </View>
+
+              {/* Format note */}
+              <View style={[s.exportNote, { backgroundColor: '#0EA5E915', borderColor: '#0EA5E930' }]}>
+                <Feather name="info" size={12} color="#0EA5E9" />
+                <Text style={[s.exportNoteText, { color: colors.mutedForeground }]}>
+                  Saved as <Text style={{ color: '#0EA5E9', fontFamily: 'Inter_600SemiBold' }}>.csv</Text> — opens in Excel, Google Sheets, or any spreadsheet app.
+                </Text>
+              </View>
+
+              {/* Action buttons */}
+              <View style={{ flexDirection: 'row', gap: 10, marginTop: 4 }}>
+                <TouchableOpacity
+                  style={[s.exportCancelBtn, { borderColor: colors.border }]}
+                  onPress={() => setShowExportModal(false)}
+                >
+                  <Text style={[s.exportCancelText, { color: colors.mutedForeground }]}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={{ flex: 1 }} onPress={handleExportCSV} activeOpacity={0.85} disabled={houseList.length === 0}>
+                  <LinearGradient colors={['#4F46E5', '#7C3AED']} style={s.exportConfirmBtn}>
+                    <Feather name="download" size={16} color="#fff" />
+                    <Text style={s.exportConfirmText}>Export &amp; Share</Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
       {/* ── ADD GROUP MODAL ── */}
       <Modal visible={showAddGroupModal} animationType="slide" presentationStyle="pageSheet">
         <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
@@ -684,8 +837,33 @@ const s = StyleSheet.create({
   addGroupBtnText: { color: '#fff', fontSize: 15, fontFamily: 'Inter_600SemiBold' },
   addHouseBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 12, borderWidth: 1 },
   addHouseBtnText: { fontSize: 12, fontFamily: 'Inter_600SemiBold' },
-  searchBox: { flexDirection: 'row', alignItems: 'center', gap: 10, margin: 16, borderRadius: 12, borderWidth: 1, paddingHorizontal: 14, paddingVertical: 10 },
+  searchRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 12, paddingVertical: 10, borderBottomWidth: 1 },
+  searchBox: { flexDirection: 'row', alignItems: 'center', gap: 10, borderRadius: 12, borderWidth: 1, paddingHorizontal: 14, paddingVertical: 10 },
   searchInput: { flex: 1, fontSize: 14, fontFamily: 'Inter_400Regular' },
+  exportBtn: { width: 44, height: 44, borderRadius: 12, borderWidth: 1, justifyContent: 'center', alignItems: 'center' },
+  exportOverlay: { flex: 1, backgroundColor: '#00000088', justifyContent: 'flex-end' },
+  exportSheet: { borderTopLeftRadius: 24, borderTopRightRadius: 24, overflow: 'hidden', maxHeight: '90%' },
+  exportHeader: { padding: 20 },
+  exportHeaderRow: { flexDirection: 'row', alignItems: 'center', gap: 14 },
+  exportHeaderIcon: { width: 40, height: 40, borderRadius: 12, backgroundColor: '#FFFFFF20', justifyContent: 'center', alignItems: 'center' },
+  exportTitle: { color: '#fff', fontSize: 18, fontFamily: 'Inter_700Bold' },
+  exportSubtitle: { color: '#FFFFFFAA', fontSize: 12, fontFamily: 'Inter_400Regular', marginTop: 2 },
+  exportScopeBox: { borderRadius: 14, borderWidth: 1, padding: 14, gap: 8 },
+  exportScopeLabel: { fontSize: 11, fontFamily: 'Inter_600SemiBold', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 },
+  exportScopeRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  exportScopeValue: { fontSize: 13, fontFamily: 'Inter_500Medium', flex: 1 },
+  exportCountPill: { flexDirection: 'row', alignItems: 'center', gap: 8, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10 },
+  exportCountText: { fontSize: 14, fontFamily: 'Inter_700Bold' },
+  exportColTitle: { fontSize: 10, fontFamily: 'Inter_700Bold', letterSpacing: 0.8, textTransform: 'uppercase' },
+  exportColGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  exportColChip: { flexDirection: 'row', alignItems: 'center', gap: 5, borderRadius: 8, borderWidth: 1, paddingHorizontal: 8, paddingVertical: 5 },
+  exportColChipText: { fontSize: 11, fontFamily: 'Inter_500Medium' },
+  exportNote: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, borderRadius: 10, borderWidth: 1, padding: 12 },
+  exportNoteText: { flex: 1, fontSize: 12, fontFamily: 'Inter_400Regular', lineHeight: 18 },
+  exportCancelBtn: { flex: 1, borderRadius: 14, borderWidth: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 14 },
+  exportCancelText: { fontSize: 14, fontFamily: 'Inter_600SemiBold' },
+  exportConfirmBtn: { borderRadius: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 14 },
+  exportConfirmText: { color: '#fff', fontSize: 14, fontFamily: 'Inter_700Bold' },
   colHeader: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 10, borderBottomWidth: 1 },
   colHeaderCell: { fontSize: 12, fontFamily: 'Inter_700Bold', textTransform: 'uppercase', letterSpacing: 0.5 },
   colDivider: { width: 1, height: 14, marginHorizontal: 8 },
