@@ -49,10 +49,16 @@ const DEMO_USERS: (User & { password: string })[] = [
 ];
 
 const SECRET_CODES: Record<string, { role: UserRole; userId: string }> = {
-  'SK2566F': { role: 'safaikarmi', userId: 'SK001' },
-  'OFF4416A': { role: 'official', userId: 'OFF001' },
-  'AD9921X': { role: 'admin', userId: 'AD001' },
+  'SK-2566-F000': { role: 'safaikarmi', userId: 'SK001' },
+  'OF-4416-A000': { role: 'official',   userId: 'OF001' },
 };
+
+function genUserId(role: string): string {
+  const prefix = role === 'citizen' ? 'CT' : role === 'safaikarmi' ? 'SK' : role === 'official' ? 'OF' : 'AD';
+  const digits = String(Math.floor(1000 + Math.random() * 9000));
+  const letter = String.fromCharCode(65 + Math.floor(Math.random() * 26));
+  return `${prefix}${digits}${letter}`;
+}
 
 const ROLE_NAMES: Record<string, string> = {
   safaikarmi: 'Safai Karmi',
@@ -223,43 +229,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const matched = keys.find(k => k.code.toUpperCase() === code && k.isActive);
 
         if (matched) {
-          const codeEmail = `${code.toLowerCase()}.dnp360@gmail.com`;
-
           if (matched.usedBy) {
             let profile = await getUserProfileFromRTDB(matched.usedBy);
             if (profile) {
-              try { await signInWithEmailAndPassword(firebaseAuth, codeEmail, code); } catch {}
+              const profileEmail = profile.email ?? `${matched.usedBy.toLowerCase()}.dnp360@gmail.com`;
+              try { await signInWithEmailAndPassword(firebaseAuth, profileEmail, code); } catch {}
               setUser(profile);
               await AsyncStorage.setItem('dnp360_user', JSON.stringify(profile));
               return true;
             }
-            try {
-              const cred = await signInWithEmailAndPassword(firebaseAuth, codeEmail, code);
-              profile = await getUserProfileFromRTDB(cred.user.uid);
-              if (profile) {
-                setUser(profile);
-                await AsyncStorage.setItem('dnp360_user', JSON.stringify(profile));
-                return true;
-              }
-            } catch {}
           } else {
+            const newUserId = genUserId(matched.role);
+            const userEmail = `${newUserId.toLowerCase()}.dnp360@gmail.com`;
             let newUid: string;
             try {
-              const cred = await createUserWithEmailAndPassword(firebaseAuth, codeEmail, code);
+              const cred = await createUserWithEmailAndPassword(firebaseAuth, userEmail, code);
               newUid = cred.user.uid;
             } catch (e: any) {
               if (e?.code === 'auth/email-already-in-use') {
                 try {
-                  const cred = await signInWithEmailAndPassword(firebaseAuth, codeEmail, code);
+                  const cred = await signInWithEmailAndPassword(firebaseAuth, userEmail, code);
                   newUid = cred.user.uid;
                 } catch { return false; }
               } else { return false; }
             }
 
             const newUser: User = {
-              id: newUid,
+              id: newUserId,
               name: ROLE_NAMES[matched.role] ?? matched.role,
-              email: codeEmail,
+              email: userEmail,
               role: matched.role as UserRole,
               isActive: true,
               createdAt: today(),

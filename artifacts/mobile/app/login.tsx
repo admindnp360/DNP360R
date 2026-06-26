@@ -20,14 +20,14 @@ import { useAuth } from '@/contexts/AuthContext';
 
 const IS_WEB = Platform.OS === 'web';
 
-type RoleKey = 'ADMIN' | 'OFFICIAL' | 'SAFAI KARMI' | 'CITIZEN';
+type RoleKey = 'OFFICIAL' | 'SAFAI KARMI';
 
-const ROLES: { key: RoleKey; prefix: string; grad: readonly [string, string]; icon: string }[] = [
-  { key: 'ADMIN',       prefix: 'ADMIN', grad: ['#7C3AED', '#6366F1'], icon: 'shield' },
-  { key: 'OFFICIAL',    prefix: 'OF',    grad: ['#0EA5E9', '#2563EB'], icon: 'briefcase' },
-  { key: 'SAFAI KARMI', prefix: 'SK',    grad: ['#10B981', '#059669'], icon: 'trash-2' },
-  { key: 'CITIZEN',     prefix: 'C',     grad: ['#F59E0B', '#EF4444'], icon: 'user' },
+const ROLES: { key: RoleKey; prefix: string; grad: readonly [string, string]; icon: string; label: string }[] = [
+  { key: 'OFFICIAL',    prefix: 'OF-', grad: ['#0EA5E9', '#2563EB'], icon: 'briefcase', label: 'Official' },
+  { key: 'SAFAI KARMI', prefix: 'SK-', grad: ['#10B981', '#059669'], icon: 'trash-2',  label: 'Safai Karmi' },
 ];
+
+const CODE_LEN = 12; // OF-XXXX-XXXX or SK-XXXX-XXXX
 
 function DNPLogo() {
   return (
@@ -105,15 +105,13 @@ export default function LoginScreen() {
   }
 
   function handleCodeChange(v: string) {
-    const cleaned = v.replace(/[^A-Z0-9]/g, '').toUpperCase();
-    if (selectedRole) {
-      const prefix = ROLES.find(r => r.key === selectedRole)?.prefix ?? '';
-      if (!cleaned.startsWith(prefix)) {
-        setSecretCode(prefix);
-        return;
-      }
-    }
-    setSecretCode(cleaned);
+    if (!selectedRole) return;
+    const prefix = ROLES.find(r => r.key === selectedRole)!.prefix;
+    const upper = v.toUpperCase();
+    if (!upper.startsWith(prefix)) { setSecretCode(prefix); return; }
+    const alphanum = upper.slice(prefix.length).replace(/[^A-Z0-9]/g, '').slice(0, 8);
+    const body = alphanum.length > 4 ? alphanum.slice(0, 4) + '-' + alphanum.slice(4) : alphanum;
+    setSecretCode(prefix + body);
   }
 
   async function handleSignIn() {
@@ -312,81 +310,95 @@ export default function LoginScreen() {
             ) : (
               <>
                 <Text style={s.cardTitle}>Staff Authentication</Text>
-                <Text style={s.cardSub}>Select your role then enter the secret code</Text>
+                <Text style={s.cardSub}>Select your role and enter your secret key</Text>
 
-                <View style={s.roleGrid}>
+                {/* 2-card role row */}
+                <View style={s.roleRow}>
                   {ROLES.map(r => {
                     const active = selectedRole === r.key;
                     return (
                       <Pressable key={r.key} style={s.roleCardWrap} onPress={() => handleRoleSelect(r)}>
                         {active
                           ? <LinearGradient colors={r.grad} style={s.roleCardActive}>
-                              <Feather name={r.icon as any} size={15} color="#fff" />
-                              <Text style={s.roleCardTxtActive}>{r.key}</Text>
+                              <Feather name={r.icon as any} size={20} color="#fff" />
+                              <Text style={s.roleCardTxtActive}>{r.label}</Text>
                             </LinearGradient>
                           : <View style={s.roleCardInactive}>
-                              <Feather name={r.icon as any} size={15} color="#475569" />
-                              <Text style={s.roleCardTxt}>{r.key}</Text>
+                              <Feather name={r.icon as any} size={20} color="#475569" />
+                              <Text style={s.roleCardTxt}>{r.label}</Text>
                             </View>}
                       </Pressable>
                     );
                   })}
                 </View>
 
-                <View style={[s.inputBox, selectedRole && { borderColor: ROLES.find(r => r.key === selectedRole)?.grad[0] ?? 'rgba(255,255,255,0.08)' }]}>
-                  <Feather name="key" size={16} color="#8B5CF6" style={s.inputIcon} />
-                  <TextInput
-                    ref={codeRef}
-                    style={[s.input, { flex: 1, fontFamily: 'Inter_700Bold', letterSpacing: 1.5 }]}
-                    placeholder={selectedRole ? `${ROLES.find(r=>r.key===selectedRole)?.prefix}…` : 'Select role above first'}
-                    placeholderTextColor="#94A3B8"
-                    autoCapitalize="characters"
-                    autoCorrect={false}
-                    secureTextEntry={!showSecret}
-                    value={secretCode}
-                    onChangeText={handleCodeChange}
-                    onSubmitEditing={handleSecretCode}
-                    returnKeyType="done"
-                    editable={!!selectedRole}
-                  />
-                  <Pressable onPress={() => setShowSecret(p => !p)} style={s.eyeBtn}>
-                    <Feather name={showSecret ? 'eye-off' : 'eye'} size={16} color="#8B5CF6" />
-                  </Pressable>
-                  <Pressable onPress={handleCopy} style={[s.copyBtn, copied && s.copyBtnActive]}>
-                    <Feather name={copied ? 'check' : 'copy'} size={14} color={copied ? '#10B981' : '#8B5CF6'} />
-                  </Pressable>
-                </View>
-
-                {copied && (
-                  <View style={s.copiedBanner}>
-                    <Feather name="check-circle" size={12} color="#10B981" />
-                    <Text style={s.copiedTxt}>Secret key copied to clipboard</Text>
+                {/* Locked prefix + code input */}
+                {selectedRole ? (
+                  <View style={[s.inputBox, { borderColor: ROLES.find(r => r.key === selectedRole)!.grad[0] }]}>
+                    <Feather name="key" size={16} color="#8B5CF6" style={s.inputIcon} />
+                    {/* Locked prefix badge */}
+                    <View style={[s.prefixBadge, { backgroundColor: ROLES.find(r => r.key === selectedRole)!.grad[0] + '22' }]}>
+                      <Text style={[s.prefixBadgeTxt, { color: ROLES.find(r => r.key === selectedRole)!.grad[0] }]}>
+                        {ROLES.find(r => r.key === selectedRole)!.prefix}
+                      </Text>
+                    </View>
+                    <TextInput
+                      ref={codeRef}
+                      style={[s.input, { flex: 1, fontFamily: 'Inter_700Bold', letterSpacing: 2 }]}
+                      placeholder="XXXX-XXXX"
+                      placeholderTextColor="#475569"
+                      autoCapitalize="characters"
+                      autoCorrect={false}
+                      secureTextEntry={!showSecret}
+                      value={secretCode.slice(ROLES.find(r => r.key === selectedRole)!.prefix.length)}
+                      onChangeText={v => handleCodeChange(ROLES.find(r => r.key === selectedRole)!.prefix + v)}
+                      onSubmitEditing={handleSecretCode}
+                      returnKeyType="done"
+                      maxLength={9}
+                    />
+                    <Pressable onPress={() => setShowSecret(p => !p)} style={s.eyeBtn}>
+                      <Feather name={showSecret ? 'eye-off' : 'eye'} size={16} color="#8B5CF6" />
+                    </Pressable>
+                  </View>
+                ) : (
+                  <View style={s.inputBox}>
+                    <Feather name="key" size={16} color="#374151" style={s.inputIcon} />
+                    <Text style={[s.input, { color: '#475569', paddingVertical: 14 }]}>Select a role above first</Text>
                   </View>
                 )}
 
                 {selectedRole && (
                   <View style={s.prefixHint}>
-                    <Text style={s.prefixHintLabel}>Prefix locked: </Text>
-                    <Text style={s.prefixHintCode}>{ROLES.find(r=>r.key===selectedRole)?.prefix}</Text>
-                    <Text style={s.prefixHintLabel}> · digits &amp; UPPERCASE only</Text>
+                    <Feather name="lock" size={10} color="#6366F1" />
+                    <Text style={s.prefixHintLabel}>Prefix </Text>
+                    <Text style={s.prefixHintCode}>{ROLES.find(r => r.key === selectedRole)!.prefix}</Text>
+                    <Text style={s.prefixHintLabel}> locked · A-Z, 0-9 only · auto uppercase</Text>
                   </View>
                 )}
 
-                <TouchableOpacity
-                  onPress={handleSecretCode}
-                  disabled={loading || !selectedRole}
-                  activeOpacity={0.88}
-                  style={[s.btnWrap, (loading || !selectedRole) && { opacity: 0.5 }]}
-                >
-                  <LinearGradient
-                    colors={selectedRole ? (ROLES.find(r=>r.key===selectedRole)?.grad ?? ['#7C3AED','#6366F1']) : ['#374151','#1F2937']}
-                    start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
-                    style={s.btn}
-                  >
-                    {loading ? <ActivityIndicator color="#fff" size="small" /> : <Feather name="shield" size={16} color="#fff" />}
-                    <Text style={s.btnTxt}>{loading ? 'Verifying…' : 'Authenticate'}</Text>
-                  </LinearGradient>
-                </TouchableOpacity>
+                {(() => {
+                  const codeComplete = secretCode.length === CODE_LEN;
+                  const activeRole = ROLES.find(r => r.key === selectedRole);
+                  return (
+                    <TouchableOpacity
+                      onPress={handleSecretCode}
+                      disabled={loading || !codeComplete}
+                      activeOpacity={0.88}
+                      style={[s.btnWrap, (loading || !codeComplete) && { opacity: 0.4 }]}
+                    >
+                      <LinearGradient
+                        colors={activeRole ? activeRole.grad : ['#374151', '#1F2937']}
+                        start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+                        style={s.btn}
+                      >
+                        {loading
+                          ? <ActivityIndicator color="#fff" size="small" />
+                          : <Feather name="shield" size={16} color="#fff" />}
+                        <Text style={s.btnTxt}>{loading ? 'Verifying…' : 'Authenticate'}</Text>
+                      </LinearGradient>
+                    </TouchableOpacity>
+                  );
+                })()}
 
                 <View style={s.staffNote}>
                   <Feather name="info" size={12} color="#6366F1" />
@@ -526,12 +538,14 @@ const s = StyleSheet.create({
   btnTxt: { color: '#FFFFFF', fontSize: 15, fontFamily: 'Inter_700Bold' },
   googleG: { color: '#fff', fontSize: 16, fontFamily: 'Inter_700Bold' },
 
-  roleGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  roleCardWrap: { width: '47.5%', borderRadius: 14, overflow: 'hidden' },
-  roleCardActive: { paddingVertical: 7, paddingHorizontal: 12, alignItems: 'center', gap: 4, flexDirection: 'row', justifyContent: 'center' },
-  roleCardInactive: { paddingVertical: 7, paddingHorizontal: 12, alignItems: 'center', gap: 4, flexDirection: 'row', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.04)', borderRadius: 14, borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)' },
-  roleCardTxt: { color: '#475569', fontSize: 11, fontFamily: 'Inter_700Bold', letterSpacing: 0.5, textAlign: 'center' },
-  roleCardTxtActive: { color: '#FFFFFF', fontSize: 11, fontFamily: 'Inter_700Bold', letterSpacing: 0.5, textAlign: 'center' },
+  roleRow: { flexDirection: 'row', gap: 12 },
+  roleCardWrap: { flex: 1, borderRadius: 16, overflow: 'hidden' },
+  roleCardActive: { paddingVertical: 18, paddingHorizontal: 12, alignItems: 'center', gap: 8, justifyContent: 'center' },
+  roleCardInactive: { paddingVertical: 18, paddingHorizontal: 12, alignItems: 'center', gap: 8, justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.04)', borderRadius: 16, borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)' },
+  roleCardTxt: { color: '#475569', fontSize: 13, fontFamily: 'Inter_700Bold', letterSpacing: 0.3, textAlign: 'center' },
+  roleCardTxtActive: { color: '#FFFFFF', fontSize: 13, fontFamily: 'Inter_700Bold', letterSpacing: 0.3, textAlign: 'center' },
+  prefixBadge: { borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4, marginRight: 6 },
+  prefixBadgeTxt: { fontSize: 13, fontFamily: 'Inter_700Bold', letterSpacing: 1.5 },
 
   prefixHint: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(99,102,241,0.07)', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8, borderWidth: 1, borderColor: 'rgba(99,102,241,0.14)' },
   prefixHintLabel: { color: '#64748B', fontSize: 11, fontFamily: 'Inter_400Regular' },

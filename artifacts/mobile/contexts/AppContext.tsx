@@ -88,8 +88,15 @@ function nowTime() {
 }
 
 function genSecretKey(role: SecretKey['role']): string {
-  const prefix = role === 'safaikarmi' ? 'SK' : role === 'official' ? 'OFF' : 'ADMIN';
-  const digits = Math.floor(1000 + Math.random() * 9000);
+  const prefix = role === 'safaikarmi' ? 'SK' : 'OF';
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  const rand4 = () => Array.from({ length: 4 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+  return `${prefix}-${rand4()}-${rand4()}`;
+}
+
+export function genUserId(role: string): string {
+  const prefix = role === 'citizen' ? 'CT' : role === 'safaikarmi' ? 'SK' : role === 'official' ? 'OF' : 'AD';
+  const digits = String(Math.floor(1000 + Math.random() * 9000));
   const letter = String.fromCharCode(65 + Math.floor(Math.random() * 26));
   return `${prefix}${digits}${letter}`;
 }
