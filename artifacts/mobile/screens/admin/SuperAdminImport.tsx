@@ -1,4 +1,6 @@
 import { Feather } from '@expo/vector-icons';
+import * as DocumentPicker from 'expo-document-picker';
+import * as FileSystem from 'expo-file-system/legacy';
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { useRef, useState } from 'react';
 import {
@@ -6,6 +8,7 @@ import {
   Text, TextInput, TouchableOpacity, View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import * as XLSX from 'xlsx';
 import { useAlert } from '@/contexts/AlertContext';
 import { useAppData } from '@/contexts/AppContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -69,10 +72,54 @@ export default function SuperAdminImport() {
   const [importStats, setImportStats] = useState<{ imported: number; skipped: number; failed: number } | null>(null);
   const [showTemplate, setShowTemplate] = useState(false);
   const [selectedHistory, setSelectedHistory] = useState<typeof importHistory[0] | null>(null);
+  const [sourceFileName, setSourceFileName] = useState('Manual CSV Import');
+  const [pickingFile, setPickingFile] = useState(false);
 
   const totalHouses = houses.length;
   const importsDone = importHistory.length;
   const totalWards = wards.length;
+
+  function validateRows(rows: string[][]) {
+    if (rows.length < 2) {
+      showAlert('Invalid', 'File must have a header row + at least one data row.', undefined, 'error');
+      return;
+    }
+    const seenReg = new Set<string>();
+    const results: ParsedRow[] = [];
+    for (let i = 1; i < rows.length; i++) {
+      const cols = rows[i];
+      if (cols.every(c => !String(c ?? '').trim())) continue;
+      const regNo = String(cols[1] ?? '').trim();
+      const ownerName = String(cols[2] ?? '').trim();
+      const fatherOrHusband = String(cols[3] ?? '').trim() || undefined;
+      const wardInput = String(cols[4] ?? '').trim();
+      const address = String(cols[5] ?? '').trim();
+      const mobile = String(cols[6] ?? '').trim() || undefined;
+      const propType = String(cols[7] ?? '').trim() || undefined;
+      const errors: string[] = [];
+      if (!regNo) errors.push('Registration No required');
+      if (!ownerName) errors.push('Owner Name required');
+      if (!address) errors.push('Address required');
+      if (mobile && !/^\d{10}$/.test(mobile)) errors.push('Mobile must be 10 digits');
+      if (propType && !PROPERTY_TYPES.includes(propType as any)) errors.push(`Invalid property type: ${propType}`);
+      const matchedWard = wards.find(w =>
+        w.wardNumber === wardInput ||
+        w.id === wardInput ||
+        w.name.toLowerCase().includes(wardInput.toLowerCase())
+      );
+      if (!matchedWard && wardInput) errors.push(`Ward "${wardInput}" not found`);
+      let status: ParsedRow['status'] = 'valid';
+      let errorReason: string | undefined;
+      if (errors.length > 0) { status = 'error'; errorReason = errors.join('; '); }
+      else if (seenReg.has(regNo.toUpperCase())) { status = 'dup_excel'; errorReason = 'Duplicate in file'; }
+      else if (houses.some(h => h.registrationNumber.toUpperCase() === regNo.toUpperCase())) { status = 'duplicate'; errorReason = 'Already exists in database'; }
+      seenReg.add(regNo.toUpperCase());
+      results.push({ rowNumber: i, registrationNo: regNo, ownerName, fatherOrHusband, ward: wardInput, address, mobile, propertyType: propType, status, errorReason, wardId: matchedWard?.id, wardNumber: matchedWard?.wardNumber });
+    }
+    setParsedRows(results);
+    setIsPreviewing(true);
+    setImportStats(null);
+  }
 
   function validateAndPreview() {
     if (!csvText.trim()) {
@@ -80,76 +127,49 @@ export default function SuperAdminImport() {
       return;
     }
     const rows = parseCSV(csvText);
-    if (rows.length < 2) {
-      showAlert('Invalid', 'CSV must have header row + data rows.', undefined, 'error');
-      return;
-    }
+    setSourceFileName('Manual CSV Import');
+    validateRows(rows);
+  }
 
-    const seenReg = new Set<string>();
-    const results: ParsedRow[] = [];
-
-    for (let i = 1; i < rows.length; i++) {
-      const cols = rows[i];
-      if (cols.every(c => !c)) continue;
-
-      const regNo = cols[1]?.trim() || '';
-      const ownerName = cols[2]?.trim() || '';
-      const fatherOrHusband = cols[3]?.trim() || undefined;
-      const wardInput = cols[4]?.trim() || '';
-      const address = cols[5]?.trim() || '';
-      const mobile = cols[6]?.trim() || undefined;
-      const propType = cols[7]?.trim() || undefined;
-
-      const errors: string[] = [];
-
-      if (!regNo) errors.push('Registration No required');
-      if (!ownerName) errors.push('Owner Name required');
-      if (!address) errors.push('Address required');
-      if (mobile && !/^\d{10}$/.test(mobile)) errors.push('Mobile must be 10 digits');
-      if (propType && !PROPERTY_TYPES.includes(propType as any)) errors.push(`Invalid property type: ${propType}`);
-
-      const matchedWard = wards.find(w =>
-        w.wardNumber === wardInput ||
-        w.id === wardInput ||
-        w.name.toLowerCase().includes(wardInput.toLowerCase())
-      );
-      if (!matchedWard && wardInput) errors.push(`Ward "${wardInput}" not found`);
-
-      let status: ParsedRow['status'] = 'valid';
-      let errorReason: string | undefined;
-
-      if (errors.length > 0) {
-        status = 'error';
-        errorReason = errors.join('; ');
-      } else if (seenReg.has(regNo.toUpperCase())) {
-        status = 'dup_excel';
-        errorReason = 'Duplicate in Excel file';
-      } else if (houses.some(h => h.registrationNumber.toUpperCase() === regNo.toUpperCase())) {
-        status = 'duplicate';
-        errorReason = 'Already exists in database';
-      }
-
-      seenReg.add(regNo.toUpperCase());
-
-      results.push({
-        rowNumber: i,
-        registrationNo: regNo,
-        ownerName,
-        fatherOrHusband,
-        ward: wardInput,
-        address,
-        mobile,
-        propertyType: propType,
-        status,
-        errorReason,
-        wardId: matchedWard?.id,
-        wardNumber: matchedWard?.wardNumber,
+  async function handlePickExcel() {
+    setPickingFile(true);
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: [
+          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          'application/vnd.ms-excel',
+          'text/csv',
+          'text/comma-separated-values',
+          '*/*',
+        ],
+        copyToCacheDirectory: true,
       });
+      if (result.canceled || !result.assets?.[0]) return;
+      const asset = result.assets[0];
+      const fileName = asset.name || 'Imported File';
+      setSourceFileName(fileName);
+      const isCSV = fileName.toLowerCase().endsWith('.csv');
+      if (isCSV) {
+        const text = await FileSystem.readAsStringAsync(asset.uri, { encoding: FileSystem.EncodingType.UTF8 });
+        const rows = parseCSV(text);
+        setCsvText('');
+        setShowInput(false);
+        validateRows(rows);
+      } else {
+        const b64 = await FileSystem.readAsStringAsync(asset.uri, { encoding: FileSystem.EncodingType.Base64 });
+        const wb = XLSX.read(b64, { type: 'base64' });
+        const sheetName = wb.SheetNames[0];
+        const sheet = wb.Sheets[sheetName];
+        const rows: string[][] = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '', raw: false }) as string[][];
+        setCsvText('');
+        setShowInput(false);
+        validateRows(rows);
+      }
+    } catch (e: any) {
+      showAlert('File Error', e?.message ?? 'Could not read file.', undefined, 'error');
+    } finally {
+      setPickingFile(false);
     }
-
-    setParsedRows(results);
-    setIsPreviewing(true);
-    setImportStats(null);
   }
 
   const counts = {
@@ -204,7 +224,7 @@ export default function SuperAdminImport() {
       ];
 
       await addImportHistory({
-        fileName: 'Manual CSV Import',
+        fileName: sourceFileName,
         totalRows: parsedRows.length,
         successRows: result.imported,
         failedRows: result.failed + counts.error + counts.dup_excel,
@@ -235,6 +255,7 @@ export default function SuperAdminImport() {
     setCsvText('');
     setImportStats(null);
     setShowInput(false);
+    setSourceFileName('Manual CSV Import');
   }
 
   function statusIcon(s: ParsedRow['status']) {
@@ -253,7 +274,7 @@ export default function SuperAdminImport() {
               <Text style={s.superBadgeText}>SUPER ADMIN</Text>
             </View>
             <Text style={s.headerTitle}>Bulk Import</Text>
-            <Text style={s.headerSub}>Import houses from CSV files</Text>
+            <Text style={s.headerSub}>Import houses from Excel or CSV files</Text>
           </View>
           <View style={s.headerIcon}>
             <Feather name="upload-cloud" size={22} color="#fff" />
@@ -337,20 +358,52 @@ export default function SuperAdminImport() {
                 ))}
               </View>
 
-              {/* Upload area */}
-              {!showInput ? (
-                <TouchableOpacity
-                  style={[s.uploadArea, { backgroundColor: colors.card, borderColor: '#4F46E540' }]}
-                  onPress={() => setShowInput(true)}
-                  activeOpacity={0.85}
-                >
-                  <LinearGradient colors={['#4F46E5', '#7C3AED']} style={s.uploadIcon}>
-                    <Feather name="upload-cloud" size={24} color="#fff" />
-                  </LinearGradient>
-                  <Text style={[s.uploadTitle, { color: colors.text }]}>Tap to paste CSV data</Text>
-                  <Text style={[s.uploadSub, { color: colors.mutedForeground }]}>.csv format supported</Text>
-                </TouchableOpacity>
-              ) : (
+              {/* Upload options */}
+              {!showInput && (
+                <View style={s.uploadOptionsRow}>
+                  {/* Excel / CSV file picker */}
+                  <TouchableOpacity
+                    style={[s.uploadOptionCard, { backgroundColor: colors.card, borderColor: '#10B98140', flex: 1 }]}
+                    onPress={handlePickExcel}
+                    disabled={pickingFile}
+                    activeOpacity={0.85}
+                  >
+                    {pickingFile ? (
+                      <ActivityIndicator size={28} color="#10B981" />
+                    ) : (
+                      <LinearGradient colors={['#10B981', '#059669']} style={s.uploadIcon}>
+                        <Feather name="file-text" size={22} color="#fff" />
+                      </LinearGradient>
+                    )}
+                    <Text style={[s.uploadTitle, { color: colors.text }]}>Pick File</Text>
+                    <Text style={[s.uploadSub, { color: colors.mutedForeground, textAlign: 'center' }]}>.xlsx · .xls · .csv</Text>
+                    <View style={[s.excelBadge, { backgroundColor: '#10B98115', borderColor: '#10B98130' }]}>
+                      <Feather name="check-circle" size={10} color="#10B981" />
+                      <Text style={[s.excelBadgeText, { color: '#10B981' }]}>Excel supported</Text>
+                    </View>
+                  </TouchableOpacity>
+
+                  {/* Paste CSV */}
+                  <TouchableOpacity
+                    style={[s.uploadOptionCard, { backgroundColor: colors.card, borderColor: '#4F46E540', flex: 1 }]}
+                    onPress={() => setShowInput(true)}
+                    activeOpacity={0.85}
+                  >
+                    <LinearGradient colors={['#4F46E5', '#7C3AED']} style={s.uploadIcon}>
+                      <Feather name="clipboard" size={22} color="#fff" />
+                    </LinearGradient>
+                    <Text style={[s.uploadTitle, { color: colors.text }]}>Paste CSV</Text>
+                    <Text style={[s.uploadSub, { color: colors.mutedForeground, textAlign: 'center' }]}>Copy &amp; paste text</Text>
+                    <View style={[s.excelBadge, { backgroundColor: '#4F46E515', borderColor: '#4F46E530' }]}>
+                      <Feather name="type" size={10} color="#4F46E5" />
+                      <Text style={[s.excelBadgeText, { color: '#4F46E5' }]}>Manual entry</Text>
+                    </View>
+                  </TouchableOpacity>
+                </View>
+              )}
+
+              {/* CSV Text Input */}
+              {showInput && (
                 <View style={[s.csvInputCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
                   <View style={s.csvInputHeader}>
                     <Text style={[s.csvInputTitle, { color: colors.text }]}>Paste CSV Content</Text>
@@ -371,7 +424,7 @@ export default function SuperAdminImport() {
                   <TouchableOpacity onPress={validateAndPreview} activeOpacity={0.85}>
                     <LinearGradient colors={['#4F46E5', '#7C3AED']} style={s.previewBtn}>
                       <Feather name="eye" size={16} color="#fff" />
-                      <Text style={s.previewBtnText}>Preview & Validate</Text>
+                      <Text style={s.previewBtnText}>Preview &amp; Validate</Text>
                     </LinearGradient>
                   </TouchableOpacity>
                 </View>
@@ -645,9 +698,13 @@ const s = StyleSheet.create({
   colName: { flex: 1, fontSize: 13, fontFamily: 'Inter_500Medium' },
   colEx: { fontSize: 12, fontFamily: 'Inter_400Regular' },
   uploadArea: { borderRadius: 16, borderWidth: 1.5, borderStyle: 'dashed', padding: 40, alignItems: 'center', gap: 12 },
-  uploadIcon: { width: 60, height: 60, borderRadius: 18, justifyContent: 'center', alignItems: 'center' },
-  uploadTitle: { fontSize: 16, fontFamily: 'Inter_600SemiBold' },
-  uploadSub: { fontSize: 13, fontFamily: 'Inter_400Regular' },
+  uploadOptionsRow: { flexDirection: 'row', gap: 12 },
+  uploadOptionCard: { borderRadius: 16, borderWidth: 1.5, borderStyle: 'dashed', padding: 20, alignItems: 'center', gap: 10 },
+  uploadIcon: { width: 56, height: 56, borderRadius: 16, justifyContent: 'center', alignItems: 'center' },
+  uploadTitle: { fontSize: 15, fontFamily: 'Inter_600SemiBold' },
+  uploadSub: { fontSize: 12, fontFamily: 'Inter_400Regular' },
+  excelBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, borderRadius: 8, borderWidth: 1, paddingHorizontal: 8, paddingVertical: 4, marginTop: 2 },
+  excelBadgeText: { fontSize: 10, fontFamily: 'Inter_600SemiBold' },
   csvInputCard: { borderRadius: 16, borderWidth: 1, padding: 16, gap: 12 },
   csvInputHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   csvInputTitle: { fontSize: 14, fontFamily: 'Inter_700Bold' },
