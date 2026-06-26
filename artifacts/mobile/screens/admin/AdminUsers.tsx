@@ -1,4 +1,5 @@
 import { Feather } from '@expo/vector-icons';
+import * as Clipboard from 'expo-clipboard';
 import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { useState } from 'react';
@@ -382,9 +383,18 @@ export default function AdminUsers() {
                 {activeTab !== 'citizen' && (
                   <View style={s.tdCodeCell}>
                     {linkedKey ? (
-                      <View style={[s.codePill, { backgroundColor: currentTab.grad[0] + '18' }]}>
-                        <Text style={[s.codeText, { color: currentTab.grad[0] }]}>{linkedKey.code}</Text>
-                      </View>
+                      <TouchableOpacity
+                        activeOpacity={0.7}
+                        onLongPress={async () => {
+                          await Clipboard.setStringAsync(linkedKey.code);
+                          showAlert('Copied!', `Secret code "${linkedKey.code}" copied to clipboard.`, undefined, 'success');
+                        }}
+                        delayLongPress={400}
+                      >
+                        <View style={[s.codePill, { backgroundColor: currentTab.grad[0] + '18' }]}>
+                          <Text style={[s.codeText, { color: currentTab.grad[0] }]}>{linkedKey.code}</Text>
+                        </View>
+                      </TouchableOpacity>
                     ) : (
                       <Text style={[s.noCode, { color: colors.mutedForeground }]}>—</Text>
                     )}
