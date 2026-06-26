@@ -61,6 +61,7 @@ interface AppContextType {
   deleteSecretKey: (id: string) => Promise<void>;
   updateSecretKeyCode: (keyId: string, newCode: string) => Promise<void>;
   updateUserId: (oldId: string, newId: string) => Promise<void>;
+  updateUserFull: (oldId: string, newId: string, updates: Partial<User>) => Promise<void>;
   updateSupportDetails: (updates: Partial<SupportDetails>) => Promise<void>;
   addPasswordResetRequest: (email: string, name: string) => Promise<void>;
   updatePasswordResetRequest: (id: string, status: 'approved' | 'rejected', adminNote?: string) => Promise<void>;
@@ -593,6 +594,27 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setSecretKeys(updatedKeys); await rtdbSave('secretKeys', updatedKeys);
   }
 
+  async function updateUserFull(oldId: string, newId: string, updates: Partial<User>) {
+    const trimNew = newId.trim().toUpperCase();
+    const targetId = trimNew && trimNew !== oldId ? trimNew : oldId;
+
+    /* Build updated users in one pass — rename ID + apply field updates atomically */
+    const updatedUsers = users.map(u =>
+      u.id === oldId ? { ...u, ...updates, id: targetId } : u
+    );
+    setUsers(updatedUsers);
+    await rtdbSave('users', updatedUsers);
+
+    /* Update secret key references if ID changed */
+    if (targetId !== oldId) {
+      const updatedKeys = secretKeys.map(k =>
+        k.usedBy === oldId ? { ...k, usedBy: targetId } : k
+      );
+      setSecretKeys(updatedKeys);
+      await rtdbSave('secretKeys', updatedKeys);
+    }
+  }
+
   async function updateSupportDetails(updates: Partial<SupportDetails>) {
     const updated = { ...supportDetails, ...updates };
     setSupportDetails(updated); await rtdbSaveObj('support', updated);
@@ -649,7 +671,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       addGroup, updateGroup, deleteGroup,
       addNotice, updateNotice, deleteNotice,
       addUser, updateUser, deleteUser,
-      addSecretKey, assignSecretKeyToUser, toggleSecretKey, deleteSecretKey, updateSecretKeyCode, updateUserId,
+      addSecretKey, assignSecretKeyToUser, toggleSecretKey, deleteSecretKey, updateSecretKeyCode, updateUserId, updateUserFull,
       updateSupportDetails,
       addPasswordResetRequest, updatePasswordResetRequest,
       addImportHistory, deleteImportHistory,

@@ -55,6 +55,13 @@ function parseCSV(text: string): string[][] {
   });
 }
 
+const STATUS_CFG = {
+  valid:     { label: 'Valid',      color: '#10B981', bg: '#10B98118', icon: 'check-circle' },
+  duplicate: { label: 'Duplicate',  color: '#F59E0B', bg: '#F59E0B18', icon: 'copy' },
+  error:     { label: 'Error',      color: '#EF4444', bg: '#EF444418', icon: 'x-circle' },
+  dup_excel: { label: 'Dup in File',color: '#F97316', bg: '#F9731618', icon: 'alert-triangle' },
+} as const;
+
 export default function SuperAdminImport() {
   const { houses, wards, bulkImportHouses, addImportHistory, importHistory, deleteImportHistory } = useAppData();
   const { user } = useAuth();
@@ -113,7 +120,7 @@ export default function SuperAdminImport() {
       let errorReason: string | undefined;
       if (errors.length > 0) { status = 'error'; errorReason = errors.join('; '); }
       else if (seenReg.has(regNo.toUpperCase())) { status = 'dup_excel'; errorReason = 'Duplicate in file'; }
-      else if (houses.some(h => h.registrationNumber.toUpperCase() === regNo.toUpperCase())) { status = 'duplicate'; errorReason = 'Already exists in database'; }
+      else if (houses.some(h => h.registrationNumber.toUpperCase() === regNo.toUpperCase())) { status = 'duplicate'; errorReason = 'Already exists in DB'; }
       seenReg.add(regNo.toUpperCase());
       results.push({ rowNumber: i, registrationNo: regNo, ownerName, fatherOrHusband, ward: wardInput, address, mobile, propertyType: propType, status, errorReason, wardId: matchedWard?.id, wardNumber: matchedWard?.wardNumber });
     }
@@ -213,11 +220,9 @@ export default function SuperAdminImport() {
       showAlert('Nothing to import', 'No valid rows found.', undefined, 'warning');
       return;
     }
-
     setImporting(true);
     setProgress(0);
     setImportStats(null);
-
     const toImport: Omit<House, 'id'>[] = parsedRows
       .filter(r => r.status === 'valid' || (r.status === 'duplicate' && dupMode !== 'skip'))
       .map(r => ({
@@ -233,14 +238,11 @@ export default function SuperAdminImport() {
         isActive: true,
         createdBy: user?.name,
       }));
-
     try {
       const result = await bulkImportHouses(toImport, dupMode, (done, total) => {
         setProgress(Math.round((done / total) * 100));
       });
-
       setImportStats({ imported: result.imported, skipped: result.skipped, failed: result.failed });
-
       const errorReport: ImportError[] = [
         ...parsedRows.filter(r => r.status === 'error' || r.status === 'dup_excel').map(r => ({
           rowNumber: r.rowNumber,
@@ -249,7 +251,6 @@ export default function SuperAdminImport() {
         })),
         ...result.errors,
       ];
-
       await addImportHistory({
         fileName: sourceFileName,
         totalRows: parsedRows.length,
@@ -262,8 +263,7 @@ export default function SuperAdminImport() {
         status: result.failed === 0 ? 'completed' : result.imported > 0 ? 'partial' : 'failed',
         errorReport,
       });
-
-      showAlert('Import Complete', `${result.imported} imported, ${result.skipped} skipped, ${result.failed} failed`, undefined, 'success');
+      showAlert('Import Complete', `${result.imported} imported · ${result.skipped} skipped · ${result.failed} failed`, undefined, 'success');
       setParsedRows([]);
       setIsPreviewing(false);
       setCsvText('');
@@ -285,161 +285,226 @@ export default function SuperAdminImport() {
     setSourceFileName('Manual CSV Import');
   }
 
-  function statusIcon(s: ParsedRow['status']) {
-    if (s === 'valid') return { icon: '🟢', color: '#10B981' };
-    if (s === 'duplicate') return { icon: '🟡', color: '#F59E0B' };
-    return { icon: '🔴', color: '#EF4444' };
-  }
-
+  /* ─────────────────────────────────────────────────────── render */
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={['top']}>
-      <LinearGradient colors={['#1a0533', '#0D1B4B']} style={s.header}>
-        <View style={s.headerTop}>
+
+      {/* ── HERO HEADER ── */}
+      <LinearGradient colors={['#0F0A2A', '#0C1A4A', '#0A2A3A']} style={s.hero}>
+        <View style={s.heroContent}>
           <View style={{ flex: 1 }}>
-            <View style={s.superBadge}>
-              <Feather name="star" size={10} color="#FFD700" />
-              <Text style={s.superBadgeText}>SUPER ADMIN</Text>
+            <View style={s.heroBadge}>
+              <Feather name="star" size={9} color="#FFD700" />
+              <Text style={s.heroBadgeText}>SUPER ADMIN</Text>
             </View>
-            <Text style={s.headerTitle}>Bulk Import</Text>
-            <Text style={s.headerSub}>Import houses from Excel or CSV files</Text>
+            <Text style={s.heroTitle}>Bulk Import</Text>
+            <Text style={s.heroSub}>Excel & CSV import for House Database</Text>
           </View>
-          <View style={s.headerIcon}>
-            <Feather name="upload-cloud" size={22} color="#fff" />
-          </View>
+          <LinearGradient colors={['#6366F130', '#0EA5E930']} style={s.heroIconRing}>
+            <Feather name="upload-cloud" size={24} color="#A5B4FC" />
+          </LinearGradient>
         </View>
-        <View style={s.statRow}>
-          <LinearGradient colors={['#4F46E5', '#7C3AED']} style={s.statPill}>
-            <Text style={s.statNum}>{totalHouses}</Text>
-            <Text style={s.statLbl}>Total Houses</Text>
-          </LinearGradient>
-          <LinearGradient colors={['#10B981', '#059669']} style={s.statPill}>
-            <Text style={s.statNum}>{importsDone}</Text>
-            <Text style={s.statLbl}>Imports Done</Text>
-          </LinearGradient>
-          <LinearGradient colors={['#F97316', '#EA580C']} style={s.statPill}>
-            <Text style={s.statNum}>{totalWards}</Text>
-            <Text style={s.statLbl}>Total Wards</Text>
-          </LinearGradient>
+
+        {/* Stat pills */}
+        <View style={s.heroStats}>
+          {[
+            { icon: 'home', label: 'Total Houses', val: totalHouses, grad: ['#6366F1', '#4F46E5'] as [string,string] },
+            { icon: 'clock', label: 'Imports Done', val: importsDone, grad: ['#0EA5E9', '#0284C7'] as [string,string] },
+            { icon: 'map-pin', label: 'Wards', val: totalWards, grad: ['#10B981', '#059669'] as [string,string] },
+          ].map(st => (
+            <LinearGradient key={st.label} colors={st.grad} style={s.heroStatCard}>
+              <Feather name={st.icon as any} size={13} color="rgba(255,255,255,0.75)" />
+              <Text style={s.heroStatVal}>{st.val}</Text>
+              <Text style={s.heroStatLabel}>{st.label}</Text>
+            </LinearGradient>
+          ))}
         </View>
       </LinearGradient>
 
-      {/* Sub Tabs */}
-      <View style={[s.subTabBar, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
-        {([['import', 'upload', 'Import'], ['history', 'clock', 'History']] as const).map(([key, icon, label]) => {
-          const active = subTab === key;
+      {/* ── SUB TAB BAR ── */}
+      <View style={[s.tabBar, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
+        {([
+          { key: 'import',  icon: 'upload-cloud', label: 'Import',  color: '#6366F1' },
+          { key: 'history', icon: 'clock',        label: 'History', color: '#0EA5E9' },
+        ] as const).map(tab => {
+          const active = subTab === tab.key;
           return (
-            <TouchableOpacity key={key} style={s.subTab} onPress={() => setSubTab(key)} activeOpacity={0.7}>
-              <Feather name={icon as any} size={15} color={active ? '#4F46E5' : colors.mutedForeground} />
-              <Text style={[s.subTabLabel, { color: active ? '#4F46E5' : colors.mutedForeground, fontFamily: active ? 'Inter_700Bold' : 'Inter_500Medium' }]}>
-                {label}
+            <TouchableOpacity
+              key={tab.key}
+              style={[s.tabItem, active && { borderBottomColor: tab.color }]}
+              onPress={() => setSubTab(tab.key)}
+              activeOpacity={0.7}
+            >
+              <Feather name={tab.icon} size={16} color={active ? tab.color : colors.mutedForeground} />
+              <Text style={[s.tabLabel, { color: active ? tab.color : colors.mutedForeground, fontFamily: active ? 'Inter_700Bold' : 'Inter_500Medium' }]}>
+                {tab.label}
               </Text>
-              {active && <View style={s.subTabUnderline} />}
+              {tab.key === 'history' && importHistory.length > 0 && (
+                <View style={[s.tabBadge, { backgroundColor: tab.color }]}>
+                  <Text style={s.tabBadgeText}>{importHistory.length}</Text>
+                </View>
+              )}
             </TouchableOpacity>
           );
         })}
       </View>
 
-      {/* ── IMPORT TAB ── */}
+      {/* ══════════════ IMPORT TAB ══════════════ */}
       {subTab === 'import' && (
-        <ScrollView contentContainerStyle={{ padding: 16, gap: 14, paddingBottom: 170 }}>
+        <ScrollView
+          style={{ flex: 1 }}
+          contentContainerStyle={{ padding: 16, gap: 16, paddingBottom: 180 }}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
           {!isPreviewing ? (
             <>
-              {/* Template download */}
-              <TouchableOpacity
-                style={[s.templateCard, { backgroundColor: colors.card, borderColor: '#4F46E540' }]}
-                onPress={() => setShowTemplate(true)}
-                activeOpacity={0.85}
-              >
-                <LinearGradient colors={['#4F46E5', '#7C3AED']} style={s.templateIcon}>
-                  <Feather name="download" size={18} color="#fff" />
-                </LinearGradient>
-                <View style={{ flex: 1 }}>
-                  <Text style={[s.templateTitle, { color: colors.text }]}>Download CSV Template</Text>
-                  <Text style={[s.templateSub, { color: colors.mutedForeground }]}>Get the correct column format before importing</Text>
-                </View>
-                <Feather name="external-link" size={16} color={colors.mutedForeground} />
-              </TouchableOpacity>
-
-              {/* Expected Columns */}
-              <View style={[s.colCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-                <View style={s.colCardHeader}>
-                  <Feather name="info" size={14} color="#6366F1" />
-                  <Text style={[s.colCardTitle, { color: colors.text }]}>Expected Columns</Text>
-                </View>
-                {[
-                  { name: 'registrationNumber', ex: 'DNPH001', req: true },
-                  { name: 'ownerName', ex: 'Ramesh Prasad', req: true },
-                  { name: 'address', ex: 'Ward 1, Station Road', req: true },
-                  { name: 'fatherName', ex: 'Shiv Prasad', req: false },
-                  { name: 'mobile', ex: '9876543210', req: false },
-                  { name: 'wardNumber', ex: '1', req: false },
-                  { name: 'propertyType', ex: 'Residential', req: false },
-                ].map(col => (
-                  <View key={col.name} style={s.colRow}>
-                    <View style={[s.colBadge, { backgroundColor: col.req ? '#EF444420' : '#10B98120' }]}>
-                      <Text style={[s.colBadgeText, { color: col.req ? '#EF4444' : '#10B981' }]}>{col.req ? 'REQ' : 'OPT'}</Text>
+              {/* ── Step indicator ── */}
+              <View style={s.steps}>
+                {(['Upload File', 'Preview & Validate', 'Import Records'] as const).map((lbl, i) => (
+                  <React.Fragment key={lbl}>
+                    <View style={s.stepItem}>
+                      <LinearGradient
+                        colors={i === 0 ? ['#6366F1', '#4F46E5'] : ['#E5E7EB', '#D1D5DB']}
+                        style={s.stepCircle}
+                      >
+                        <Text style={[s.stepNum, { color: i === 0 ? '#fff' : '#9CA3AF' }]}>{i + 1}</Text>
+                      </LinearGradient>
+                      <Text style={[s.stepLabel, { color: i === 0 ? '#6366F1' : colors.mutedForeground }]}>{lbl}</Text>
                     </View>
-                    <Text style={[s.colName, { color: colors.text }]}>{col.name}</Text>
-                    <Text style={[s.colEx, { color: colors.mutedForeground }]}>{col.ex}</Text>
-                  </View>
+                    {i < 2 && <View style={[s.stepLine, { backgroundColor: colors.border }]} />}
+                  </React.Fragment>
                 ))}
               </View>
 
-              {/* Upload options */}
+              {/* ── Template download card ── */}
+              <TouchableOpacity
+                style={[s.templateCard, { borderColor: '#6366F130' }]}
+                onPress={() => setShowTemplate(true)}
+                activeOpacity={0.85}
+              >
+                <LinearGradient colors={['#6366F1', '#4F46E5']} style={s.templateIconBox}>
+                  <Feather name="file-text" size={18} color="#fff" />
+                </LinearGradient>
+                <View style={{ flex: 1 }}>
+                  <Text style={[s.templateTitle, { color: colors.text }]}>Download CSV Template</Text>
+                  <Text style={[s.templateSub, { color: colors.mutedForeground }]}>View the correct column format before importing</Text>
+                </View>
+                <View style={[s.templateArrow, { backgroundColor: '#6366F115' }]}>
+                  <Feather name="arrow-right" size={15} color="#6366F1" />
+                </View>
+              </TouchableOpacity>
+
+              {/* ── Column format guide ── */}
+              <View style={[s.colGuide, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                <View style={s.colGuideHdr}>
+                  <LinearGradient colors={['#0EA5E9', '#0284C7']} style={s.colGuideIcon}>
+                    <Feather name="columns" size={13} color="#fff" />
+                  </LinearGradient>
+                  <Text style={[s.colGuideTitle, { color: colors.text }]}>Expected Columns</Text>
+                  <View style={[s.colGuideNote, { backgroundColor: '#0EA5E915' }]}>
+                    <Text style={[s.colGuideNoteText, { color: '#0EA5E9' }]}>Col A → H</Text>
+                  </View>
+                </View>
+                <View style={s.colChipRow}>
+                  {[
+                    { name: 'S.No',            req: false },
+                    { name: 'Reg No',          req: true  },
+                    { name: 'Owner Name',      req: true  },
+                    { name: 'Father/Husband',  req: false },
+                    { name: 'Ward',            req: false },
+                    { name: 'Address',         req: true  },
+                    { name: 'Mobile',          req: false },
+                    { name: 'Property Type',   req: false },
+                  ].map((col, i) => (
+                    <View key={col.name} style={[
+                      s.colChip,
+                      { backgroundColor: col.req ? '#6366F112' : colors.background, borderColor: col.req ? '#6366F140' : colors.border },
+                    ]}>
+                      <Text style={[s.colChipLetter, { color: '#9CA3AF' }]}>{String.fromCharCode(65 + i)}</Text>
+                      <Text style={[s.colChipName, { color: col.req ? '#6366F1' : colors.text }]}>{col.name}</Text>
+                      {col.req && <View style={s.colReqDot} />}
+                    </View>
+                  ))}
+                </View>
+                <View style={[s.colGuideFooter, { borderTopColor: colors.border }]}>
+                  <View style={s.colLegendItem}>
+                    <View style={[s.colLegendDot, { backgroundColor: '#6366F1' }]} />
+                    <Text style={[s.colLegendText, { color: colors.mutedForeground }]}>Required</Text>
+                  </View>
+                  <View style={s.colLegendItem}>
+                    <View style={[s.colLegendDot, { backgroundColor: colors.border }]} />
+                    <Text style={[s.colLegendText, { color: colors.mutedForeground }]}>Optional</Text>
+                  </View>
+                  <Text style={[s.colLegendText, { color: colors.mutedForeground, marginLeft: 'auto' }]}>
+                    Property: Residential · Commercial · Government…
+                  </Text>
+                </View>
+              </View>
+
+              {/* ── Upload options ── */}
               {!showInput && (
-                <View style={s.uploadOptionsRow}>
-                  {/* Excel / CSV file picker */}
+                <View style={s.uploadRow}>
+                  {/* Pick File */}
                   <TouchableOpacity
-                    style={[s.uploadOptionCard, { backgroundColor: colors.card, borderColor: '#10B98140', flex: 1 }]}
+                    style={[s.uploadCard, { backgroundColor: colors.card, borderColor: '#10B98140' }]}
                     onPress={handlePickExcel}
                     disabled={pickingFile}
                     activeOpacity={0.85}
                   >
-                    {pickingFile ? (
-                      <ActivityIndicator size={28} color="#10B981" />
-                    ) : (
-                      <LinearGradient colors={['#10B981', '#059669']} style={s.uploadIcon}>
-                        <Feather name="file-text" size={22} color="#fff" />
-                      </LinearGradient>
-                    )}
-                    <Text style={[s.uploadTitle, { color: colors.text }]}>Pick File</Text>
-                    <Text style={[s.uploadSub, { color: colors.mutedForeground, textAlign: 'center' }]}>.xlsx · .xls · .csv</Text>
-                    <View style={[s.excelBadge, { backgroundColor: '#10B98115', borderColor: '#10B98130' }]}>
-                      <Feather name="check-circle" size={10} color="#10B981" />
-                      <Text style={[s.excelBadgeText, { color: '#10B981' }]}>Excel supported</Text>
+                    <LinearGradient colors={['#10B981', '#059669']} style={s.uploadCardIcon}>
+                      {pickingFile
+                        ? <ActivityIndicator size={20} color="#fff" />
+                        : <Feather name="folder" size={20} color="#fff" />}
+                    </LinearGradient>
+                    <Text style={[s.uploadCardTitle, { color: colors.text }]}>Pick File</Text>
+                    <Text style={[s.uploadCardSub, { color: colors.mutedForeground }]}>Excel or CSV from device</Text>
+                    <View style={s.uploadCardFormats}>
+                      {['.xlsx', '.xls', '.csv'].map(f => (
+                        <View key={f} style={[s.formatBadge, { backgroundColor: '#10B98112', borderColor: '#10B98130' }]}>
+                          <Text style={[s.formatText, { color: '#10B981' }]}>{f}</Text>
+                        </View>
+                      ))}
                     </View>
                   </TouchableOpacity>
 
                   {/* Paste CSV */}
                   <TouchableOpacity
-                    style={[s.uploadOptionCard, { backgroundColor: colors.card, borderColor: '#4F46E540', flex: 1 }]}
+                    style={[s.uploadCard, { backgroundColor: colors.card, borderColor: '#6366F140' }]}
                     onPress={() => setShowInput(true)}
                     activeOpacity={0.85}
                   >
-                    <LinearGradient colors={['#4F46E5', '#7C3AED']} style={s.uploadIcon}>
-                      <Feather name="clipboard" size={22} color="#fff" />
+                    <LinearGradient colors={['#6366F1', '#4F46E5']} style={s.uploadCardIcon}>
+                      <Feather name="clipboard" size={20} color="#fff" />
                     </LinearGradient>
-                    <Text style={[s.uploadTitle, { color: colors.text }]}>Paste CSV</Text>
-                    <Text style={[s.uploadSub, { color: colors.mutedForeground, textAlign: 'center' }]}>Copy &amp; paste text</Text>
-                    <View style={[s.excelBadge, { backgroundColor: '#4F46E515', borderColor: '#4F46E530' }]}>
-                      <Feather name="type" size={10} color="#4F46E5" />
-                      <Text style={[s.excelBadgeText, { color: '#4F46E5' }]}>Manual entry</Text>
+                    <Text style={[s.uploadCardTitle, { color: colors.text }]}>Paste CSV</Text>
+                    <Text style={[s.uploadCardSub, { color: colors.mutedForeground }]}>Copy & paste raw text</Text>
+                    <View style={s.uploadCardFormats}>
+                      <View style={[s.formatBadge, { backgroundColor: '#6366F112', borderColor: '#6366F130' }]}>
+                        <Text style={[s.formatText, { color: '#6366F1' }]}>Manual</Text>
+                      </View>
                     </View>
                   </TouchableOpacity>
                 </View>
               )}
 
-              {/* CSV Text Input */}
+              {/* ── CSV paste input ── */}
               {showInput && (
-                <View style={[s.csvInputCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-                  <View style={s.csvInputHeader}>
-                    <Text style={[s.csvInputTitle, { color: colors.text }]}>Paste CSV Content</Text>
-                    <TouchableOpacity onPress={() => { setShowInput(false); setCsvText(''); }}>
-                      <Feather name="x" size={18} color={colors.mutedForeground} />
+                <View style={[s.pasteCard, { backgroundColor: colors.card, borderColor: '#6366F130' }]}>
+                  <View style={s.pasteCardHdr}>
+                    <LinearGradient colors={['#6366F1', '#4F46E5']} style={s.pasteCardIcon}>
+                      <Feather name="clipboard" size={14} color="#fff" />
+                    </LinearGradient>
+                    <Text style={[s.pasteCardTitle, { color: colors.text }]}>Paste CSV Content</Text>
+                    <TouchableOpacity
+                      onPress={() => { setShowInput(false); setCsvText(''); }}
+                      style={[s.pasteCloseBtn, { backgroundColor: colors.background }]}
+                    >
+                      <Feather name="x" size={14} color={colors.mutedForeground} />
                     </TouchableOpacity>
                   </View>
                   <TextInput
-                    style={[s.csvInput, { backgroundColor: colors.background, color: colors.text, borderColor: colors.border }]}
+                    style={[s.csvTextArea, { backgroundColor: colors.background, color: colors.text, borderColor: colors.border }]}
                     multiline
                     numberOfLines={8}
                     placeholder={`S.No,House Registration No,Owner Name,...\n1,DNPH001,Ramesh Prasad,...`}
@@ -449,9 +514,9 @@ export default function SuperAdminImport() {
                     textAlignVertical="top"
                   />
                   <TouchableOpacity onPress={validateAndPreview} activeOpacity={0.85}>
-                    <LinearGradient colors={['#4F46E5', '#7C3AED']} style={s.previewBtn}>
+                    <LinearGradient colors={['#6366F1', '#4F46E5']} style={s.previewBtn}>
                       <Feather name="eye" size={16} color="#fff" />
-                      <Text style={s.previewBtnText}>Preview &amp; Validate</Text>
+                      <Text style={s.previewBtnText}>Preview & Validate</Text>
                     </LinearGradient>
                   </TouchableOpacity>
                 </View>
@@ -459,86 +524,177 @@ export default function SuperAdminImport() {
             </>
           ) : (
             <>
-              {/* Preview Stats */}
-              <View style={s.previewStatsRow}>
+              {/* ── Step indicator (step 2 active) ── */}
+              <View style={s.steps}>
+                {(['Upload File', 'Preview & Validate', 'Import Records'] as const).map((lbl, i) => (
+                  <React.Fragment key={lbl}>
+                    <View style={s.stepItem}>
+                      <LinearGradient
+                        colors={i === 0 ? ['#10B981', '#059669'] : i === 1 ? ['#6366F1', '#4F46E5'] : ['#E5E7EB', '#D1D5DB']}
+                        style={s.stepCircle}
+                      >
+                        {i === 0
+                          ? <Feather name="check" size={12} color="#fff" />
+                          : <Text style={[s.stepNum, { color: i === 1 ? '#fff' : '#9CA3AF' }]}>{i + 1}</Text>}
+                      </LinearGradient>
+                      <Text style={[s.stepLabel, {
+                        color: i === 0 ? '#10B981' : i === 1 ? '#6366F1' : colors.mutedForeground,
+                      }]}>{lbl}</Text>
+                    </View>
+                    {i < 2 && <View style={[s.stepLine, { backgroundColor: i === 0 ? '#10B98140' : colors.border }]} />}
+                  </React.Fragment>
+                ))}
+              </View>
+
+              {/* ── File source banner ── */}
+              <View style={[s.sourceBanner, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                <LinearGradient colors={['#6366F1', '#4F46E5']} style={s.sourceIconBox}>
+                  <Feather name="file-text" size={14} color="#fff" />
+                </LinearGradient>
+                <View style={{ flex: 1 }}>
+                  <Text style={[s.sourceFile, { color: colors.text }]} numberOfLines={1}>{sourceFileName}</Text>
+                  <Text style={[s.sourceRows, { color: colors.mutedForeground }]}>{counts.total} rows parsed</Text>
+                </View>
+                <TouchableOpacity onPress={resetImport} style={[s.sourceReset, { borderColor: colors.border }]}>
+                  <Feather name="refresh-ccw" size={13} color={colors.mutedForeground} />
+                  <Text style={[s.sourceResetText, { color: colors.mutedForeground }]}>Reset</Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* ── Preview stat pills ── */}
+              <View style={s.statPills}>
                 {[
-                  { label: 'Total', val: counts.total, color: '#6366F1' },
-                  { label: 'Valid', val: counts.valid, color: '#10B981' },
-                  { label: 'Duplicate', val: counts.duplicate, color: '#F59E0B' },
-                  { label: 'Error', val: counts.error + counts.dup_excel, color: '#EF4444' },
+                  { label: 'Total',     val: counts.total,                     color: '#6366F1', icon: 'list' },
+                  { label: 'Valid',     val: counts.valid,                     color: '#10B981', icon: 'check-circle' },
+                  { label: 'Duplicate',val: counts.duplicate,                  color: '#F59E0B', icon: 'copy' },
+                  { label: 'Error',     val: counts.error + counts.dup_excel,  color: '#EF4444', icon: 'x-circle' },
                 ].map(st => (
-                  <View key={st.label} style={[s.previewStat, { backgroundColor: colors.card, borderColor: st.color + '40' }]}>
-                    <Text style={[s.previewStatNum, { color: st.color }]}>{st.val}</Text>
-                    <Text style={[s.previewStatLabel, { color: colors.mutedForeground }]}>{st.label}</Text>
+                  <View key={st.label} style={[s.statPill, { backgroundColor: st.color + '12', borderColor: st.color + '30' }]}>
+                    <Feather name={st.icon as any} size={14} color={st.color} />
+                    <Text style={[s.statPillNum, { color: st.color }]}>{st.val}</Text>
+                    <Text style={[s.statPillLabel, { color: st.color + 'BB' }]}>{st.label}</Text>
                   </View>
                 ))}
               </View>
 
-              {/* Duplicate mode */}
+              {/* ── Duplicate handling ── */}
               <View style={[s.dupCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-                <Text style={[s.dupTitle, { color: colors.text }]}>Duplicate Handling</Text>
-                <View style={s.dupRow}>
-                  {([['skip', 'Skip Duplicate'], ['update', 'Update Existing'], ['replace', 'Replace Record']] as const).map(([mode, label]) => (
-                    <TouchableOpacity
-                      key={mode}
-                      style={[s.dupBtn, dupMode === mode && { backgroundColor: '#4F46E5', borderColor: '#4F46E5' }, { borderColor: colors.border }]}
-                      onPress={() => setDupMode(mode)}
-                    >
-                      <Text style={[s.dupBtnText, { color: dupMode === mode ? '#fff' : colors.mutedForeground }]}>{label}</Text>
-                    </TouchableOpacity>
-                  ))}
+                <View style={s.dupHdr}>
+                  <LinearGradient colors={['#F59E0B', '#D97706']} style={s.dupHdrIcon}>
+                    <Feather name="copy" size={13} color="#fff" />
+                  </LinearGradient>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[s.dupTitle, { color: colors.text }]}>Duplicate Handling</Text>
+                    <Text style={[s.dupSub, { color: colors.mutedForeground }]}>
+                      {counts.duplicate} duplicate{counts.duplicate !== 1 ? 's' : ''} found in DB
+                    </Text>
+                  </View>
+                </View>
+                <View style={s.dupOptions}>
+                  {([
+                    { mode: 'skip',    label: 'Skip',    desc: 'Keep existing',  icon: 'skip-forward', color: '#6B7280' },
+                    { mode: 'update',  label: 'Update',  desc: 'Merge fields',   icon: 'edit-2',       color: '#6366F1' },
+                    { mode: 'replace', label: 'Replace', desc: 'Overwrite all',  icon: 'refresh-cw',   color: '#EF4444' },
+                  ] as const).map(opt => {
+                    const active = dupMode === opt.mode;
+                    return (
+                      <TouchableOpacity
+                        key={opt.mode}
+                        style={[s.dupOption, { borderColor: active ? opt.color : colors.border, backgroundColor: active ? opt.color + '10' : 'transparent' }]}
+                        onPress={() => setDupMode(opt.mode)}
+                        activeOpacity={0.8}
+                      >
+                        <Feather name={opt.icon} size={16} color={active ? opt.color : colors.mutedForeground} />
+                        <Text style={[s.dupOptionLabel, { color: active ? opt.color : colors.text }]}>{opt.label}</Text>
+                        <Text style={[s.dupOptionDesc, { color: colors.mutedForeground }]}>{opt.desc}</Text>
+                        {active && <View style={[s.dupActiveDot, { backgroundColor: opt.color }]} />}
+                      </TouchableOpacity>
+                    );
+                  })}
                 </View>
               </View>
 
-              {/* Preview Table */}
+              {/* ── Preview rows ── */}
               <View style={[s.previewTable, { backgroundColor: colors.card, borderColor: colors.border }]}>
-                <View style={[s.previewTableHeader, { borderBottomColor: colors.border }]}>
-                  {['S.No', 'Reg No', 'Owner', 'Ward', 'Status'].map(h => (
-                    <Text key={h} style={[s.previewTableHeaderCell, { color: colors.mutedForeground, flex: h === 'Owner' ? 1.5 : 1 }]}>{h}</Text>
-                  ))}
+                <View style={[s.previewTableHdr, { backgroundColor: '#6366F108', borderBottomColor: colors.border }]}>
+                  <Text style={[s.previewTh, { width: 36, color: colors.mutedForeground }]}>#</Text>
+                  <Text style={[s.previewTh, { flex: 1, color: colors.mutedForeground }]}>Reg No</Text>
+                  <Text style={[s.previewTh, { flex: 1.6, color: colors.mutedForeground }]}>Owner Name</Text>
+                  <Text style={[s.previewTh, { width: 32, color: colors.mutedForeground }]}>Ward</Text>
+                  <Text style={[s.previewTh, { width: 70, color: colors.mutedForeground }]}>Status</Text>
                 </View>
-                <ScrollView style={{ maxHeight: 300 }}>
+                <ScrollView style={{ maxHeight: 280 }} nestedScrollEnabled>
                   {parsedRows.map(row => {
-                    const si = statusIcon(row.status);
+                    const cfg = STATUS_CFG[row.status];
                     return (
-                      <View key={row.rowNumber} style={[s.previewTableRow, { borderBottomColor: colors.border }]}>
-                        <Text style={[s.previewCell, { color: colors.mutedForeground, flex: 1 }]}>{row.rowNumber}</Text>
-                        <Text style={[s.previewCell, { color: '#6366F1', flex: 1 }]} numberOfLines={1}>{row.registrationNo || '—'}</Text>
-                        <Text style={[s.previewCell, { color: colors.text, flex: 1.5 }]} numberOfLines={1}>{row.ownerName || '—'}</Text>
-                        <Text style={[s.previewCell, { color: colors.mutedForeground, flex: 1 }]} numberOfLines={1}>{row.ward || '—'}</Text>
-                        <Text style={[s.previewCell, { flex: 1 }]}>{si.icon}</Text>
+                      <View key={row.rowNumber} style={[s.previewRow, { borderBottomColor: colors.border, backgroundColor: cfg.bg }]}>
+                        <Text style={[s.previewTd, { width: 36, color: colors.mutedForeground }]}>{row.rowNumber}</Text>
+                        <Text style={[s.previewTd, { flex: 1, color: '#6366F1', fontFamily: 'Inter_600SemiBold' }]} numberOfLines={1}>
+                          {row.registrationNo || '—'}
+                        </Text>
+                        <Text style={[s.previewTd, { flex: 1.6, color: colors.text }]} numberOfLines={1}>
+                          {row.ownerName || '—'}
+                        </Text>
+                        <Text style={[s.previewTd, { width: 32, color: colors.mutedForeground }]} numberOfLines={1}>
+                          {row.ward || '—'}
+                        </Text>
+                        <View style={[s.statusPill, { backgroundColor: cfg.color + '18', borderColor: cfg.color + '40' }]}>
+                          <Feather name={cfg.icon as any} size={9} color={cfg.color} />
+                          <Text style={[s.statusPillText, { color: cfg.color }]}>{cfg.label}</Text>
+                        </View>
                       </View>
                     );
                   })}
                 </ScrollView>
               </View>
 
-              {/* Import Progress */}
+              {/* ── Progress ── */}
               {importing && (
-                <View style={[s.progressCard, { backgroundColor: colors.card, borderColor: '#4F46E540' }]}>
-                  <View style={s.progressHeader}>
-                    <ActivityIndicator size="small" color="#4F46E5" />
-                    <Text style={[s.progressText, { color: colors.text }]}>Importing… {progress}%</Text>
+                <View style={[s.progressCard, { backgroundColor: colors.card, borderColor: '#6366F130' }]}>
+                  <View style={s.progressHdr}>
+                    <ActivityIndicator size="small" color="#6366F1" />
+                    <Text style={[s.progressLabel, { color: colors.text }]}>Importing records…</Text>
+                    <Text style={[s.progressPct, { color: '#6366F1' }]}>{progress}%</Text>
                   </View>
                   <View style={[s.progressTrack, { backgroundColor: colors.border }]}>
-                    <View style={[s.progressFill, { width: `${progress}%` as any, backgroundColor: '#4F46E5' }]} />
+                    <LinearGradient
+                      colors={['#6366F1', '#4F46E5']}
+                      style={[s.progressFill, { width: `${progress}%` as any }]}
+                    />
                   </View>
                 </View>
               )}
 
+              {/* ── Import done banner ── */}
               {importStats && (
-                <View style={[s.doneCard, { backgroundColor: '#10B98115', borderColor: '#10B98130' }]}>
-                  <Feather name="check-circle" size={20} color="#10B981" />
-                  <Text style={[s.doneText, { color: '#10B981' }]}>
-                    Done: {importStats.imported} imported · {importStats.skipped} skipped · {importStats.failed} failed
-                  </Text>
-                </View>
+                <LinearGradient colors={['#10B98118', '#059669' + '0A']} style={[s.doneBanner, { borderColor: '#10B98130' }]}>
+                  <View style={s.doneBannerIcon}>
+                    <Feather name="check-circle" size={22} color="#10B981" />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={s.doneBannerTitle}>Import Complete</Text>
+                    <View style={s.doneBannerStats}>
+                      <Text style={[s.doneStat, { color: '#10B981' }]}>{importStats.imported} imported</Text>
+                      <Text style={s.doneSep}>·</Text>
+                      <Text style={[s.doneStat, { color: '#F59E0B' }]}>{importStats.skipped} skipped</Text>
+                      <Text style={s.doneSep}>·</Text>
+                      <Text style={[s.doneStat, { color: '#EF4444' }]}>{importStats.failed} failed</Text>
+                    </View>
+                  </View>
+                </LinearGradient>
               )}
 
-              <View style={s.importActions}>
-                <TouchableOpacity style={[s.cancelBtn, { borderColor: colors.border }]} onPress={resetImport}>
-                  <Text style={[s.cancelBtnText, { color: colors.mutedForeground }]}>Cancel</Text>
+              {/* ── Action buttons ── */}
+              <View style={s.actionRow}>
+                <TouchableOpacity
+                  style={[s.resetBtn, { borderColor: colors.border }]}
+                  onPress={resetImport}
+                  activeOpacity={0.8}
+                >
+                  <Feather name="arrow-left" size={16} color={colors.mutedForeground} />
+                  <Text style={[s.resetBtnText, { color: colors.mutedForeground }]}>Back</Text>
                 </TouchableOpacity>
+
                 <TouchableOpacity
                   style={{ flex: 1 }}
                   onPress={handleImport}
@@ -546,11 +702,15 @@ export default function SuperAdminImport() {
                   activeOpacity={0.85}
                 >
                   <LinearGradient
-                    colors={counts.valid === 0 ? ['#6B7280', '#4B5563'] : ['#4F46E5', '#7C3AED']}
+                    colors={counts.valid === 0 ? ['#6B7280', '#4B5563'] : ['#6366F1', '#4F46E5']}
                     style={s.importBtn}
                   >
-                    {importing ? <ActivityIndicator size="small" color="#fff" /> : <Feather name="upload-cloud" size={16} color="#fff" />}
-                    <Text style={s.importBtnText}>{importing ? 'Importing…' : `Import ${counts.valid} Records`}</Text>
+                    {importing
+                      ? <ActivityIndicator size="small" color="#fff" />
+                      : <Feather name="upload-cloud" size={18} color="#fff" />}
+                    <Text style={s.importBtnText}>
+                      {importing ? 'Importing…' : `Import ${counts.valid} Records`}
+                    </Text>
                   </LinearGradient>
                 </TouchableOpacity>
               </View>
@@ -559,59 +719,91 @@ export default function SuperAdminImport() {
         </ScrollView>
       )}
 
-      {/* ── HISTORY TAB ── */}
+      {/* ══════════════ HISTORY TAB ══════════════ */}
       {subTab === 'history' && (
-        <ScrollView contentContainerStyle={{ padding: 16, gap: 12, paddingBottom: 170 }}>
+        <ScrollView
+          style={{ flex: 1 }}
+          contentContainerStyle={{ padding: 16, gap: 12, paddingBottom: 180 }}
+          showsVerticalScrollIndicator={false}
+        >
           {importHistory.length === 0 ? (
-            <View style={[s.empty, { backgroundColor: colors.card }]}>
-              <Feather name="clock" size={32} color={colors.mutedForeground} />
-              <Text style={[s.emptyText, { color: colors.mutedForeground }]}>No import history yet</Text>
+            <View style={[s.emptyBox, { backgroundColor: colors.card, borderColor: colors.border }]}>
+              <LinearGradient colors={['#6366F1', '#4F46E5']} style={s.emptyIcon}>
+                <Feather name="clock" size={24} color="#fff" />
+              </LinearGradient>
+              <Text style={[s.emptyTitle, { color: colors.text }]}>No imports yet</Text>
+              <Text style={[s.emptySub, { color: colors.mutedForeground }]}>Import history will appear here</Text>
             </View>
           ) : (
-            importHistory.map(h => {
-              const statusColor = h.status === 'completed' ? '#10B981' : h.status === 'partial' ? '#F59E0B' : '#EF4444';
-              const statusBg = h.status === 'completed' ? '#10B98115' : h.status === 'partial' ? '#F59E0B15' : '#EF444415';
+            importHistory.map((h, idx) => {
+              const statusCfg = h.status === 'completed'
+                ? { color: '#10B981', bg: '#10B98115', icon: 'check-circle', label: 'Completed' }
+                : h.status === 'partial'
+                ? { color: '#F59E0B', bg: '#F59E0B15', icon: 'alert-circle', label: 'Partial' }
+                : { color: '#EF4444', bg: '#EF444415', icon: 'x-circle', label: 'Failed' };
+
+              const successPct = h.totalRows > 0 ? Math.round((h.successRows / h.totalRows) * 100) : 0;
+
               return (
                 <TouchableOpacity
                   key={h.id}
-                  style={[s.historyCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+                  style={[s.histCard, { backgroundColor: colors.card, borderColor: colors.border }]}
                   onPress={() => setSelectedHistory(h)}
                   activeOpacity={0.85}
                 >
-                  <View style={s.historyHeader}>
-                    <View style={[s.historyIconBox, { backgroundColor: '#4F46E520' }]}>
-                      <Feather name="file-text" size={16} color="#4F46E5" />
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={[s.historyFileName, { color: colors.text }]} numberOfLines={1}>{h.fileName}</Text>
-                      <Text style={[s.historyBy, { color: colors.mutedForeground }]}>by {h.uploadedByName}</Text>
-                    </View>
-                    <View style={[s.statusBadge, { backgroundColor: statusBg }]}>
-                      <Text style={[s.statusBadgeText, { color: statusColor }]}>{h.status}</Text>
-                    </View>
-                    <TouchableOpacity onPress={() => showAlert('Delete?', h.fileName, [
-                      { text: 'Cancel', style: 'cancel' },
-                      { text: 'Delete', style: 'destructive', onPress: () => deleteImportHistory(h.id) },
-                    ], 'error')} style={{ padding: 4, marginLeft: 8 }}>
-                      <Feather name="trash-2" size={14} color={colors.destructive} />
-                    </TouchableOpacity>
-                  </View>
-                  <View style={[s.historyStats, { borderTopColor: colors.border }]}>
-                    {[
-                      { label: 'Total', val: h.totalRows, color: '#6366F1' },
-                      { label: 'Imported', val: h.successRows, color: '#10B981' },
-                      { label: 'Skipped', val: h.duplicateRows, color: '#F59E0B' },
-                      { label: 'Failed', val: h.failedRows, color: '#EF4444' },
-                    ].map(st => (
-                      <View key={st.label} style={s.historyStatItem}>
-                        <Text style={[s.historyStatNum, { color: st.color }]}>{st.val}</Text>
-                        <Text style={[s.historyStatLabel, { color: colors.mutedForeground }]}>{st.label}</Text>
+                  {/* Left accent */}
+                  <View style={[s.histAccent, { backgroundColor: statusCfg.color }]} />
+
+                  <View style={{ flex: 1, padding: 14, paddingLeft: 18 }}>
+                    {/* Top row */}
+                    <View style={s.histTop}>
+                      <View style={[s.histIconBox, { backgroundColor: statusCfg.bg }]}>
+                        <Feather name={statusCfg.icon as any} size={16} color={statusCfg.color} />
                       </View>
-                    ))}
+                      <View style={{ flex: 1 }}>
+                        <Text style={[s.histFileName, { color: colors.text }]} numberOfLines={1}>{h.fileName}</Text>
+                        <Text style={[s.histBy, { color: colors.mutedForeground }]}>
+                          {h.uploadedByName} · {new Date(h.uploadedTime).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: '2-digit' })}
+                        </Text>
+                      </View>
+                      <View style={[s.histStatusPill, { backgroundColor: statusCfg.bg }]}>
+                        <Text style={[s.histStatusText, { color: statusCfg.color }]}>{statusCfg.label}</Text>
+                      </View>
+                      <TouchableOpacity
+                        onPress={() => showAlert('Delete?', `Remove "${h.fileName}" from history?`, [
+                          { text: 'Cancel', style: 'cancel' },
+                          { text: 'Delete', style: 'destructive', onPress: () => deleteImportHistory(h.id) },
+                        ], 'error')}
+                        style={s.histDeleteBtn}
+                      >
+                        <Feather name="trash-2" size={14} color={colors.mutedForeground} />
+                      </TouchableOpacity>
+                    </View>
+
+                    {/* Progress bar */}
+                    <View style={[s.histProgressTrack, { backgroundColor: colors.border }]}>
+                      <View style={[s.histProgressFill, { width: `${successPct}%` as any, backgroundColor: statusCfg.color }]} />
+                    </View>
+
+                    {/* Bottom stats */}
+                    <View style={[s.histStats, { borderTopColor: colors.border }]}>
+                      {[
+                        { label: 'Total',    val: h.totalRows,     color: '#6366F1' },
+                        { label: 'Imported', val: h.successRows,   color: '#10B981' },
+                        { label: 'Skipped',  val: h.duplicateRows, color: '#F59E0B' },
+                        { label: 'Failed',   val: h.failedRows,    color: '#EF4444' },
+                      ].map(st => (
+                        <View key={st.label} style={s.histStatItem}>
+                          <Text style={[s.histStatNum, { color: st.color }]}>{st.val}</Text>
+                          <Text style={[s.histStatLabel, { color: colors.mutedForeground }]}>{st.label}</Text>
+                        </View>
+                      ))}
+                      <View style={s.histStatItem}>
+                        <Text style={[s.histStatNum, { color: statusCfg.color }]}>{successPct}%</Text>
+                        <Text style={[s.histStatLabel, { color: colors.mutedForeground }]}>Success</Text>
+                      </View>
+                    </View>
                   </View>
-                  <Text style={[s.historyDate, { color: colors.mutedForeground }]}>
-                    {new Date(h.uploadedTime).toLocaleString()}
-                  </Text>
                 </TouchableOpacity>
               );
             })
@@ -619,81 +811,135 @@ export default function SuperAdminImport() {
         </ScrollView>
       )}
 
-      {/* Template Modal */}
+      {/* ══════════════ CSV TEMPLATE MODAL ══════════════ */}
       <Modal visible={showTemplate} animationType="slide" presentationStyle="pageSheet">
         <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
-          <LinearGradient colors={['#4F46E5', '#7C3AED']} style={s.modalHdr}>
-            <Text style={s.modalTitle}>CSV Template</Text>
-            <Pressable onPress={() => setShowTemplate(false)} style={s.closeBtn}>
-              <Feather name="x" size={20} color="#fff" />
+          <LinearGradient colors={['#6366F1', '#4F46E5']} style={s.modalHdr}>
+            <View style={{ flex: 1 }}>
+              <Text style={s.modalTitle}>CSV Template</Text>
+              <Text style={s.modalSub}>Copy & fill in your house data</Text>
+            </View>
+            <Pressable onPress={() => setShowTemplate(false)} style={s.modalClose}>
+              <Feather name="x" size={18} color="#fff" />
             </Pressable>
           </LinearGradient>
           <ScrollView contentContainerStyle={{ padding: 20, gap: 16 }}>
-            <Text style={[{ color: colors.mutedForeground, fontSize: 13, fontFamily: 'Inter_400Regular' }]}>
-              Copy the template below and fill in your data. Each row = one house record.
-            </Text>
-            <View style={[s.templateBox, { backgroundColor: colors.card, borderColor: colors.border }]}>
-              <Text style={[s.templateText, { color: colors.text }]} selectable>{CSV_TEMPLATE}</Text>
+            <View style={[s.templateBox, { backgroundColor: colors.card, borderColor: '#6366F130' }]}>
+              <View style={[s.templateBoxHdr, { borderBottomColor: colors.border }]}>
+                <Feather name="file-text" size={14} color="#6366F1" />
+                <Text style={[s.templateBoxTitle, { color: '#6366F1' }]}>template.csv</Text>
+              </View>
+              <Text style={[s.templateBoxText, { color: colors.text }]} selectable>{CSV_TEMPLATE}</Text>
             </View>
-            <View style={[s.infoBox, { backgroundColor: '#F97316' + '15', borderColor: '#F97316' + '30' }]}>
-              <Feather name="alert-circle" size={14} color="#F97316" />
-              <Text style={[s.infoText, { color: '#F97316' }]}>
-                Ward column: use ward number (e.g. "1", "42") or exact ward name
-              </Text>
-            </View>
-            <View style={[s.infoBox, { backgroundColor: '#10B981' + '15', borderColor: '#10B981' + '30' }]}>
-              <Feather name="info" size={14} color="#10B981" />
-              <Text style={[s.infoText, { color: '#10B981' }]}>
-                Property Type: Residential, Commercial, Government, Vacant, Mixed Use, Other
-              </Text>
-            </View>
+            {[
+              { color: '#F97316', icon: 'map-pin', text: 'Ward column: use ward number (e.g. "1", "42") or exact ward name' },
+              { color: '#10B981', icon: 'info', text: 'Property Type options: Residential, Commercial, Government, Vacant, Mixed Use, Other' },
+              { color: '#6366F1', icon: 'hash', text: 'Registration No must be unique across the entire database' },
+            ].map(note => (
+              <View key={note.text} style={[s.noteBox, { backgroundColor: note.color + '12', borderColor: note.color + '30' }]}>
+                <Feather name={note.icon as any} size={14} color={note.color} />
+                <Text style={[s.noteText, { color: note.color }]}>{note.text}</Text>
+              </View>
+            ))}
           </ScrollView>
         </SafeAreaView>
       </Modal>
 
-      {/* History Detail Modal */}
+      {/* ══════════════ HISTORY DETAIL MODAL ══════════════ */}
       <Modal visible={!!selectedHistory} animationType="slide" presentationStyle="pageSheet">
-        {selectedHistory && (
-          <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
-            <LinearGradient colors={['#4F46E5', '#7C3AED']} style={s.modalHdr}>
-              <Text style={s.modalTitle}>Import Details</Text>
-              <Pressable onPress={() => setSelectedHistory(null)} style={s.closeBtn}>
-                <Feather name="x" size={20} color="#fff" />
-              </Pressable>
-            </LinearGradient>
-            <ScrollView contentContainerStyle={{ padding: 20, gap: 14 }}>
-              {[
-                { label: 'File Name', value: selectedHistory.fileName },
-                { label: 'Imported By', value: selectedHistory.uploadedByName },
-                { label: 'Date & Time', value: new Date(selectedHistory.uploadedTime).toLocaleString() },
-                { label: 'Total Rows', value: String(selectedHistory.totalRows) },
-                { label: 'Imported', value: String(selectedHistory.successRows) },
-                { label: 'Skipped', value: String(selectedHistory.duplicateRows) },
-                { label: 'Failed', value: String(selectedHistory.failedRows) },
-                { label: 'Status', value: selectedHistory.status },
-              ].map(row => (
-                <View key={row.label} style={[s.detailRow, { borderBottomColor: colors.border }]}>
-                  <Text style={[s.detailLabel, { color: colors.mutedForeground }]}>{row.label}</Text>
-                  <Text style={[s.detailValue, { color: colors.text }]}>{row.value}</Text>
+        {selectedHistory && (() => {
+          const sc = selectedHistory.status === 'completed'
+            ? { color: '#10B981', grad: ['#10B981', '#059669'] as [string,string] }
+            : selectedHistory.status === 'partial'
+            ? { color: '#F59E0B', grad: ['#F59E0B', '#D97706'] as [string,string] }
+            : { color: '#EF4444', grad: ['#EF4444', '#DC2626'] as [string,string] };
+          const pct = selectedHistory.totalRows > 0
+            ? Math.round((selectedHistory.successRows / selectedHistory.totalRows) * 100) : 0;
+          return (
+            <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
+              <LinearGradient colors={sc.grad} style={s.modalHdr}>
+                <View style={{ flex: 1 }}>
+                  <Text style={s.modalTitle}>Import Details</Text>
+                  <Text style={s.modalSub} numberOfLines={1}>{selectedHistory.fileName}</Text>
                 </View>
-              ))}
-              {selectedHistory.errorReport.length > 0 && (
-                <>
-                  <Text style={[s.dupTitle, { color: colors.text, marginTop: 8 }]}>Error Report ({selectedHistory.errorReport.length})</Text>
-                  {selectedHistory.errorReport.map((err, i) => (
-                    <View key={i} style={[s.errorRow, { backgroundColor: '#EF444410', borderColor: '#EF444420' }]}>
-                      <Text style={[s.errorRowText, { color: '#EF4444' }]}>Row {err.rowNumber}: {err.reason}</Text>
-                      {err.registrationNo && <Text style={[s.errorRowSub, { color: colors.mutedForeground }]}>{err.registrationNo}</Text>}
+                <Pressable onPress={() => setSelectedHistory(null)} style={s.modalClose}>
+                  <Feather name="x" size={18} color="#fff" />
+                </Pressable>
+              </LinearGradient>
+              <ScrollView contentContainerStyle={{ padding: 20, gap: 14 }}>
+                {/* Summary stats */}
+                <View style={s.detailStatRow}>
+                  {[
+                    { label: 'Total',    val: selectedHistory.totalRows,     color: '#6366F1' },
+                    { label: 'Imported', val: selectedHistory.successRows,   color: '#10B981' },
+                    { label: 'Skipped',  val: selectedHistory.duplicateRows, color: '#F59E0B' },
+                    { label: 'Failed',   val: selectedHistory.failedRows,    color: '#EF4444' },
+                  ].map(st => (
+                    <View key={st.label} style={[s.detailStatCard, { backgroundColor: st.color + '10', borderColor: st.color + '25' }]}>
+                      <Text style={[s.detailStatNum, { color: st.color }]}>{st.val}</Text>
+                      <Text style={[s.detailStatLabel, { color: st.color + 'AA' }]}>{st.label}</Text>
                     </View>
                   ))}
-                </>
-              )}
-            </ScrollView>
-          </SafeAreaView>
-        )}
+                </View>
+
+                {/* Progress bar */}
+                <View style={[s.detailProgress, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                  <View style={s.detailProgressHdr}>
+                    <Text style={[s.detailProgressLabel, { color: colors.text }]}>Success Rate</Text>
+                    <Text style={[s.detailProgressPct, { color: sc.color }]}>{pct}%</Text>
+                  </View>
+                  <View style={[s.histProgressTrack, { backgroundColor: colors.border }]}>
+                    <View style={[s.histProgressFill, { width: `${pct}%` as any, backgroundColor: sc.color }]} />
+                  </View>
+                </View>
+
+                {/* Info rows */}
+                {[
+                  { icon: 'file-text', label: 'File Name',    val: selectedHistory.fileName },
+                  { icon: 'user',      label: 'Imported By',  val: selectedHistory.uploadedByName },
+                  { icon: 'calendar',  label: 'Date & Time',  val: new Date(selectedHistory.uploadedTime).toLocaleString() },
+                  { icon: 'activity',  label: 'Status',       val: selectedHistory.status },
+                ].map(row => (
+                  <View key={row.label} style={[s.infoRow, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                    <View style={[s.infoRowIcon, { backgroundColor: '#6366F110' }]}>
+                      <Feather name={row.icon as any} size={14} color="#6366F1" />
+                    </View>
+                    <Text style={[s.infoRowLabel, { color: colors.mutedForeground }]}>{row.label}</Text>
+                    <Text style={[s.infoRowVal, { color: colors.text }]}>{row.val}</Text>
+                  </View>
+                ))}
+
+                {/* Error report */}
+                {selectedHistory.errorReport.length > 0 && (
+                  <>
+                    <View style={s.errorHdr}>
+                      <LinearGradient colors={['#EF4444', '#DC2626']} style={s.errorHdrIcon}>
+                        <Feather name="alert-triangle" size={13} color="#fff" />
+                      </LinearGradient>
+                      <Text style={[s.errorHdrText, { color: colors.text }]}>
+                        Error Report ({selectedHistory.errorReport.length})
+                      </Text>
+                    </View>
+                    {selectedHistory.errorReport.map((err, i) => (
+                      <View key={i} style={[s.errorItem, { backgroundColor: '#EF444410', borderColor: '#EF444420' }]}>
+                        <View style={s.errorItemTop}>
+                          <Text style={s.errorItemRow}>Row {err.rowNumber}</Text>
+                          {err.registrationNo && (
+                            <Text style={[s.errorItemReg, { color: '#6366F1' }]}>{err.registrationNo}</Text>
+                          )}
+                        </View>
+                        <Text style={[s.errorItemReason, { color: '#EF4444' }]}>{err.reason}</Text>
+                      </View>
+                    ))}
+                  </>
+                )}
+              </ScrollView>
+            </SafeAreaView>
+          );
+        })()}
       </Modal>
 
-      {/* Hidden web file input — rendered only on web, triggered by handlePickExcel */}
+      {/* Hidden web file input */}
       {Platform.OS === 'web' && (
         // @ts-ignore
         <input
@@ -709,98 +955,189 @@ export default function SuperAdminImport() {
 }
 
 const s = StyleSheet.create({
-  header: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 20 },
-  headerTop: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 16 },
-  superBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#FFD70020', borderRadius: 20, paddingHorizontal: 8, paddingVertical: 3, alignSelf: 'flex-start', marginBottom: 6 },
-  superBadgeText: { color: '#FFD700', fontSize: 10, fontFamily: 'Inter_700Bold' },
-  headerTitle: { color: '#fff', fontSize: 26, fontFamily: 'Inter_700Bold' },
-  headerSub: { color: '#FFFFFFAA', fontSize: 12, fontFamily: 'Inter_400Regular', marginTop: 2 },
-  headerIcon: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#FFFFFF15', justifyContent: 'center', alignItems: 'center' },
-  statRow: { flexDirection: 'row', gap: 10 },
-  statPill: { flex: 1, borderRadius: 14, padding: 12, alignItems: 'center' },
-  statNum: { color: '#fff', fontSize: 20, fontFamily: 'Inter_700Bold' },
-  statLbl: { color: '#FFFFFFCC', fontSize: 10, fontFamily: 'Inter_500Medium', marginTop: 2 },
-  subTabBar: { flexDirection: 'row', borderBottomWidth: 1 },
-  subTab: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 12, position: 'relative' },
-  subTabLabel: { fontSize: 13 },
-  subTabUnderline: { position: 'absolute', bottom: 0, left: 20, right: 20, height: 2, backgroundColor: '#4F46E5', borderRadius: 1 },
-  templateCard: { flexDirection: 'row', alignItems: 'center', gap: 14, borderRadius: 16, borderWidth: 1, padding: 16 },
-  templateIcon: { width: 46, height: 46, borderRadius: 14, justifyContent: 'center', alignItems: 'center' },
-  templateTitle: { fontSize: 14, fontFamily: 'Inter_600SemiBold' },
-  templateSub: { fontSize: 12, fontFamily: 'Inter_400Regular', marginTop: 2 },
-  colCard: { borderRadius: 16, borderWidth: 1, padding: 16, gap: 10 },
-  colCardHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 },
-  colCardTitle: { fontSize: 14, fontFamily: 'Inter_700Bold' },
-  colRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  colBadge: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6, minWidth: 36, alignItems: 'center' },
-  colBadgeText: { fontSize: 9, fontFamily: 'Inter_700Bold' },
-  colName: { flex: 1, fontSize: 13, fontFamily: 'Inter_500Medium' },
-  colEx: { fontSize: 12, fontFamily: 'Inter_400Regular' },
-  uploadArea: { borderRadius: 16, borderWidth: 1.5, borderStyle: 'dashed', padding: 40, alignItems: 'center', gap: 12 },
-  uploadOptionsRow: { flexDirection: 'row', gap: 12 },
-  uploadOptionCard: { borderRadius: 16, borderWidth: 1.5, borderStyle: 'dashed', padding: 20, alignItems: 'center', gap: 10 },
-  uploadIcon: { width: 56, height: 56, borderRadius: 16, justifyContent: 'center', alignItems: 'center' },
-  uploadTitle: { fontSize: 15, fontFamily: 'Inter_600SemiBold' },
-  uploadSub: { fontSize: 12, fontFamily: 'Inter_400Regular' },
-  excelBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, borderRadius: 8, borderWidth: 1, paddingHorizontal: 8, paddingVertical: 4, marginTop: 2 },
-  excelBadgeText: { fontSize: 10, fontFamily: 'Inter_600SemiBold' },
-  csvInputCard: { borderRadius: 16, borderWidth: 1, padding: 16, gap: 12 },
-  csvInputHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  csvInputTitle: { fontSize: 14, fontFamily: 'Inter_700Bold' },
-  csvInput: { borderRadius: 10, borderWidth: 1, padding: 12, fontSize: 12, fontFamily: 'Inter_400Regular', minHeight: 120 },
-  previewBtn: { borderRadius: 12, padding: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
-  previewBtnText: { color: '#fff', fontSize: 14, fontFamily: 'Inter_700Bold' },
-  previewStatsRow: { flexDirection: 'row', gap: 8 },
-  previewStat: { flex: 1, borderRadius: 12, borderWidth: 1, padding: 12, alignItems: 'center', gap: 4 },
-  previewStatNum: { fontSize: 20, fontFamily: 'Inter_700Bold' },
-  previewStatLabel: { fontSize: 10, fontFamily: 'Inter_500Medium' },
-  dupCard: { borderRadius: 16, borderWidth: 1, padding: 16, gap: 12 },
-  dupTitle: { fontSize: 14, fontFamily: 'Inter_700Bold' },
-  dupRow: { flexDirection: 'row', gap: 8 },
-  dupBtn: { flex: 1, borderRadius: 10, borderWidth: 1, padding: 8, alignItems: 'center', backgroundColor: 'transparent' },
-  dupBtnText: { fontSize: 11, fontFamily: 'Inter_500Medium', textAlign: 'center' },
-  previewTable: { borderRadius: 16, borderWidth: 1, overflow: 'hidden' },
-  previewTableHeader: { flexDirection: 'row', padding: 10, borderBottomWidth: 1 },
-  previewTableHeaderCell: { flex: 1, fontSize: 10, fontFamily: 'Inter_700Bold', textTransform: 'uppercase' },
-  previewTableRow: { flexDirection: 'row', paddingHorizontal: 10, paddingVertical: 8, borderBottomWidth: 1 },
-  previewCell: { flex: 1, fontSize: 11, fontFamily: 'Inter_400Regular' },
-  progressCard: { borderRadius: 16, borderWidth: 1, padding: 16, gap: 10 },
-  progressHeader: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  progressText: { fontSize: 14, fontFamily: 'Inter_600SemiBold' },
-  progressTrack: { height: 6, borderRadius: 3, overflow: 'hidden' },
-  progressFill: { height: 6, borderRadius: 3 },
-  doneCard: { borderRadius: 16, borderWidth: 1, padding: 16, flexDirection: 'row', alignItems: 'center', gap: 10 },
-  doneText: { fontSize: 13, fontFamily: 'Inter_600SemiBold', flex: 1 },
-  importActions: { flexDirection: 'row', gap: 10 },
-  cancelBtn: { borderRadius: 14, borderWidth: 1, paddingHorizontal: 20, justifyContent: 'center', alignItems: 'center' },
-  cancelBtnText: { fontSize: 14, fontFamily: 'Inter_600SemiBold' },
-  importBtn: { borderRadius: 14, padding: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
-  importBtnText: { color: '#fff', fontSize: 14, fontFamily: 'Inter_700Bold' },
-  historyCard: { borderRadius: 16, borderWidth: 1, overflow: 'hidden' },
-  historyHeader: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14 },
-  historyIconBox: { width: 40, height: 40, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
-  historyFileName: { fontSize: 14, fontFamily: 'Inter_600SemiBold' },
-  historyBy: { fontSize: 11, fontFamily: 'Inter_400Regular', marginTop: 2 },
-  statusBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 },
-  statusBadgeText: { fontSize: 11, fontFamily: 'Inter_600SemiBold' },
-  historyStats: { flexDirection: 'row', borderTopWidth: 1, paddingVertical: 10 },
-  historyStatItem: { flex: 1, alignItems: 'center', gap: 2 },
-  historyStatNum: { fontSize: 16, fontFamily: 'Inter_700Bold' },
-  historyStatLabel: { fontSize: 10, fontFamily: 'Inter_500Medium' },
-  historyDate: { fontSize: 11, fontFamily: 'Inter_400Regular', paddingHorizontal: 14, paddingBottom: 12 },
-  empty: { borderRadius: 16, padding: 40, alignItems: 'center', gap: 12 },
-  emptyText: { fontSize: 14, fontFamily: 'Inter_500Medium' },
-  modalHdr: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 20 },
-  modalTitle: { color: '#fff', fontSize: 18, fontFamily: 'Inter_700Bold' },
-  closeBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#FFFFFF20', justifyContent: 'center', alignItems: 'center' },
-  templateBox: { borderRadius: 12, borderWidth: 1, padding: 14 },
-  templateText: { fontSize: 11, fontFamily: 'Inter_400Regular', lineHeight: 20 },
-  infoBox: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, borderRadius: 12, borderWidth: 1, padding: 12 },
-  infoText: { flex: 1, fontSize: 12, fontFamily: 'Inter_400Regular', lineHeight: 18 },
-  detailRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 10, borderBottomWidth: 1 },
-  detailLabel: { fontSize: 13, fontFamily: 'Inter_500Medium' },
-  detailValue: { fontSize: 13, fontFamily: 'Inter_600SemiBold', maxWidth: '60%', textAlign: 'right' },
-  errorRow: { borderRadius: 10, borderWidth: 1, padding: 10 },
-  errorRowText: { fontSize: 12, fontFamily: 'Inter_600SemiBold' },
-  errorRowSub: { fontSize: 11, fontFamily: 'Inter_400Regular', marginTop: 2 },
+  /* ── hero ── */
+  hero:         { paddingHorizontal: 20, paddingTop: 14, paddingBottom: 18 },
+  heroContent:  { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 16 },
+  heroBadge:    { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#FFD70020', borderRadius: 20, paddingHorizontal: 8, paddingVertical: 3, alignSelf: 'flex-start', marginBottom: 6 },
+  heroBadgeText:{ color: '#FFD700', fontSize: 9, fontFamily: 'Inter_700Bold', letterSpacing: 1 },
+  heroTitle:    { color: '#fff', fontSize: 24, fontFamily: 'Inter_700Bold' },
+  heroSub:      { color: '#FFFFFFAA', fontSize: 11, fontFamily: 'Inter_400Regular', marginTop: 3 },
+  heroIconRing: { width: 52, height: 52, borderRadius: 16, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: '#FFFFFF15' },
+  heroStats:    { flexDirection: 'row', gap: 10 },
+  heroStatCard: { flex: 1, borderRadius: 14, padding: 11, gap: 3, alignItems: 'flex-start' },
+  heroStatVal:  { color: '#fff', fontSize: 20, fontFamily: 'Inter_700Bold', lineHeight: 24 },
+  heroStatLabel:{ color: 'rgba(255,255,255,0.7)', fontSize: 9, fontFamily: 'Inter_500Medium' },
+
+  /* ── tab bar ── */
+  tabBar:    { flexDirection: 'row', borderBottomWidth: 1 },
+  tabItem:   { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, paddingVertical: 13, borderBottomWidth: 2, borderBottomColor: 'transparent' },
+  tabLabel:  { fontSize: 13 },
+  tabBadge:  { minWidth: 18, height: 18, borderRadius: 9, paddingHorizontal: 4, justifyContent: 'center', alignItems: 'center' },
+  tabBadgeText: { color: '#fff', fontSize: 9, fontFamily: 'Inter_700Bold' },
+
+  /* ── step indicator ── */
+  steps:      { flexDirection: 'row', alignItems: 'center' },
+  stepItem:   { alignItems: 'center', gap: 5, flex: 1 },
+  stepCircle: { width: 28, height: 28, borderRadius: 14, justifyContent: 'center', alignItems: 'center' },
+  stepNum:    { fontSize: 12, fontFamily: 'Inter_700Bold' },
+  stepLabel:  { fontSize: 9, fontFamily: 'Inter_600SemiBold', textAlign: 'center' },
+  stepLine:   { flex: 1, height: 1.5, marginBottom: 16 },
+
+  /* ── template card ── */
+  templateCard:   { flexDirection: 'row', alignItems: 'center', gap: 14, borderRadius: 16, borderWidth: 1, padding: 16, backgroundColor: '#6366F108' },
+  templateIconBox:{ width: 48, height: 48, borderRadius: 14, justifyContent: 'center', alignItems: 'center' },
+  templateTitle:  { fontSize: 14, fontFamily: 'Inter_700Bold' },
+  templateSub:    { fontSize: 12, fontFamily: 'Inter_400Regular', marginTop: 2 },
+  templateArrow:  { width: 34, height: 34, borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
+
+  /* ── column guide ── */
+  colGuide:       { borderRadius: 16, borderWidth: 1, overflow: 'hidden' },
+  colGuideHdr:    { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 14, paddingBottom: 12 },
+  colGuideIcon:   { width: 30, height: 30, borderRadius: 9, justifyContent: 'center', alignItems: 'center' },
+  colGuideTitle:  { flex: 1, fontSize: 13, fontFamily: 'Inter_700Bold' },
+  colGuideNote:   { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 },
+  colGuideNoteText:{ fontSize: 10, fontFamily: 'Inter_600SemiBold', color: '#0EA5E9' },
+  colChipRow:     { flexDirection: 'row', flexWrap: 'wrap', gap: 6, paddingHorizontal: 14, paddingBottom: 12 },
+  colChip:        { flexDirection: 'row', alignItems: 'center', gap: 4, borderRadius: 8, borderWidth: 1, paddingHorizontal: 8, paddingVertical: 5 },
+  colChipLetter:  { fontSize: 10, fontFamily: 'Inter_700Bold' },
+  colChipName:    { fontSize: 11, fontFamily: 'Inter_500Medium' },
+  colReqDot:      { width: 4, height: 4, borderRadius: 2, backgroundColor: '#6366F1' },
+  colGuideFooter: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 10, paddingHorizontal: 14, borderTopWidth: 1 },
+  colLegendItem:  { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  colLegendDot:   { width: 6, height: 6, borderRadius: 3 },
+  colLegendText:  { fontSize: 10, fontFamily: 'Inter_400Regular' },
+
+  /* ── upload cards ── */
+  uploadRow:        { flexDirection: 'row', gap: 12 },
+  uploadCard:       { flex: 1, borderRadius: 16, borderWidth: 1.5, borderStyle: 'dashed', padding: 18, alignItems: 'center', gap: 8 },
+  uploadCardIcon:   { width: 52, height: 52, borderRadius: 16, justifyContent: 'center', alignItems: 'center' },
+  uploadCardTitle:  { fontSize: 14, fontFamily: 'Inter_700Bold' },
+  uploadCardSub:    { fontSize: 11, fontFamily: 'Inter_400Regular', textAlign: 'center' },
+  uploadCardFormats:{ flexDirection: 'row', gap: 5, flexWrap: 'wrap', justifyContent: 'center', marginTop: 4 },
+  formatBadge:      { borderRadius: 6, borderWidth: 1, paddingHorizontal: 7, paddingVertical: 3 },
+  formatText:       { fontSize: 9, fontFamily: 'Inter_700Bold' },
+
+  /* ── paste input ── */
+  pasteCard:     { borderRadius: 16, borderWidth: 1, padding: 16, gap: 12 },
+  pasteCardHdr:  { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  pasteCardIcon: { width: 28, height: 28, borderRadius: 8, justifyContent: 'center', alignItems: 'center' },
+  pasteCardTitle:{ flex: 1, fontSize: 14, fontFamily: 'Inter_700Bold' },
+  pasteCloseBtn: { width: 28, height: 28, borderRadius: 8, justifyContent: 'center', alignItems: 'center' },
+  csvTextArea:   { borderRadius: 12, borderWidth: 1, padding: 12, fontSize: 11, fontFamily: 'Inter_400Regular', minHeight: 120 },
+  previewBtn:    { borderRadius: 14, padding: 15, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
+  previewBtnText:{ color: '#fff', fontSize: 14, fontFamily: 'Inter_700Bold' },
+
+  /* ── source banner ── */
+  sourceBanner:    { flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: 14, borderWidth: 1, padding: 12 },
+  sourceIconBox:   { width: 36, height: 36, borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
+  sourceFile:      { fontSize: 13, fontFamily: 'Inter_600SemiBold' },
+  sourceRows:      { fontSize: 11, fontFamily: 'Inter_400Regular', marginTop: 1 },
+  sourceReset:     { flexDirection: 'row', alignItems: 'center', gap: 5, borderRadius: 10, borderWidth: 1, paddingHorizontal: 10, paddingVertical: 6 },
+  sourceResetText: { fontSize: 12, fontFamily: 'Inter_500Medium' },
+
+  /* ── stat pills ── */
+  statPills:     { flexDirection: 'row', gap: 8 },
+  statPill:      { flex: 1, borderRadius: 12, borderWidth: 1, padding: 10, alignItems: 'center', gap: 4 },
+  statPillNum:   { fontSize: 18, fontFamily: 'Inter_700Bold' },
+  statPillLabel: { fontSize: 9, fontFamily: 'Inter_500Medium' },
+
+  /* ── dup card ── */
+  dupCard:       { borderRadius: 16, borderWidth: 1, padding: 16, gap: 14 },
+  dupHdr:        { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  dupHdrIcon:    { width: 32, height: 32, borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
+  dupTitle:      { fontSize: 14, fontFamily: 'Inter_700Bold' },
+  dupSub:        { fontSize: 11, fontFamily: 'Inter_400Regular', marginTop: 1 },
+  dupOptions:    { flexDirection: 'row', gap: 8 },
+  dupOption:     { flex: 1, borderRadius: 12, borderWidth: 1.5, padding: 10, alignItems: 'center', gap: 5, position: 'relative' },
+  dupOptionLabel:{ fontSize: 12, fontFamily: 'Inter_700Bold' },
+  dupOptionDesc: { fontSize: 9, fontFamily: 'Inter_400Regular', textAlign: 'center' },
+  dupActiveDot:  { position: 'absolute', top: 6, right: 6, width: 6, height: 6, borderRadius: 3 },
+
+  /* ── preview table ── */
+  previewTable:    { borderRadius: 16, borderWidth: 1, overflow: 'hidden' },
+  previewTableHdr: { flexDirection: 'row', paddingHorizontal: 12, paddingVertical: 9 },
+  previewTh:       { fontSize: 10, fontFamily: 'Inter_700Bold', textTransform: 'uppercase' },
+  previewRow:      { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 8, borderBottomWidth: StyleSheet.hairlineWidth },
+  previewTd:       { fontSize: 11, fontFamily: 'Inter_400Regular' },
+  statusPill:      { width: 68, flexDirection: 'row', alignItems: 'center', gap: 3, borderRadius: 6, borderWidth: 1, paddingHorizontal: 4, paddingVertical: 3 },
+  statusPillText:  { fontSize: 8, fontFamily: 'Inter_700Bold' },
+
+  /* ── progress ── */
+  progressCard:  { borderRadius: 16, borderWidth: 1, padding: 16, gap: 12 },
+  progressHdr:   { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  progressLabel: { flex: 1, fontSize: 13, fontFamily: 'Inter_600SemiBold' },
+  progressPct:   { fontSize: 14, fontFamily: 'Inter_700Bold' },
+  progressTrack: { height: 8, borderRadius: 4, overflow: 'hidden' },
+  progressFill:  { height: 8, borderRadius: 4 },
+
+  /* ── done banner ── */
+  doneBanner:       { borderRadius: 16, borderWidth: 1, padding: 16, flexDirection: 'row', alignItems: 'center', gap: 14 },
+  doneBannerIcon:   { width: 44, height: 44, borderRadius: 14, backgroundColor: '#10B98120', justifyContent: 'center', alignItems: 'center' },
+  doneBannerTitle:  { color: '#10B981', fontSize: 15, fontFamily: 'Inter_700Bold', marginBottom: 4 },
+  doneBannerStats:  { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  doneStat:         { fontSize: 12, fontFamily: 'Inter_600SemiBold' },
+  doneSep:          { fontSize: 12, color: '#9CA3AF' },
+
+  /* ── action row ── */
+  actionRow:     { flexDirection: 'row', gap: 10 },
+  resetBtn:      { flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: 14, borderWidth: 1, paddingHorizontal: 16, paddingVertical: 14 },
+  resetBtnText:  { fontSize: 14, fontFamily: 'Inter_600SemiBold' },
+  importBtn:     { borderRadius: 14, padding: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
+  importBtnText: { color: '#fff', fontSize: 15, fontFamily: 'Inter_700Bold' },
+
+  /* ── history cards ── */
+  emptyBox:    { borderRadius: 16, borderWidth: 1, padding: 40, alignItems: 'center', gap: 12 },
+  emptyIcon:   { width: 56, height: 56, borderRadius: 16, justifyContent: 'center', alignItems: 'center', marginBottom: 4 },
+  emptyTitle:  { fontSize: 16, fontFamily: 'Inter_700Bold' },
+  emptySub:    { fontSize: 12, fontFamily: 'Inter_400Regular' },
+
+  histCard:          { borderRadius: 16, borderWidth: 1, overflow: 'hidden', flexDirection: 'row' },
+  histAccent:        { width: 4 },
+  histTop:           { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 10 },
+  histIconBox:       { width: 38, height: 38, borderRadius: 11, justifyContent: 'center', alignItems: 'center' },
+  histFileName:      { fontSize: 13, fontFamily: 'Inter_600SemiBold' },
+  histBy:            { fontSize: 10, fontFamily: 'Inter_400Regular', marginTop: 2 },
+  histStatusPill:    { paddingHorizontal: 9, paddingVertical: 3, borderRadius: 20 },
+  histStatusText:    { fontSize: 10, fontFamily: 'Inter_700Bold' },
+  histDeleteBtn:     { width: 30, height: 30, justifyContent: 'center', alignItems: 'center' },
+  histProgressTrack: { height: 5, borderRadius: 3, overflow: 'hidden', marginBottom: 10 },
+  histProgressFill:  { height: 5, borderRadius: 3 },
+  histStats:         { flexDirection: 'row', borderTopWidth: StyleSheet.hairlineWidth, paddingTop: 10 },
+  histStatItem:      { flex: 1, alignItems: 'center', gap: 2 },
+  histStatNum:       { fontSize: 15, fontFamily: 'Inter_700Bold' },
+  histStatLabel:     { fontSize: 9, fontFamily: 'Inter_500Medium' },
+
+  /* ── modals ── */
+  modalHdr:    { flexDirection: 'row', alignItems: 'center', padding: 20 },
+  modalTitle:  { color: '#fff', fontSize: 18, fontFamily: 'Inter_700Bold' },
+  modalSub:    { color: 'rgba(255,255,255,0.75)', fontSize: 11, fontFamily: 'Inter_400Regular', marginTop: 2 },
+  modalClose:  { width: 36, height: 36, borderRadius: 18, backgroundColor: '#FFFFFF20', justifyContent: 'center', alignItems: 'center' },
+
+  templateBox:     { borderRadius: 14, borderWidth: 1, overflow: 'hidden' },
+  templateBoxHdr:  { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 12, borderBottomWidth: 1 },
+  templateBoxTitle:{ fontSize: 12, fontFamily: 'Inter_700Bold' },
+  templateBoxText: { padding: 14, fontSize: 10, fontFamily: 'Inter_400Regular', lineHeight: 20 },
+  noteBox:         { flexDirection: 'row', alignItems: 'flex-start', gap: 8, borderRadius: 12, borderWidth: 1, padding: 12 },
+  noteText:        { flex: 1, fontSize: 12, fontFamily: 'Inter_400Regular', lineHeight: 18 },
+
+  detailStatRow:    { flexDirection: 'row', gap: 10 },
+  detailStatCard:   { flex: 1, borderRadius: 12, borderWidth: 1, padding: 12, alignItems: 'center', gap: 4 },
+  detailStatNum:    { fontSize: 20, fontFamily: 'Inter_700Bold' },
+  detailStatLabel:  { fontSize: 10, fontFamily: 'Inter_500Medium' },
+  detailProgress:   { borderRadius: 14, borderWidth: 1, padding: 14, gap: 10 },
+  detailProgressHdr:{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  detailProgressLabel:{ fontSize: 13, fontFamily: 'Inter_600SemiBold' },
+  detailProgressPct:  { fontSize: 15, fontFamily: 'Inter_700Bold' },
+  infoRow:          { flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: 12, borderWidth: 1, padding: 12 },
+  infoRowIcon:      { width: 34, height: 34, borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
+  infoRowLabel:     { flex: 1, fontSize: 12, fontFamily: 'Inter_500Medium' },
+  infoRowVal:       { fontSize: 13, fontFamily: 'Inter_600SemiBold', maxWidth: '55%', textAlign: 'right' },
+  errorHdr:         { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  errorHdrIcon:     { width: 30, height: 30, borderRadius: 9, justifyContent: 'center', alignItems: 'center' },
+  errorHdrText:     { fontSize: 14, fontFamily: 'Inter_700Bold' },
+  errorItem:        { borderRadius: 12, borderWidth: 1, padding: 12, gap: 4 },
+  errorItemTop:     { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  errorItemRow:     { fontSize: 11, fontFamily: 'Inter_700Bold', color: '#EF4444' },
+  errorItemReg:     { fontSize: 11, fontFamily: 'Inter_500Medium' },
+  errorItemReason:  { fontSize: 11, fontFamily: 'Inter_400Regular' },
 });

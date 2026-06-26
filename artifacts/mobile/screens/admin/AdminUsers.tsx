@@ -40,7 +40,7 @@ const ROLE_GRAD: Record<string, readonly [string, string]> = {
 
 /* ─── component ──────────────────────────────────────────────── */
 export default function AdminUsers() {
-  const { users, updateUser, deleteUser, secretKeys, updateSecretKeyCode, assignSecretKeyToUser, updateUserId } = useAppData();
+  const { users, updateUser, deleteUser, secretKeys, updateSecretKeyCode, assignSecretKeyToUser, updateUserId, updateUserFull } = useAppData();
   const { user: currentUser } = useAuth();
   const colors = useColors();
   const { showAlert } = useAlert();
@@ -187,14 +187,11 @@ export default function AdminUsers() {
         return;
       }
     }
+    const effectiveId = isSuperAdmin && newId && newId !== profileUser.id ? newId : profileUser.id;
     setSaving(true);
     try {
-      /* update User ID first if changed (super admin only) */
-      const effectiveId = isSuperAdmin && newId && newId !== profileUser.id ? newId : profileUser.id;
-      if (isSuperAdmin && newId && newId !== profileUser.id) {
-        await updateUserId(profileUser.id, newId);
-      }
-      await updateUser(effectiveId, {
+      /* Single atomic call — renames ID + applies all field updates in one RTDB write */
+      await updateUserFull(profileUser.id, effectiveId, {
         name:       editName.trim(),
         email:      editEmail.trim(),
         mobile:     editMobile.trim() || undefined,
@@ -202,7 +199,7 @@ export default function AdminUsers() {
         employeeId: editEmpId.trim() || undefined,
         avatar:     editAvatar || undefined,
       });
-      /* update secret key code if changed */
+      /* Update secret key code if changed */
       if (isSuperAdmin && profileUser.role !== 'citizen') {
         const key = getUserKey(profileUser.id) ?? getUserKey(effectiveId);
         if (key && editKeyCode.trim() && editKeyCode.trim().toUpperCase() !== key.code) {
