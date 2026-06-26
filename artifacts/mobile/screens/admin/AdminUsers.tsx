@@ -1,524 +1,842 @@
 import { Feather } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { useState } from 'react';
 import {
-  Modal, Pressable, ScrollView, StyleSheet,
+  Image, Modal, Pressable, ScrollView, StyleSheet,
   Text, TextInput, TouchableOpacity, View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { SearchBar } from '@/components/SearchBar';
 import { useAlert } from '@/contexts/AlertContext';
 import { useAppData } from '@/contexts/AppContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useColors } from '@/hooks/useColors';
-import type { User, UserRole } from '@/types';
+import type { User } from '@/types';
 
-const ROLE_LABELS: Record<string, string> = {
-  safaikarmi: 'Safai Karmi',
-  official: 'Official',
-  admin: 'Admin',
-  citizen: 'Citizen',
-};
-const ROLE_GRADS: Record<string, readonly [string, string]> = {
+/* ─── constants ──────────────────────────────────────────────── */
+type RoleTab = 'safaikarmi' | 'official' | 'citizen';
+
+const ALL_TABS: { key: RoleTab; label: string; icon: string; grad: readonly [string, string] }[] = [
+  { key: 'safaikarmi', label: 'Safai Karmi', icon: 'trash-2',  grad: ['#10B981', '#059669'] },
+  { key: 'official',   label: 'Official',    icon: 'briefcase', grad: ['#F59E0B', '#EF4444'] },
+  { key: 'citizen',    label: 'Citizen',     icon: 'user',      grad: ['#0EA5E9', '#2563EB'] },
+];
+
+const ROLE_GRAD: Record<string, readonly [string, string]> = {
   safaikarmi: ['#10B981', '#059669'],
   official:   ['#F59E0B', '#EF4444'],
-  admin:      ['#6366F1', '#8B5CF6'],
   citizen:    ['#0EA5E9', '#2563EB'],
-};
-const ROLE_ICONS: Record<string, string> = {
-  safaikarmi: 'trash-2',
-  official: 'briefcase',
-  admin: 'shield',
-  citizen: 'user',
+  admin:      ['#6366F1', '#8B5CF6'],
 };
 
-type RoleFilter = 'all' | Exclude<UserRole, never>;
-const STAFF_FILTERS: RoleFilter[] = ['all', 'safaikarmi', 'official', 'admin'];
-const ALL_FILTERS: RoleFilter[] = ['all', 'citizen', 'safaikarmi', 'official', 'admin'];
-
-const SUPERADMIN_ID = 'SUPERADMIN';
-
+/* ─── component ──────────────────────────────────────────────── */
 export default function AdminUsers() {
   const { users, updateUser, deleteUser, secretKeys, updateSecretKeyCode } = useAppData();
   const { user: currentUser } = useAuth();
   const colors = useColors();
+  const { showAlert } = useAlert();
   const isSuperAdmin = !!(currentUser as any)?.isSuperAdmin;
 
+  /* tabs visible to this admin role */
+  const TABS = isSuperAdmin ? ALL_TABS : ALL_TABS.filter(t => t.key !== 'citizen');
+
+  /* list state */
   const [search, setSearch] = useState('');
-  const [roleFilter, setRoleFilter] = useState<RoleFilter>('all');
+  const [activeTab, setActiveTab] = useState<RoleTab>('safaikarmi');
 
-  const [editUser, setEditUser] = useState<User | null>(null);
-  const [editName, setEditName] = useState('');
-  const [editMobile, setEditMobile] = useState('');
-  const [editEmail, setEditEmail] = useState('');
+  /* profile modal state */
+  const [profileUser, setProfileUser] = useState<User | null>(null);
+  const [editMode, setEditMode] = useState(false);
+
+  /* edit fields */
+  const [editName, setEditName]       = useState('');
+  const [editEmail, setEditEmail]     = useState('');
+  const [editMobile, setEditMobile]   = useState('');
+  const [editAddress, setEditAddress] = useState('');
+  const [editEmpId, setEditEmpId]     = useState('');
+  const [editAvatar, setEditAvatar]   = useState('');
   const [editKeyCode, setEditKeyCode] = useState('');
-  const [showKeyEdit, setShowKeyEdit] = useState(false);
-  const [editingKey, setEditingKey] = useState<{ id: string; code: string; role: string } | null>(null);
+  const [showKey, setShowKey]         = useState(false);
+  const [saving, setSaving]           = useState(false);
 
-  const sourceUsers = isSuperAdmin ? users : users.filter(u => u.role !== 'citizen');
-  const filters = isSuperAdmin ? ALL_FILTERS : STAFF_FILTERS;
-
-  const filtered = sourceUsers.filter(u => {
-    if (roleFilter !== 'all' && u.role !== roleFilter) return false;
-    if (search) {
+  /* derived */
+  const tabList = users
+    .filter(u => u.role === activeTab)
+    .filter(u => {
+      if (!search.trim()) return true;
       const q = search.toLowerCase();
-      return u.name.toLowerCase().includes(q)
-        || u.email.toLowerCase().includes(q)
-        || (u.employeeId ?? '').toLowerCase().includes(q);
-    }
-    return true;
-  });
-
-  const nonCitizens = users.filter(u => u.role !== 'citizen');
-  const activeCt    = nonCitizens.filter(u => u.isActive).length;
-  const frozenCt    = nonCitizens.filter(u => !u.isActive).length;
-  const citizenCt   = users.filter(u => u.role === 'citizen').length;
-  const totalCt     = users.length;
-
-  const { showAlert } = useAlert();
+      return (
+        u.name.toLowerCase().includes(q) ||
+        u.id.toLowerCase().includes(q) ||
+        (u.employeeId ?? '').toLowerCase().includes(q)
+      );
+    });
 
   function getUserKey(userId: string) {
     return secretKeys.find(k => k.usedBy === userId) ?? null;
   }
 
-  function handleFreeze(u: User) {
-    if (u.id === SUPERADMIN_ID) {
-      showAlert('Protected', 'The Super Admin account cannot be modified.', undefined, 'warning');
+  /* open profile */
+  function openProfile(u: User) {
+    const key = getUserKey(u.id);
+    setProfileUser(u);
+    setEditName(u.name);
+    setEditEmail(u.email);
+    setEditMobile(u.mobile ?? '');
+    setEditAddress(u.address ?? '');
+    setEditEmpId(u.employeeId ?? '');
+    setEditAvatar(u.avatar ?? '');
+    setEditKeyCode(key?.code ?? '');
+    setShowKey(false);
+    setEditMode(false);
+  }
+
+  function closeProfile() {
+    setProfileUser(null);
+    setEditMode(false);
+  }
+
+  /* pick photo */
+  async function pickPhoto() {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      showAlert('Permission Required', 'Allow photo library access to add a profile picture.', undefined, 'warning');
       return;
     }
-    showAlert(u.isActive ? 'Freeze Account?' : 'Unfreeze Account?', u.name, [
-      { text: 'Cancel', style: 'cancel' },
-      { text: u.isActive ? 'Freeze' : 'Unfreeze', onPress: () => updateUser(u.id, { isActive: !u.isActive }) },
-    ], 'warning');
-  }
-
-  function handleEdit(u: User) {
-    const key = getUserKey(u.id);
-    setEditUser(u);
-    setEditName(u.name);
-    setEditMobile(u.mobile ?? '');
-    setEditEmail(u.email);
-    setEditKeyCode(key?.code ?? '');
-    setEditingKey(key ? { id: key.id, code: key.code, role: key.role } : null);
-    setShowKeyEdit(false);
-  }
-
-  async function handleSaveEdit() {
-    if (!editUser) return;
-    updateUser(editUser.id, { name: editName.trim(), mobile: editMobile.trim(), email: editEmail.trim() });
-    if (isSuperAdmin && editingKey && editKeyCode.trim() && editKeyCode.trim() !== editingKey.code) {
-      await updateSecretKeyCode(editingKey.id, editKeyCode.trim().toUpperCase());
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.6,
+      base64: false,
+    });
+    if (!result.canceled && result.assets[0]) {
+      setEditAvatar(result.assets[0].uri);
     }
-    setEditUser(null);
-    showAlert('Updated', 'User details saved.', undefined, 'success');
   }
 
+  /* save edits */
+  async function handleSave() {
+    if (!profileUser) return;
+    /* authz: non-super-admins cannot edit citizens */
+    if (!isSuperAdmin && profileUser.role === 'citizen') return;
+    if (!editName.trim()) {
+      showAlert('Required', 'Name cannot be empty.', undefined, 'warning');
+      return;
+    }
+    setSaving(true);
+    try {
+      await updateUser(profileUser.id, {
+        name:       editName.trim(),
+        email:      editEmail.trim(),
+        mobile:     editMobile.trim() || undefined,
+        address:    editAddress.trim() || undefined,
+        employeeId: editEmpId.trim() || undefined,
+        avatar:     editAvatar || undefined,
+      });
+      /* update secret key if changed */
+      if (isSuperAdmin && profileUser.role !== 'citizen') {
+        const key = getUserKey(profileUser.id);
+        if (key && editKeyCode.trim() && editKeyCode.trim().toUpperCase() !== key.code) {
+          await updateSecretKeyCode(key.id, editKeyCode.trim().toUpperCase());
+        }
+      }
+      /* refresh local copy */
+      setProfileUser(prev =>
+        prev ? { ...prev, name: editName.trim(), email: editEmail.trim(),
+          mobile: editMobile.trim() || undefined, address: editAddress.trim() || undefined,
+          employeeId: editEmpId.trim() || undefined, avatar: editAvatar || undefined } : prev
+      );
+      setEditMode(false);
+      showAlert('Saved', 'Profile updated successfully.', undefined, 'success');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  /* freeze */
+  function handleFreeze(u: User) {
+    if (!isSuperAdmin && u.role === 'citizen') return;
+    if ((u as any).cannotBeDeleted) {
+      showAlert('Protected', 'This account cannot be modified.', undefined, 'warning');
+      return;
+    }
+    showAlert(
+      u.isActive ? 'Freeze Account?' : 'Unfreeze Account?',
+      `${u.name} will ${u.isActive ? 'lose' : 'regain'} access.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: u.isActive ? 'Freeze' : 'Unfreeze',
+          onPress: () => {
+            updateUser(u.id, { isActive: !u.isActive });
+            setProfileUser(prev => prev ? { ...prev, isActive: !u.isActive } : prev);
+          },
+        },
+      ],
+      'warning'
+    );
+  }
+
+  /* delete */
   function handleDelete(u: User) {
-    if (u.id === SUPERADMIN_ID || (u as any).cannotBeDeleted) {
+    if (!isSuperAdmin && u.role === 'citizen') return;
+    if ((u as any).cannotBeDeleted) {
       showAlert('Protected', 'This account cannot be deleted.', undefined, 'warning');
       return;
     }
-    showAlert('Delete User?', `Permanently remove ${u.name}?`, [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Delete', style: 'destructive', onPress: () => deleteUser(u.id) },
-    ], 'error');
+    showAlert(
+      'Delete User?',
+      `Permanently remove ${u.name}? This cannot be undone.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => { deleteUser(u.id); closeProfile(); },
+        },
+      ],
+      'error'
+    );
   }
 
+  const currentTab = TABS.find(t => t.key === activeTab)!;
+
+  /* ── render ──────────────────────────────────────────── */
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#050818' }} edges={['top']}>
-      {/* HERO */}
-      <LinearGradient
-        colors={isSuperAdmin ? ['#3B0A6B', '#1A237E', '#0D1B4B'] : ['#0D1B4B', '#1A237E', '#283593']}
-        style={styles.heroHdr}
-      >
-        <View style={styles.heroTop}>
-          <View>
-            <View style={styles.heroTitleRow}>
-              {isSuperAdmin && (
-                <LinearGradient colors={['#7C3AED','#6366F1']} style={styles.superBadge}>
-                  <Feather name="star" size={9} color="#FFD700" />
-                  <Text style={styles.superBadgeText}>SUPER ADMIN</Text>
-                </LinearGradient>
-              )}
-              <Text style={styles.heroTitle}>{isSuperAdmin ? 'All Users' : 'User Management'}</Text>
-            </View>
-            <Text style={styles.heroSub}>{isSuperAdmin ? 'All accounts · Secret key control' : 'Staff accounts & permissions'}</Text>
-          </View>
-          <View style={styles.heroBadge}>
-            <Text style={styles.heroBadgeNum}>{isSuperAdmin ? totalCt : nonCitizens.length}</Text>
-            <Text style={styles.heroBadgeLbl}>{isSuperAdmin ? 'Total' : 'Staff'}</Text>
-          </View>
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={['top']}>
+
+      {/* ── Search bar ── */}
+      <View style={[s.searchWrap, { backgroundColor: colors.background, borderBottomColor: colors.border }]}>
+        <View style={[s.searchBox, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <Feather name="search" size={16} color={colors.mutedForeground} />
+          <TextInput
+            style={[s.searchInput, { color: colors.text }]}
+            placeholder="Search name or ID…"
+            placeholderTextColor={colors.mutedForeground}
+            value={search}
+            onChangeText={setSearch}
+            returnKeyType="search"
+          />
+          {search.length > 0 && (
+            <Pressable onPress={() => setSearch('')}>
+              <Feather name="x-circle" size={15} color={colors.mutedForeground} />
+            </Pressable>
+          )}
         </View>
-
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          <View style={styles.heroStats}>
-            {isSuperAdmin ? (
-              <>
-                {[
-                  { label: 'Active',    value: activeCt,                                        grad: ['#10B981','#059669'] as const, icon: 'user-check' },
-                  { label: 'Frozen',    value: frozenCt,                                        grad: ['#EF4444','#DC2626'] as const, icon: 'lock' },
-                  { label: 'Citizens',  value: citizenCt,                                       grad: ['#0EA5E9','#2563EB'] as const, icon: 'users' },
-                  { label: 'Officials', value: nonCitizens.filter(u=>u.role==='official').length, grad: ['#F59E0B','#EF4444'] as const, icon: 'briefcase' },
-                  { label: 'Workers',   value: nonCitizens.filter(u=>u.role==='safaikarmi').length, grad: ['#10B981','#059669'] as const, icon: 'trash-2' },
-                ].map(s => (
-                  <View key={s.label} style={styles.heroStat}>
-                    <LinearGradient colors={s.grad} style={styles.heroStatIcon}>
-                      <Feather name={s.icon as any} size={11} color="#fff" />
-                    </LinearGradient>
-                    <Text style={styles.heroStatVal}>{s.value}</Text>
-                    <Text style={styles.heroStatLbl}>{s.label}</Text>
-                  </View>
-                ))}
-              </>
-            ) : (
-              <>
-                {[
-                  { label: 'Active',   value: activeCt,                                        grad: ['#10B981','#059669'] as const, icon: 'user-check' },
-                  { label: 'Frozen',   value: frozenCt,                                        grad: ['#EF4444','#DC2626'] as const, icon: 'lock' },
-                  { label: 'Workers',  value: nonCitizens.filter(u=>u.role==='safaikarmi').length, grad: ['#10B981','#059669'] as const, icon: 'trash-2' },
-                  { label: 'Officials',value: nonCitizens.filter(u=>u.role==='official').length, grad: ['#F59E0B','#EF4444'] as const, icon: 'briefcase' },
-                ].map(s => (
-                  <View key={s.label} style={styles.heroStat}>
-                    <LinearGradient colors={s.grad} style={styles.heroStatIcon}>
-                      <Feather name={s.icon as any} size={11} color="#fff" />
-                    </LinearGradient>
-                    <Text style={styles.heroStatVal}>{s.value}</Text>
-                    <Text style={styles.heroStatLbl}>{s.label}</Text>
-                  </View>
-                ))}
-              </>
-            )}
-          </View>
-        </ScrollView>
-      </LinearGradient>
-
-      {/* SEARCH + FILTERS */}
-      <View style={[styles.controls, { backgroundColor: colors.background }]}>
-        <SearchBar value={search} onChangeText={setSearch} placeholder="Search name, email, ID…" />
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 10 }}>
-          {filters.map(r => {
-            const active = roleFilter === r;
-            const grad = r !== 'all' ? (ROLE_GRADS[r] ?? ['#6366F1','#8B5CF6'] as const) : ['#6366F1','#8B5CF6'] as const;
-            return active ? (
-              <LinearGradient key={r} colors={grad} style={styles.filterChipActive}>
-                <Text style={styles.filterChipActiveText}>
-                  {r === 'all' ? (isSuperAdmin ? 'All Users' : 'All Staff') : ROLE_LABELS[r]}
-                </Text>
-              </LinearGradient>
-            ) : (
-              <Pressable key={r} style={[styles.filterChip, { backgroundColor: colors.card, borderColor: colors.border }]} onPress={() => setRoleFilter(r)}>
-                <Text style={[styles.filterChipText, { color: colors.mutedForeground }]}>
-                  {r === 'all' ? (isSuperAdmin ? 'All Users' : 'All Staff') : ROLE_LABELS[r]}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </ScrollView>
       </View>
 
-      {/* USERS LIST */}
-      <ScrollView
-        contentContainerStyle={{ padding: 14, gap: 12, paddingBottom: 100 }}
-        showsVerticalScrollIndicator={false}
-        style={{ backgroundColor: colors.background }}
-      >
-        {filtered.map(u => {
-          const grad = ROLE_GRADS[u.role] ?? (['#6366F1','#8B5CF6'] as const);
-          const isProtected = u.id === SUPERADMIN_ID || !!(u as any).cannotBeDeleted;
-          const linkedKey = isSuperAdmin ? getUserKey(u.id) : null;
-
+      {/* ── 3 Tabs ── */}
+      <View style={[s.tabRow, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
+        {TABS.map(tab => {
+          const active = activeTab === tab.key;
+          const count  = users.filter(u => u.role === tab.key).length;
           return (
-            <View key={u.id} style={[styles.userCard, { backgroundColor: colors.card, borderColor: isProtected ? '#7C3AED44' : colors.border, opacity: u.isActive ? 1 : 0.72 }]}>
-              <LinearGradient colors={grad} style={styles.accentBar} />
-
-              {isProtected && (
-                <View style={styles.protectedBanner}>
-                  <Feather name="star" size={9} color="#FFD700" />
-                  <Text style={styles.protectedBannerText}>Super Admin · Protected Account</Text>
+            <TouchableOpacity key={tab.key} style={s.tabItem} onPress={() => setActiveTab(tab.key)} activeOpacity={0.75}>
+              {active ? (
+                <LinearGradient colors={tab.grad} style={s.tabPillActive}>
+                  <Feather name={tab.icon as any} size={13} color="#fff" />
+                  <Text style={s.tabLabelActive}>{tab.label}</Text>
+                  <View style={s.tabCountBubble}>
+                    <Text style={s.tabCountText}>{count}</Text>
+                  </View>
+                </LinearGradient>
+              ) : (
+                <View style={[s.tabPillInactive, { borderColor: colors.border }]}>
+                  <Feather name={tab.icon as any} size={13} color={colors.mutedForeground} />
+                  <Text style={[s.tabLabelInactive, { color: colors.mutedForeground }]}>{tab.label}</Text>
+                  <Text style={[s.tabCountInactive, { color: colors.mutedForeground }]}>{count}</Text>
                 </View>
               )}
-
-              <View style={styles.cardInner}>
-                <View style={styles.cardTop}>
-                  <LinearGradient colors={grad} style={styles.avatar}>
-                    <Text style={styles.avatarLetter}>{u.name[0].toUpperCase()}</Text>
-                  </LinearGradient>
-                  <View style={{ flex: 1 }}>
-                    <View style={styles.nameRow}>
-                      <Text style={[styles.userName, { color: colors.text }]} numberOfLines={1}>{u.name}</Text>
-                      <LinearGradient colors={grad} style={styles.roleBadge}>
-                        <Text style={styles.roleText}>{ROLE_LABELS[u.role] ?? u.role}</Text>
-                      </LinearGradient>
-                    </View>
-                    <Text style={[styles.userEmail, { color: colors.mutedForeground }]} numberOfLines={1}>{u.email}</Text>
-                  </View>
-                  <View style={[styles.statusPill, { backgroundColor: u.isActive ? '#D1FAE5' : '#FEE2E2' }]}>
-                    <View style={[styles.statusDot, { backgroundColor: u.isActive ? '#10B981' : '#EF4444' }]} />
-                    <Text style={[styles.statusText, { color: u.isActive ? '#059669' : '#DC2626' }]}>{u.isActive ? 'Active' : 'Frozen'}</Text>
-                  </View>
-                </View>
-
-                {/* Secret Key Row (superadmin only, staff users only) */}
-                {isSuperAdmin && linkedKey && u.role !== 'citizen' && (
-                  <View style={styles.keyRow}>
-                    <LinearGradient colors={grad} style={styles.keyIconWrap}>
-                      <Feather name="key" size={10} color="#fff" />
-                    </LinearGradient>
-                    <Text style={[styles.keyCode, { color: grad[0] }]}>{linkedKey.code}</Text>
-                    <View style={[styles.keyStatusDot, { backgroundColor: linkedKey.isActive ? '#10B981' : '#EF4444' }]} />
-                    <Text style={[styles.keyStatusTxt, { color: linkedKey.isActive ? '#059669' : '#DC2626' }]}>
-                      {linkedKey.isActive ? 'Active' : 'Revoked'}
-                    </Text>
-                  </View>
-                )}
-
-                {/* Meta row */}
-                <View style={[styles.metaRow, { borderTopColor: colors.border }]}>
-                  {u.employeeId && (
-                    <View style={styles.metaChip}>
-                      <Feather name="briefcase" size={9} color={colors.mutedForeground} />
-                      <Text style={[styles.metaText, { color: colors.mutedForeground }]}>{u.employeeId}</Text>
-                    </View>
-                  )}
-                  <View style={styles.metaChip}>
-                    <Feather name="calendar" size={9} color={colors.mutedForeground} />
-                    <Text style={[styles.metaText, { color: colors.mutedForeground }]}>{u.createdAt}</Text>
-                  </View>
-                </View>
-
-                {/* Actions */}
-                {!isProtected && (
-                  <View style={styles.actions}>
-                    {u.role !== 'citizen' && (
-                      <TouchableOpacity style={[styles.actionBtn, { backgroundColor: u.isActive ? '#FEF3C7' : '#D1FAE5', flex: 1 }]} onPress={() => handleFreeze(u)} activeOpacity={0.8}>
-                        <Feather name={u.isActive ? 'lock' : 'unlock'} size={14} color={u.isActive ? '#D97706' : '#059669'} />
-                        <Text style={[styles.actionBtnText, { color: u.isActive ? '#D97706' : '#059669' }]}>{u.isActive ? 'Freeze' : 'Unfreeze'}</Text>
-                      </TouchableOpacity>
-                    )}
-                    <TouchableOpacity style={[styles.actionBtn, { backgroundColor: '#EEF2FF', flex: 1 }]} onPress={() => handleEdit(u)} activeOpacity={0.8}>
-                      <Feather name="edit-2" size={14} color="#6366F1" />
-                      <Text style={[styles.actionBtnText, { color: '#6366F1' }]}>{isSuperAdmin && linkedKey ? 'Edit + Key' : 'Edit'}</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity style={[styles.actionIconBtn, { backgroundColor: '#FEF2F2' }]} onPress={() => handleDelete(u)} activeOpacity={0.8}>
-                      <Feather name="trash-2" size={15} color="#EF4444" />
-                    </TouchableOpacity>
-                  </View>
-                )}
-              </View>
-            </View>
+            </TouchableOpacity>
           );
         })}
+      </View>
 
-        {filtered.length === 0 && (
-          <View style={[styles.empty, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            <LinearGradient colors={['#6366F1','#8B5CF6']} style={styles.emptyIcon}>
-              <Feather name="users" size={28} color="#fff" />
+      {/* ── Table header ── */}
+      <View style={[s.tableHead, { backgroundColor: colors.surface ?? '#F8FAFC', borderBottomColor: colors.border }]}>
+        <Text style={[s.thNo,   { color: colors.mutedForeground }]}>S.No</Text>
+        <Text style={[s.thName, { color: colors.mutedForeground }]}>User Name</Text>
+        <Text style={[s.thId,   { color: colors.mutedForeground }]}>User ID</Text>
+        {activeTab !== 'citizen' && (
+          <Text style={[s.thCode, { color: colors.mutedForeground }]}>Secret Code</Text>
+        )}
+      </View>
+
+      {/* ── Table rows ── */}
+      <ScrollView
+        style={{ flex: 1, backgroundColor: colors.background }}
+        contentContainerStyle={{ paddingBottom: 110 }}
+        showsVerticalScrollIndicator={false}
+      >
+        {tabList.length === 0 ? (
+          <View style={[s.emptyWrap, { borderColor: colors.border }]}>
+            <LinearGradient colors={currentTab.grad} style={s.emptyIcon}>
+              <Feather name={currentTab.icon as any} size={26} color="#fff" />
             </LinearGradient>
-            <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>No users found</Text>
+            <Text style={[s.emptyTitle, { color: colors.text }]}>No {currentTab.label}s found</Text>
+            {search ? <Text style={[s.emptyHint, { color: colors.mutedForeground }]}>Try a different search term</Text> : null}
           </View>
+        ) : (
+          tabList.map((u, idx) => {
+            const linkedKey = getUserKey(u.id);
+            const isEven = idx % 2 === 0;
+            return (
+              <TouchableOpacity
+                key={u.id}
+                activeOpacity={0.7}
+                onPress={() => openProfile(u)}
+                style={[
+                  s.tableRow,
+                  {
+                    backgroundColor: isEven ? colors.background : (colors.card),
+                    borderBottomColor: colors.border,
+                    opacity: u.isActive ? 1 : 0.55,
+                  },
+                ]}
+              >
+                {/* S.No */}
+                <Text style={[s.tdNo, { color: colors.mutedForeground }]}>{idx + 1}</Text>
+
+                {/* Name + emp ID + status dot */}
+                <View style={s.tdNameCell}>
+                  {u.avatar ? (
+                    <Image source={{ uri: u.avatar }} style={s.rowAvatar} />
+                  ) : (
+                    <LinearGradient colors={ROLE_GRAD[u.role]} style={s.rowAvatarGrad}>
+                      <Text style={s.rowAvatarLetter}>{u.name[0]?.toUpperCase()}</Text>
+                    </LinearGradient>
+                  )}
+                  <View style={{ flex: 1 }}>
+                    <Text style={[s.tdName, { color: colors.text }]} numberOfLines={1}>{u.name}</Text>
+                    <View style={s.statusRow}>
+                      <View style={[s.statusDot, { backgroundColor: u.isActive ? '#10B981' : '#EF4444' }]} />
+                      <Text style={[s.statusLabel, { color: u.isActive ? '#059669' : '#EF4444' }]}>
+                        {u.isActive ? 'Active' : 'Frozen'}
+                      </Text>
+                      {u.employeeId ? (
+                        <Text style={[s.statusLabel, { color: colors.mutedForeground, marginLeft: 4 }]}>
+                          · {u.employeeId}
+                        </Text>
+                      ) : null}
+                    </View>
+                  </View>
+                </View>
+
+                {/* User ID (canonical system ID) */}
+                <Text style={[s.tdId, { color: colors.mutedForeground }]} numberOfLines={1}>
+                  {u.id}
+                </Text>
+
+                {/* Secret Code (non-citizen) */}
+                {activeTab !== 'citizen' && (
+                  <View style={s.tdCodeCell}>
+                    {linkedKey ? (
+                      <View style={[s.codePill, { backgroundColor: currentTab.grad[0] + '18' }]}>
+                        <Text style={[s.codeText, { color: currentTab.grad[0] }]}>{linkedKey.code}</Text>
+                      </View>
+                    ) : (
+                      <Text style={[s.noCode, { color: colors.mutedForeground }]}>—</Text>
+                    )}
+                  </View>
+                )}
+
+                {/* Chevron */}
+                <Feather name="chevron-right" size={14} color={colors.mutedForeground} style={{ marginLeft: 2 }} />
+              </TouchableOpacity>
+            );
+          })
         )}
       </ScrollView>
 
-      {/* EDIT MODAL */}
-      <Modal visible={!!editUser} animationType="slide" presentationStyle="pageSheet">
-        <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
-          <LinearGradient
-            colors={isSuperAdmin ? ['#3B0A6B', '#1A237E'] : ['#0D1B4B', '#1A237E']}
-            style={styles.modalHdr}
-          >
-            <View>
-              <Text style={styles.modalHdrTitle}>
-                {isSuperAdmin ? 'Edit User (Super Admin)' : 'Edit User'}
-              </Text>
-              {editUser && <Text style={styles.modalHdrSub}>{ROLE_LABELS[editUser.role] ?? editUser.role}</Text>}
-            </View>
-            <Pressable style={styles.modalClose} onPress={() => setEditUser(null)}>
-              <Feather name="x" size={18} color="#fff" />
-            </Pressable>
-          </LinearGradient>
+      {/* ════════════════════════════════════════════════════
+          PROFILE MODAL
+      ════════════════════════════════════════════════════ */}
+      <Modal visible={!!profileUser} animationType="slide" presentationStyle="pageSheet">
+        {profileUser && (() => {
+          const grad      = ROLE_GRAD[profileUser.role];
+          const linkedKey = getUserKey(profileUser.id);
+          const isProtected = !!(profileUser as any).cannotBeDeleted;
+          const showKeySection = isSuperAdmin && profileUser.role !== 'citizen';
 
-          <ScrollView contentContainerStyle={{ padding: 20, gap: 16 }}>
-            {editUser && (
-              <View style={[styles.editPreview, { backgroundColor: '#6366F110', borderColor: '#6366F130' }]}>
-                <LinearGradient colors={ROLE_GRADS[editUser.role] ?? ['#6366F1','#8B5CF6']} style={styles.editAvatar}>
-                  <Text style={styles.editAvatarLetter}>{(editName[0] ?? '?').toUpperCase()}</Text>
-                </LinearGradient>
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.editPreviewName, { color: colors.text }]}>{editName || editUser.name}</Text>
-                  <Text style={styles.editPreviewRole}>{ROLE_LABELS[editUser.role] ?? editUser.role}</Text>
-                  {editingKey && (
-                    <View style={styles.editKeyChip}>
-                      <Feather name="key" size={10} color="#8B5CF6" />
-                      <Text style={styles.editKeyChipText}>{editingKey.code}</Text>
-                    </View>
+          return (
+            <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
+
+              {/* Modal header */}
+              <LinearGradient colors={grad} style={s.modalHdr}>
+                <Pressable style={s.modalBack} onPress={closeProfile}>
+                  <Feather name="x" size={18} color="#fff" />
+                </Pressable>
+                <Text style={s.modalHdrTitle} numberOfLines={1}>
+                  {editMode ? 'Edit Profile' : 'User Profile'}
+                </Text>
+                {!editMode ? (
+                  <Pressable style={s.modalEditBtn} onPress={() => setEditMode(true)}>
+                    <Feather name="edit-2" size={15} color="#fff" />
+                    <Text style={s.modalEditBtnText}>Edit</Text>
+                  </Pressable>
+                ) : (
+                  <Pressable style={s.modalEditBtn} onPress={() => setEditMode(false)}>
+                    <Feather name="x" size={15} color="#fff" />
+                    <Text style={s.modalEditBtnText}>Cancel</Text>
+                  </Pressable>
+                )}
+              </LinearGradient>
+
+              <ScrollView contentContainerStyle={{ paddingBottom: 110 }} showsVerticalScrollIndicator={false}>
+
+                {/* ── Avatar section ── */}
+                <View style={[s.avatarSection, { backgroundColor: grad[0] + '10' }]}>
+                  <View style={s.avatarWrap}>
+                    {(editMode ? editAvatar : profileUser.avatar) ? (
+                      <Image
+                        source={{ uri: editMode ? editAvatar : profileUser.avatar }}
+                        style={s.profileAvatar}
+                      />
+                    ) : (
+                      <LinearGradient colors={grad} style={s.profileAvatar}>
+                        <Text style={s.profileAvatarLetter}>
+                          {(editMode ? editName[0] : profileUser.name[0])?.toUpperCase() ?? '?'}
+                        </Text>
+                      </LinearGradient>
+                    )}
+                    {editMode && (
+                      <TouchableOpacity style={s.cameraBtn} onPress={pickPhoto} activeOpacity={0.8}>
+                        <LinearGradient colors={['#6366F1', '#8B5CF6']} style={s.cameraBtnGrad}>
+                          <Feather name="camera" size={14} color="#fff" />
+                        </LinearGradient>
+                      </TouchableOpacity>
+                    )}
+                  </View>
+
+                  {!editMode && (
+                    <>
+                      <Text style={[s.profileName, { color: colors.text }]}>{profileUser.name}</Text>
+                      <LinearGradient colors={grad} style={s.profileRolePill}>
+                        <Text style={s.profileRoleText}>
+                          {profileUser.role === 'safaikarmi' ? 'Safai Karmi'
+                            : profileUser.role === 'official' ? 'Official'
+                            : profileUser.role === 'citizen' ? 'Citizen' : 'Admin'}
+                        </Text>
+                      </LinearGradient>
+                      <View style={[s.profileStatusPill, { backgroundColor: profileUser.isActive ? '#D1FAE5' : '#FEE2E2' }]}>
+                        <View style={[s.profileStatusDot, { backgroundColor: profileUser.isActive ? '#10B981' : '#EF4444' }]} />
+                        <Text style={[s.profileStatusText, { color: profileUser.isActive ? '#059669' : '#DC2626' }]}>
+                          {profileUser.isActive ? 'Active Account' : 'Frozen Account'}
+                        </Text>
+                      </View>
+                    </>
                   )}
                 </View>
-              </View>
-            )}
 
-            {/* Standard fields */}
-            {[
-              { label: 'Full Name', value: editName,   set: setEditName,   icon: 'user',       key: 'name',   caps: 'words'  as const },
-              { label: 'Email',     value: editEmail,  set: setEditEmail,  icon: 'mail',       key: 'email',  caps: 'none'   as const },
-              { label: 'Mobile',    value: editMobile, set: setEditMobile, icon: 'smartphone', key: 'mobile', caps: 'none'   as const, num: true },
-            ].map(f => (
-              <View key={f.key}>
-                <Text style={[styles.fieldLabel, { color: colors.text }]}>{f.label}</Text>
-                <View style={[styles.fieldRow, { backgroundColor: colors.card, borderColor: colors.border }]}>
-                  <Feather name={f.icon as any} size={16} color="#6366F1" />
-                  <TextInput
-                    style={[styles.fieldInput, { color: colors.text }]}
-                    value={f.value}
-                    onChangeText={f.set}
-                    autoCapitalize={f.caps}
-                    keyboardType={(f as any).num ? 'phone-pad' : 'default'}
-                    placeholder={f.label}
-                    placeholderTextColor={colors.mutedForeground}
-                  />
+                {/* ── Info / Edit fields ── */}
+                <View style={{ padding: 16, gap: 12 }}>
+
+                  {editMode ? (
+                    /* ── EDIT FIELDS ── */
+                    <>
+                      <SectionHeading icon="user" label="Basic Information" color={grad[0]} />
+
+                      <EditField
+                        label="Full Name"
+                        icon="user"
+                        value={editName}
+                        onChange={setEditName}
+                        caps="words"
+                        colors={colors}
+                        accentColor={grad[0]}
+                      />
+                      <EditField
+                        label="Email Address"
+                        icon="mail"
+                        value={editEmail}
+                        onChange={setEditEmail}
+                        caps="none"
+                        keyboard="email-address"
+                        colors={colors}
+                        accentColor={grad[0]}
+                      />
+                      <EditField
+                        label="Mobile Number"
+                        icon="phone"
+                        value={editMobile}
+                        onChange={setEditMobile}
+                        caps="none"
+                        keyboard="phone-pad"
+                        colors={colors}
+                        accentColor={grad[0]}
+                      />
+                      <EditField
+                        label="Address"
+                        icon="map-pin"
+                        value={editAddress}
+                        onChange={setEditAddress}
+                        caps="sentences"
+                        colors={colors}
+                        accentColor={grad[0]}
+                        multiline
+                      />
+                      {profileUser.role !== 'citizen' && (
+                        <EditField
+                          label="Employee ID"
+                          icon="briefcase"
+                          value={editEmpId}
+                          onChange={setEditEmpId}
+                          caps="characters"
+                          colors={colors}
+                          accentColor={grad[0]}
+                        />
+                      )}
+
+                      {/* Secret Key edit (Super Admin only) */}
+                      {showKeySection && (
+                        <>
+                          <SectionHeading icon="key" label="Secret Key" color="#7C3AED" />
+                          {linkedKey ? (
+                            <>
+                              <View style={[s.keyInfoBox, { backgroundColor: '#7C3AED0E', borderColor: '#7C3AED22' }]}>
+                                <Feather name="info" size={12} color="#7C3AED" />
+                                <Text style={s.keyInfoText}>
+                                  Current code: <Text style={s.keyInfoCode}>{linkedKey.code}</Text>
+                                  {'  ·  '}
+                                  <Text style={{ color: linkedKey.isActive ? '#10B981' : '#EF4444' }}>
+                                    {linkedKey.isActive ? 'Active' : 'Revoked'}
+                                  </Text>
+                                </Text>
+                              </View>
+                              <View style={[s.editRow, { backgroundColor: colors.card, borderColor: '#7C3AED30' }]}>
+                                <Feather name="key" size={16} color="#7C3AED" />
+                                <TextInput
+                                  style={[s.editInput, { color: colors.text, fontFamily: 'Inter_700Bold', letterSpacing: 1.5 }]}
+                                  value={editKeyCode}
+                                  onChangeText={v => setEditKeyCode(v.replace(/[^A-Z0-9a-z]/g, '').toUpperCase())}
+                                  autoCapitalize="characters"
+                                  autoCorrect={false}
+                                  secureTextEntry={!showKey}
+                                  placeholder="New secret code…"
+                                  placeholderTextColor={colors.mutedForeground}
+                                />
+                                <Pressable onPress={() => setShowKey(p => !p)}>
+                                  <Feather name={showKey ? 'eye-off' : 'eye'} size={15} color={colors.mutedForeground} />
+                                </Pressable>
+                              </View>
+                              <View style={s.keyWarnBox}>
+                                <Feather name="alert-triangle" size={11} color="#D97706" />
+                                <Text style={s.keyWarnText}>
+                                  Changing the code will require the staff member to use the new code on next login. Share it securely.
+                                </Text>
+                              </View>
+                            </>
+                          ) : (
+                            <View style={[s.keyInfoBox, { backgroundColor: '#FEF3C710', borderColor: '#F59E0B22' }]}>
+                              <Feather name="info" size={12} color="#F59E0B" />
+                              <Text style={[s.keyInfoText, { color: '#92400E' }]}>
+                                No linked secret key for this user.
+                              </Text>
+                            </View>
+                          )}
+                        </>
+                      )}
+
+                      {/* Save button */}
+                      <TouchableOpacity
+                        onPress={handleSave}
+                        disabled={saving}
+                        activeOpacity={0.85}
+                        style={saving ? { opacity: 0.6, marginTop: 4 } : { marginTop: 4 }}
+                      >
+                        <LinearGradient colors={grad} style={s.saveBtn}>
+                          <Feather name="check" size={16} color="#fff" />
+                          <Text style={s.saveBtnText}>{saving ? 'Saving…' : 'Save Changes'}</Text>
+                        </LinearGradient>
+                      </TouchableOpacity>
+                    </>
+                  ) : (
+                    /* ── VIEW DETAILS ── */
+                    <>
+                      <SectionHeading icon="info" label="Account Details" color={grad[0]} />
+
+                      <InfoRow icon="hash"        label="User ID"        value={profileUser.id}               colors={colors} accentColor={grad[0]} mono />
+                      {profileUser.employeeId && (
+                        <InfoRow icon="briefcase" label="Employee ID"    value={profileUser.employeeId}       colors={colors} accentColor={grad[0]} mono />
+                      )}
+                      <InfoRow icon="mail"         label="Email"          value={profileUser.email}            colors={colors} accentColor={grad[0]} />
+                      {profileUser.mobile && (
+                        <InfoRow icon="phone"      label="Mobile"         value={profileUser.mobile}           colors={colors} accentColor={grad[0]} />
+                      )}
+                      {profileUser.address && (
+                        <InfoRow icon="map-pin"    label="Address"        value={profileUser.address}          colors={colors} accentColor={grad[0]} />
+                      )}
+                      {profileUser.createdAt && (
+                        <InfoRow icon="calendar"   label="Joined"         value={profileUser.createdAt}        colors={colors} accentColor={grad[0]} />
+                      )}
+
+                      {/* Secret Key (Super Admin, non-citizen) */}
+                      {showKeySection && (
+                        <>
+                          <SectionHeading icon="key" label="Secret Key" color="#7C3AED" />
+                          {linkedKey ? (
+                            <View style={[s.keyCard, { backgroundColor: '#7C3AED0A', borderColor: '#7C3AED22' }]}>
+                              <LinearGradient colors={['#7C3AED', '#6366F1']} style={s.keyIconBox}>
+                                <Feather name="key" size={14} color="#fff" />
+                              </LinearGradient>
+                              <View style={{ flex: 1 }}>
+                                <Text style={s.keyCardCode}>{linkedKey.code}</Text>
+                                <Text style={[s.keyCardMeta, { color: colors.mutedForeground }]}>
+                                  Role: {linkedKey.role}  ·  Created {linkedKey.createdAt}
+                                </Text>
+                              </View>
+                              <View style={[s.keyStatusPill, { backgroundColor: linkedKey.isActive ? '#D1FAE5' : '#FEE2E2' }]}>
+                                <View style={[s.keyStatusDot, { backgroundColor: linkedKey.isActive ? '#10B981' : '#EF4444' }]} />
+                                <Text style={[s.keyStatusText, { color: linkedKey.isActive ? '#059669' : '#DC2626' }]}>
+                                  {linkedKey.isActive ? 'Active' : 'Revoked'}
+                                </Text>
+                              </View>
+                            </View>
+                          ) : (
+                            <View style={[s.keyInfoBox, { backgroundColor: '#FEF3C710', borderColor: '#F59E0B22' }]}>
+                              <Feather name="alert-circle" size={12} color="#F59E0B" />
+                              <Text style={[s.keyInfoText, { color: '#92400E' }]}>No linked secret key</Text>
+                            </View>
+                          )}
+                        </>
+                      )}
+
+                      {/* ── Action buttons ── */}
+                      {!isProtected && (
+                        <>
+                          <SectionHeading icon="settings" label="Actions" color={colors.mutedForeground} />
+
+                          <View style={s.actionsGrid}>
+                            {/* Freeze / Unfreeze */}
+                            <TouchableOpacity
+                              style={[s.actionCard, { backgroundColor: profileUser.isActive ? '#FEF3C7' : '#D1FAE5', flex: 1 }]}
+                              onPress={() => handleFreeze(profileUser)}
+                              activeOpacity={0.8}
+                            >
+                              <Feather name={profileUser.isActive ? 'lock' : 'unlock'} size={18} color={profileUser.isActive ? '#D97706' : '#059669'} />
+                              <Text style={[s.actionCardText, { color: profileUser.isActive ? '#D97706' : '#059669' }]}>
+                                {profileUser.isActive ? 'Freeze Account' : 'Unfreeze Account'}
+                              </Text>
+                            </TouchableOpacity>
+
+                            {/* Delete */}
+                            <TouchableOpacity
+                              style={[s.actionCard, { backgroundColor: '#FEE2E2', flex: 1 }]}
+                              onPress={() => handleDelete(profileUser)}
+                              activeOpacity={0.8}
+                            >
+                              <Feather name="trash-2" size={18} color="#EF4444" />
+                              <Text style={[s.actionCardText, { color: '#EF4444' }]}>Delete User</Text>
+                            </TouchableOpacity>
+                          </View>
+                        </>
+                      )}
+
+                      {isProtected && (
+                        <View style={[s.protectedNote, { backgroundColor: '#7C3AED0A', borderColor: '#7C3AED20' }]}>
+                          <LinearGradient colors={['#7C3AED', '#6366F1']} style={s.protectedIcon}>
+                            <Feather name="star" size={12} color="#FFD700" />
+                          </LinearGradient>
+                          <Text style={s.protectedText}>Super Admin · This account is protected and cannot be deleted or frozen.</Text>
+                        </View>
+                      )}
+                    </>
+                  )}
                 </View>
-              </View>
-            ))}
-
-            {/* Secret Key Edit — Super Admin only + staff with linked key */}
-            {isSuperAdmin && editUser?.role !== 'citizen' && editingKey && (
-              <View>
-                <View style={styles.keyEditHeader}>
-                  <LinearGradient colors={['#7C3AED','#6366F1']} style={styles.keyEditIconWrap}>
-                    <Feather name="key" size={14} color="#fff" />
-                  </LinearGradient>
-                  <View style={{ flex: 1 }}>
-                    <Text style={[styles.fieldLabel, { color: colors.text, marginBottom: 0 }]}>Secret Key Code</Text>
-                    <Text style={styles.keyEditSub}>Current: <Text style={styles.keyEditCurrent}>{editingKey.code}</Text></Text>
-                  </View>
-                  <Pressable onPress={() => setShowKeyEdit(p => !p)} style={[styles.showKeyBtn, { backgroundColor: showKeyEdit ? '#EEF2FF' : '#F1F5F9' }]}>
-                    <Feather name={showKeyEdit ? 'eye-off' : 'eye'} size={14} color="#6366F1" />
-                  </Pressable>
-                </View>
-
-                <View style={[styles.fieldRow, { backgroundColor: colors.card, borderColor: '#8B5CF630' }]}>
-                  <Feather name="key" size={16} color="#8B5CF6" />
-                  <TextInput
-                    style={[styles.fieldInput, { color: colors.text, fontFamily: 'Inter_700Bold', letterSpacing: 1.5 }]}
-                    value={editKeyCode}
-                    onChangeText={v => setEditKeyCode(v.replace(/[^A-Z0-9]/g, '').toUpperCase())}
-                    autoCapitalize="characters"
-                    autoCorrect={false}
-                    secureTextEntry={!showKeyEdit}
-                    placeholder="New secret code…"
-                    placeholderTextColor={colors.mutedForeground}
-                  />
-                </View>
-
-                <View style={styles.keyEditWarning}>
-                  <Feather name="alert-triangle" size={12} color="#F59E0B" />
-                  <Text style={styles.keyEditWarningText}>
-                    Changing this code will require the staff member to use the new code for their next login. Share securely.
-                  </Text>
-                </View>
-              </View>
-            )}
-
-            {isSuperAdmin && editUser?.role !== 'citizen' && !editingKey && (
-              <View style={[styles.keyEditWarning, { backgroundColor: '#FEF3C720', borderColor: '#F59E0B30' }]}>
-                <Feather name="info" size={12} color="#F59E0B" />
-                <Text style={styles.keyEditWarningText}>This user has no linked secret key (may not have registered via a key).</Text>
-              </View>
-            )}
-
-            <TouchableOpacity onPress={handleSaveEdit} activeOpacity={0.85}>
-              <LinearGradient colors={isSuperAdmin ? ['#7C3AED','#6366F1'] : ['#6366F1','#8B5CF6']} style={styles.saveBtn}>
-                <Feather name="check" size={16} color="#fff" />
-                <Text style={styles.saveBtnText}>Save Changes</Text>
-              </LinearGradient>
-            </TouchableOpacity>
-          </ScrollView>
-        </SafeAreaView>
+              </ScrollView>
+            </SafeAreaView>
+          );
+        })()}
       </Modal>
     </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({
-  heroHdr: { padding: 20, paddingBottom: 18, gap: 16 },
-  heroTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
-  heroTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
-  heroTitle: { color: '#fff', fontSize: 24, fontFamily: 'Inter_700Bold' },
-  heroSub: { color: 'rgba(255,255,255,0.55)', fontSize: 12, fontFamily: 'Inter_400Regular', marginTop: 2 },
-  superBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 99 },
-  superBadgeText: { color: '#FFD700', fontSize: 9, fontFamily: 'Inter_700Bold' },
-  heroBadge: { backgroundColor: 'rgba(255,255,255,0.12)', borderRadius: 14, paddingHorizontal: 14, paddingVertical: 8, alignItems: 'center' },
-  heroBadgeNum: { color: '#fff', fontSize: 22, fontFamily: 'Inter_700Bold', textAlign: 'center' },
-  heroBadgeLbl: { color: 'rgba(255,255,255,0.7)', fontSize: 10, fontFamily: 'Inter_500Medium' },
-  heroStats: { flexDirection: 'row', gap: 8 },
-  heroStat: { backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 12, padding: 10, alignItems: 'center', gap: 4, minWidth: 66 },
-  heroStatIcon: { width: 26, height: 26, borderRadius: 8, justifyContent: 'center', alignItems: 'center' },
-  heroStatVal: { color: '#fff', fontSize: 16, fontFamily: 'Inter_700Bold' },
-  heroStatLbl: { color: 'rgba(255,255,255,0.6)', fontSize: 9, fontFamily: 'Inter_500Medium' },
+/* ── sub-components ──────────────────────────────────────────── */
 
-  controls: { padding: 14, paddingBottom: 8 },
-  filterChip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 99, borderWidth: 1, marginRight: 8 },
-  filterChipText: { fontSize: 12, fontFamily: 'Inter_500Medium' },
-  filterChipActive: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 99, marginRight: 8 },
-  filterChipActiveText: { color: '#fff', fontSize: 12, fontFamily: 'Inter_600SemiBold' },
+function SectionHeading({ icon, label, color }: { icon: string; label: string; color: string }) {
+  return (
+    <View style={sh.wrap}>
+      <Feather name={icon as any} size={13} color={color} />
+      <Text style={[sh.label, { color }]}>{label}</Text>
+      <View style={[sh.line, { backgroundColor: color + '22' }]} />
+    </View>
+  );
+}
 
-  userCard: { borderRadius: 16, borderWidth: 1, overflow: 'hidden' },
-  accentBar: { height: 4 },
-  protectedBanner: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(124,58,237,0.1)', paddingHorizontal: 12, paddingVertical: 5, borderBottomWidth: 1, borderBottomColor: 'rgba(124,58,237,0.15)' },
-  protectedBannerText: { color: '#A78BFA', fontSize: 10, fontFamily: 'Inter_600SemiBold' },
-  cardInner: { padding: 10, gap: 7 },
-  cardTop: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  avatar: { width: 38, height: 38, borderRadius: 19, justifyContent: 'center', alignItems: 'center' },
-  avatarLetter: { color: '#fff', fontSize: 16, fontFamily: 'Inter_700Bold' },
-  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 3 },
-  userName: { fontSize: 14, fontFamily: 'Inter_700Bold', flex: 1 },
-  roleBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 99 },
-  roleText: { color: '#fff', fontSize: 9, fontFamily: 'Inter_700Bold' },
-  userEmail: { fontSize: 11, fontFamily: 'Inter_400Regular' },
-  statusPill: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 99 },
-  statusDot: { width: 6, height: 6, borderRadius: 3 },
-  statusText: { fontSize: 10, fontFamily: 'Inter_700Bold' },
+const sh = StyleSheet.create({
+  wrap:  { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 },
+  label: { fontSize: 11, fontFamily: 'Inter_700Bold', letterSpacing: 0.5, textTransform: 'uppercase' },
+  line:  { flex: 1, height: 1 },
+});
 
-  keyRow: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(99,102,241,0.06)', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 5, borderWidth: 1, borderColor: 'rgba(99,102,241,0.12)' },
-  keyIconWrap: { width: 20, height: 20, borderRadius: 6, justifyContent: 'center', alignItems: 'center' },
-  keyCode: { fontSize: 13, fontFamily: 'Inter_700Bold', letterSpacing: 1.2, flex: 1 },
+function InfoRow({
+  icon, label, value, colors, accentColor, mono = false,
+}: {
+  icon: string; label: string; value: string;
+  colors: any; accentColor: string; mono?: boolean;
+}) {
+  return (
+    <View style={[ir.row, { backgroundColor: colors.card, borderColor: colors.border }]}>
+      <View style={[ir.iconBox, { backgroundColor: accentColor + '15' }]}>
+        <Feather name={icon as any} size={14} color={accentColor} />
+      </View>
+      <View style={{ flex: 1 }}>
+        <Text style={[ir.label, { color: colors.mutedForeground }]}>{label}</Text>
+        <Text style={[ir.value, { color: colors.text, fontFamily: mono ? 'Inter_700Bold' : 'Inter_500Medium' }]} numberOfLines={2}>
+          {value}
+        </Text>
+      </View>
+    </View>
+  );
+}
+
+const ir = StyleSheet.create({
+  row:     { flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: 12, borderWidth: 1, padding: 12 },
+  iconBox: { width: 36, height: 36, borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
+  label:   { fontSize: 10, fontFamily: 'Inter_500Medium', marginBottom: 2 },
+  value:   { fontSize: 14, lineHeight: 19 },
+});
+
+function EditField({
+  label, icon, value, onChange, caps, keyboard, colors, accentColor, multiline = false,
+}: {
+  label: string; icon: string; value: string; onChange: (v: string) => void;
+  caps?: 'none' | 'sentences' | 'words' | 'characters';
+  keyboard?: 'default' | 'email-address' | 'phone-pad';
+  colors: any; accentColor: string; multiline?: boolean;
+}) {
+  return (
+    <View>
+      <Text style={[ef.label, { color: colors.mutedForeground }]}>{label}</Text>
+      <View style={[ef.row, { backgroundColor: colors.card, borderColor: accentColor + '40' }]}>
+        <Feather name={icon as any} size={15} color={accentColor} />
+        <TextInput
+          style={[ef.input, { color: colors.text }, multiline && { minHeight: 60, textAlignVertical: 'top' }]}
+          value={value}
+          onChangeText={onChange}
+          autoCapitalize={caps ?? 'sentences'}
+          keyboardType={keyboard ?? 'default'}
+          placeholder={label}
+          placeholderTextColor={colors.mutedForeground}
+          multiline={multiline}
+        />
+      </View>
+    </View>
+  );
+}
+
+const ef = StyleSheet.create({
+  label: { fontSize: 11, fontFamily: 'Inter_600SemiBold', marginBottom: 5 },
+  row:   { flexDirection: 'row', alignItems: 'center', gap: 10, borderRadius: 12, borderWidth: 1.5, paddingHorizontal: 13, paddingVertical: 2 },
+  input: { flex: 1, fontSize: 14, fontFamily: 'Inter_400Regular', paddingVertical: 12 },
+});
+
+/* ── main styles ──────────────────────────────────────────────── */
+const s = StyleSheet.create({
+  /* search */
+  searchWrap:  { padding: 12, paddingBottom: 10, borderBottomWidth: 1 },
+  searchBox:   { flexDirection: 'row', alignItems: 'center', gap: 10, borderRadius: 12, borderWidth: 1, paddingHorizontal: 12, paddingVertical: 10 },
+  searchInput: { flex: 1, fontSize: 14, fontFamily: 'Inter_400Regular', padding: 0 },
+
+  /* tabs */
+  tabRow:  { flexDirection: 'row', gap: 8, paddingHorizontal: 12, paddingVertical: 10, borderBottomWidth: 1 },
+  tabItem: { flex: 1 },
+  tabPillActive: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: 5, borderRadius: 99, paddingVertical: 8, paddingHorizontal: 6,
+  },
+  tabLabelActive: { color: '#fff', fontSize: 11, fontFamily: 'Inter_700Bold' },
+  tabCountBubble: { backgroundColor: 'rgba(255,255,255,0.28)', borderRadius: 99, paddingHorizontal: 5, paddingVertical: 1 },
+  tabCountText: { color: '#fff', fontSize: 9, fontFamily: 'Inter_700Bold' },
+  tabPillInactive: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: 5, borderRadius: 99, paddingVertical: 8, paddingHorizontal: 6, borderWidth: 1,
+  },
+  tabLabelInactive: { fontSize: 11, fontFamily: 'Inter_500Medium' },
+  tabCountInactive: { fontSize: 9, fontFamily: 'Inter_600SemiBold' },
+
+  /* table head */
+  tableHead: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 7, borderBottomWidth: 1 },
+  thNo:   { width: 32, fontSize: 10, fontFamily: 'Inter_700Bold', textTransform: 'uppercase' },
+  thName: { flex: 1,   fontSize: 10, fontFamily: 'Inter_700Bold', textTransform: 'uppercase' },
+  thId:   { width: 72, fontSize: 10, fontFamily: 'Inter_700Bold', textTransform: 'uppercase' },
+  thCode: { width: 84, fontSize: 10, fontFamily: 'Inter_700Bold', textTransform: 'uppercase' },
+
+  /* table rows */
+  tableRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 9, borderBottomWidth: StyleSheet.hairlineWidth },
+  tdNo:     { width: 32, fontSize: 12, fontFamily: 'Inter_500Medium' },
+  tdNameCell: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8, paddingRight: 6 },
+  rowAvatar:     { width: 30, height: 30, borderRadius: 15 },
+  rowAvatarGrad: { width: 30, height: 30, borderRadius: 15, justifyContent: 'center', alignItems: 'center' },
+  rowAvatarLetter: { color: '#fff', fontSize: 12, fontFamily: 'Inter_700Bold' },
+  tdName:   { fontSize: 13, fontFamily: 'Inter_600SemiBold' },
+  statusRow: { flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 1 },
+  statusDot: { width: 5, height: 5, borderRadius: 3 },
+  statusLabel: { fontSize: 9, fontFamily: 'Inter_600SemiBold' },
+  tdId:     { width: 72, fontSize: 11, fontFamily: 'Inter_500Medium' },
+  tdCodeCell: { width: 84, alignItems: 'flex-start' },
+  codePill: { borderRadius: 6, paddingHorizontal: 6, paddingVertical: 3 },
+  codeText: { fontSize: 10, fontFamily: 'Inter_700Bold', letterSpacing: 0.8 },
+  noCode:   { fontSize: 12 },
+
+  /* empty */
+  emptyWrap:  { margin: 24, borderRadius: 16, borderWidth: 1, padding: 36, alignItems: 'center', gap: 12 },
+  emptyIcon:  { width: 56, height: 56, borderRadius: 16, justifyContent: 'center', alignItems: 'center' },
+  emptyTitle: { fontSize: 16, fontFamily: 'Inter_700Bold' },
+  emptyHint:  { fontSize: 12, fontFamily: 'Inter_400Regular' },
+
+  /* modal header */
+  modalHdr: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingVertical: 14 },
+  modalBack: { width: 34, height: 34, borderRadius: 17, backgroundColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center' },
+  modalHdrTitle: { flex: 1, color: '#fff', fontSize: 18, fontFamily: 'Inter_700Bold' },
+  modalEditBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6 },
+  modalEditBtnText: { color: '#fff', fontSize: 12, fontFamily: 'Inter_600SemiBold' },
+
+  /* avatar section */
+  avatarSection: { alignItems: 'center', paddingVertical: 24, gap: 10 },
+  avatarWrap: { position: 'relative' },
+  profileAvatar: { width: 90, height: 90, borderRadius: 45, justifyContent: 'center', alignItems: 'center' },
+  profileAvatarLetter: { color: '#fff', fontSize: 36, fontFamily: 'Inter_700Bold' },
+  cameraBtn: { position: 'absolute', bottom: 0, right: 0 },
+  cameraBtnGrad: { width: 28, height: 28, borderRadius: 14, justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: '#fff' },
+  profileName: { fontSize: 20, fontFamily: 'Inter_700Bold', textAlign: 'center' },
+  profileRolePill: { paddingHorizontal: 14, paddingVertical: 4, borderRadius: 99 },
+  profileRoleText: { color: '#fff', fontSize: 12, fontFamily: 'Inter_700Bold' },
+  profileStatusPill: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 5, borderRadius: 99 },
+  profileStatusDot: { width: 7, height: 7, borderRadius: 4 },
+  profileStatusText: { fontSize: 12, fontFamily: 'Inter_600SemiBold' },
+
+  /* key card */
+  keyCard: { flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: 14, borderWidth: 1, padding: 14 },
+  keyIconBox: { width: 40, height: 40, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
+  keyCardCode: { fontSize: 16, fontFamily: 'Inter_700Bold', color: '#7C3AED', letterSpacing: 1.5 },
+  keyCardMeta: { fontSize: 10, fontFamily: 'Inter_400Regular', marginTop: 2 },
+  keyStatusPill: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 99 },
   keyStatusDot: { width: 5, height: 5, borderRadius: 3 },
-  keyStatusTxt: { fontSize: 9, fontFamily: 'Inter_600SemiBold' },
+  keyStatusText: { fontSize: 9, fontFamily: 'Inter_700Bold' },
 
-  metaRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingTop: 6, borderTopWidth: 1 },
-  metaChip: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  metaText: { fontSize: 10, fontFamily: 'Inter_400Regular' },
-  actions: { flexDirection: 'row', gap: 8 },
-  actionBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, borderRadius: 10, paddingVertical: 7 },
-  actionBtnText: { fontSize: 12, fontFamily: 'Inter_700Bold' },
-  actionIconBtn: { width: 34, height: 34, borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
-  empty: { borderRadius: 16, padding: 40, borderWidth: 1, alignItems: 'center', gap: 12 },
-  emptyIcon: { width: 60, height: 60, borderRadius: 16, justifyContent: 'center', alignItems: 'center' },
-  emptyText: { fontSize: 13, fontFamily: 'Inter_400Regular' },
+  /* key edit */
+  keyInfoBox: { flexDirection: 'row', alignItems: 'center', gap: 8, borderRadius: 10, borderWidth: 1, padding: 12 },
+  keyInfoText: { fontSize: 12, fontFamily: 'Inter_500Medium', color: '#5B21B6', flex: 1 },
+  keyInfoCode: { fontFamily: 'Inter_700Bold', letterSpacing: 1 },
+  editRow: { flexDirection: 'row', alignItems: 'center', gap: 10, borderRadius: 12, borderWidth: 1.5, paddingHorizontal: 13 },
+  editInput: { flex: 1, fontSize: 14, paddingVertical: 12 },
+  keyWarnBox: { flexDirection: 'row', alignItems: 'flex-start', gap: 7, backgroundColor: '#FEF3C710', borderRadius: 10, borderWidth: 1, borderColor: '#F59E0B25', padding: 10 },
+  keyWarnText: { color: '#D97706', fontSize: 11, fontFamily: 'Inter_400Regular', flex: 1, lineHeight: 16 },
 
-  modalHdr: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 18 },
-  modalHdrTitle: { color: '#fff', fontSize: 18, fontFamily: 'Inter_700Bold' },
-  modalHdrSub: { color: 'rgba(255,255,255,0.6)', fontSize: 12, fontFamily: 'Inter_400Regular', marginTop: 2 },
-  modalClose: { width: 34, height: 34, borderRadius: 17, backgroundColor: 'rgba(255,255,255,0.15)', justifyContent: 'center', alignItems: 'center' },
-  editPreview: { flexDirection: 'row', alignItems: 'center', gap: 14, padding: 14, borderRadius: 14, borderWidth: 1 },
-  editAvatar: { width: 50, height: 50, borderRadius: 25, justifyContent: 'center', alignItems: 'center' },
-  editAvatarLetter: { color: '#fff', fontSize: 22, fontFamily: 'Inter_700Bold' },
-  editPreviewName: { fontSize: 16, fontFamily: 'Inter_700Bold' },
-  editPreviewRole: { fontSize: 12, fontFamily: 'Inter_500Medium', color: '#6366F1', marginTop: 2 },
-  editKeyChip: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 },
-  editKeyChipText: { fontSize: 11, fontFamily: 'Inter_700Bold', color: '#8B5CF6', letterSpacing: 1 },
+  /* actions */
+  actionsGrid: { flexDirection: 'row', gap: 12 },
+  actionCard: { borderRadius: 14, padding: 16, alignItems: 'center', gap: 8 },
+  actionCardText: { fontSize: 12, fontFamily: 'Inter_700Bold', textAlign: 'center' },
 
-  fieldLabel: { fontSize: 13, fontFamily: 'Inter_600SemiBold', marginBottom: 6 },
-  fieldRow: { flexDirection: 'row', alignItems: 'center', gap: 10, borderRadius: 12, borderWidth: 1, paddingHorizontal: 14 },
-  fieldInput: { flex: 1, fontSize: 14, fontFamily: 'Inter_400Regular', paddingVertical: 14 },
+  /* protected */
+  protectedNote: { flexDirection: 'row', alignItems: 'center', gap: 10, borderRadius: 12, borderWidth: 1, padding: 14 },
+  protectedIcon: { width: 36, height: 36, borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
+  protectedText: { flex: 1, fontSize: 12, fontFamily: 'Inter_500Medium', color: '#6D28D9', lineHeight: 18 },
 
-  keyEditHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8 },
-  keyEditIconWrap: { width: 36, height: 36, borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
-  keyEditSub: { fontSize: 11, fontFamily: 'Inter_400Regular', color: '#6B7280', marginTop: 1 },
-  keyEditCurrent: { fontFamily: 'Inter_700Bold', color: '#8B5CF6', letterSpacing: 1 },
-  showKeyBtn: { width: 34, height: 34, borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
-  keyEditWarning: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, backgroundColor: '#FEF3C710', borderRadius: 10, borderWidth: 1, borderColor: '#F59E0B25', padding: 10 },
-  keyEditWarningText: { color: '#D97706', fontSize: 11, fontFamily: 'Inter_400Regular', flex: 1, lineHeight: 16 },
-
-  saveBtn: { borderRadius: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 15 },
+  /* save */
+  saveBtn: { borderRadius: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 16 },
   saveBtnText: { color: '#fff', fontSize: 15, fontFamily: 'Inter_700Bold' },
 });
