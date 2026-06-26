@@ -1,4 +1,5 @@
 import { Feather } from '@expo/vector-icons';
+import * as Clipboard from 'expo-clipboard';
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { useState } from 'react';
 import {
@@ -28,28 +29,42 @@ const PRIORITY_CONFIG = {
 
 export default function AdminManagement() {
   const {
-    notices, passwordResetRequests,
+    notices, passwordResetRequests, secretKeys,
     addNotice, deleteNotice,
     updatePasswordResetRequest,
     addSecretKey,
   } = useAppData();
   const { resetUserPassword } = useAuth();
   const colors = useColors();
-  const [generating, setGenerating] = useState(false);
+  const [generating, setGenerating] = useState<string | null>(null);
   const [newKey, setNewKey] = useState<SecretKey | null>(null);
+  const [codeCopied, setCodeCopied] = useState(false);
 
-  const ROLE_LABELS: Record<string, string> = { safaikarmi: 'Safai Karmi', official: 'Official', admin: 'Admin' };
+  const GEN_ROLES = [
+    { role: 'safaikarmi' as SecretKey['role'], label: 'Safai Karmi', desc: 'Field sanitation worker access key', icon: 'trash-2', grad: ['#10B981', '#059669'] as const },
+    { role: 'official'   as SecretKey['role'], label: 'Official',    desc: 'Ward official access key',           icon: 'briefcase', grad: ['#0EA5E9', '#2563EB'] as const },
+  ];
+
   const ROLE_GRADS: Record<string, readonly [string, string]> = {
     safaikarmi: ['#10B981', '#059669'],
-    official:   ['#F59E0B', '#EF4444'],
+    official:   ['#0EA5E9', '#2563EB'],
     admin:      ['#6366F1', '#8B5CF6'],
   };
-  const ROLE_ICONS: Record<string, string> = { safaikarmi: 'trash-2', official: 'briefcase', admin: 'shield' };
 
   async function handleGenerate(role: SecretKey['role']) {
-    setGenerating(true);
-    try { setNewKey(await addSecretKey(role)); } finally { setGenerating(false); }
+    setGenerating(role);
+    try { setNewKey(await addSecretKey(role)); } finally { setGenerating(null); }
   }
+
+  async function handleCopyCode(code: string) {
+    await Clipboard.setStringAsync(code);
+    setCodeCopied(true);
+    setTimeout(() => setCodeCopied(false), 1500);
+  }
+
+  const latestKey = secretKeys.length > 0
+    ? [...secretKeys].sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0]
+    : null;
 
   const [tab, setTab] = useState<Tab>('notices');
   const [showNoticeModal, setShowNoticeModal] = useState(false);
@@ -142,66 +157,121 @@ export default function AdminManagement() {
 
       {/* ── GEN KEY TAB ── */}
       {tab === 'genkey' && (
-        <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 110 }}>
-          <LinearGradient colors={['#0D1B4B', '#1A237E']} style={styles.genCard}>
-            <View style={styles.genCardTop}>
-              <LinearGradient colors={['rgba(255,255,255,0.15)','rgba(255,255,255,0.05)']} style={styles.genCardIcon}>
-                <Feather name="menu" size={18} color="#fff" />
-              </LinearGradient>
-              <View>
-                <Text style={styles.genCardTitle}>Generate New Key</Text>
-                <Text style={styles.genCardSub}>Unique access code for registration</Text>
-              </View>
+        <ScrollView contentContainerStyle={{ padding: 16, gap: 14, paddingBottom: 110 }}>
+
+          {/* Header */}
+          <View style={styles.gkTitleRow}>
+            <LinearGradient colors={['#7C3AED','#4F46E5']} style={styles.gkTitleIcon}>
+              <Feather name="key" size={16} color="#fff" />
+            </LinearGradient>
+            <View>
+              <Text style={[styles.gkTitle, { color: colors.text }]}>Generate Secret Key</Text>
+              <Text style={[styles.gkSub, { color: colors.mutedForeground }]}>Issue unique access codes for staff</Text>
             </View>
-            <View style={styles.genBtnRow}>
-              {(['safaikarmi', 'official', 'admin'] as const).map(role => (
-                <TouchableOpacity
-                  key={role}
-                  style={[styles.genBtnWrap, { opacity: generating ? 0.5 : 1 }]}
-                  onPress={() => handleGenerate(role)}
-                  disabled={generating}
-                  activeOpacity={0.8}
-                >
-                  <LinearGradient colors={ROLE_GRADS[role]} style={styles.genBtn}>
-                    <Feather name={ROLE_ICONS[role] as any} size={14} color="#fff" />
-                    <Text style={styles.genBtnText}>{ROLE_LABELS[role]}</Text>
-                  </LinearGradient>
-                </TouchableOpacity>
-              ))}
-            </View>
-            {generating && (
-              <View style={styles.genLoading}>
-                <Feather name="loader" size={14} color="rgba(255,255,255,0.7)" />
-                <Text style={styles.genLoadingText}>Generating…</Text>
+          </View>
+
+          {/* Two full-width role cards stacked */}
+          {GEN_ROLES.map(item => {
+            const isThis = generating === item.role;
+            const isOther = generating !== null && generating !== item.role;
+            return (
+              <TouchableOpacity
+                key={item.role}
+                onPress={() => handleGenerate(item.role)}
+                disabled={generating !== null}
+                activeOpacity={0.88}
+                style={isOther ? { opacity: 0.35 } : {}}
+              >
+                <LinearGradient colors={item.grad} style={styles.gkRoleCard}>
+                  <View style={styles.gkRoleCardInner}>
+                    <LinearGradient colors={['rgba(255,255,255,0.25)','rgba(255,255,255,0.08)']} style={styles.gkRoleIconBox}>
+                      <Feather name={item.icon as any} size={24} color="#fff" />
+                    </LinearGradient>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.gkRoleName}>{item.label}</Text>
+                      <Text style={styles.gkRoleDesc}>{item.desc}</Text>
+                    </View>
+                    <View style={styles.gkPlusBox}>
+                      {isThis
+                        ? <Feather name="loader" size={20} color="rgba(255,255,255,0.9)" />
+                        : <Feather name="plus" size={22} color="rgba(255,255,255,0.9)" />}
+                    </View>
+                  </View>
+                  <View style={styles.gkFormatRow}>
+                    <Feather name="hash" size={10} color="rgba(255,255,255,0.55)" />
+                    <Text style={styles.gkFormatTxt}>
+                      {item.role === 'safaikarmi' ? 'Format: SK-XXXX-XXXX' : 'Format: OF-XXXX-XXXX'}
+                    </Text>
+                  </View>
+                </LinearGradient>
+              </TouchableOpacity>
+            );
+          })}
+
+          {/* Latest generated key */}
+          {latestKey && (
+            <View style={[styles.gkLatestWrap, { backgroundColor: colors.card, borderColor: colors.border }]}>
+              <View style={styles.gkLatestHdr}>
+                <Feather name="clock" size={11} color={colors.mutedForeground} />
+                <Text style={[styles.gkLatestLabel, { color: colors.mutedForeground }]}>Latest Generated</Text>
+                <View style={[styles.gkRolePill, { backgroundColor: (ROLE_GRADS[latestKey.role]?.[0] ?? '#7C3AED') + '20' }]}>
+                  <Text style={[styles.gkRolePillTxt, { color: ROLE_GRADS[latestKey.role]?.[0] ?? '#7C3AED' }]}>
+                    {latestKey.role === 'safaikarmi' ? 'Safai Karmi' : 'Official'}
+                  </Text>
+                </View>
               </View>
-            )}
-          </LinearGradient>
+              <TouchableOpacity
+                activeOpacity={0.8}
+                onPress={() => handleCopyCode(latestKey.code)}
+              >
+                <View style={[styles.gkLatestCodeRow, { borderColor: (ROLE_GRADS[latestKey.role]?.[0] ?? '#7C3AED') + '40', backgroundColor: (ROLE_GRADS[latestKey.role]?.[0] ?? '#7C3AED') + '10' }]}>
+                  <Feather name="key" size={14} color={ROLE_GRADS[latestKey.role]?.[0] ?? '#7C3AED'} />
+                  <Text style={[styles.gkLatestCode, { color: ROLE_GRADS[latestKey.role]?.[0] ?? '#7C3AED' }]} numberOfLines={1}>
+                    {latestKey.code}
+                  </Text>
+                  <Feather name="copy" size={14} color={ROLE_GRADS[latestKey.role]?.[0] ?? '#7C3AED'} />
+                </View>
+              </TouchableOpacity>
+              <Text style={[styles.gkLatestDate, { color: colors.mutedForeground }]}>Created {latestKey.createdAt}</Text>
+            </View>
+          )}
         </ScrollView>
       )}
 
-      {/* ── NEW KEY MODAL (gen key tab) ── */}
+      {/* ── NEW KEY MODAL ── */}
       <Modal visible={!!newKey} animationType="slide" transparent>
         <View style={styles.overlay}>
-          <LinearGradient colors={['#050818', '#0D1B4B']} style={styles.newKeySheet}>
+          <LinearGradient colors={['#08101F', '#0D1B4B']} style={styles.newKeySheet}>
             <View style={styles.celebRing}>
-              <LinearGradient colors={ROLE_GRADS[newKey?.role ?? 'admin']} style={styles.celebGrad}>
-                <Feather name="key" size={32} color="#fff" />
+              <LinearGradient colors={ROLE_GRADS[newKey?.role ?? 'safaikarmi']} style={styles.celebGrad}>
+                <Feather name="key" size={30} color="#fff" />
               </LinearGradient>
             </View>
             <Text style={styles.celebTitle}>Key Generated!</Text>
-            <Text style={[styles.celebRole, { color: 'rgba(255,255,255,0.65)' }]}>
-              {ROLE_LABELS[newKey?.role ?? 'admin']} Access Code
+            <Text style={[styles.celebRole, { color: 'rgba(255,255,255,0.6)' }]}>
+              {newKey?.role === 'safaikarmi' ? 'Safai Karmi' : 'Official'} Access Code
             </Text>
-            <LinearGradient colors={ROLE_GRADS[newKey?.role ?? 'admin']} style={styles.codeReveal}>
-              <Feather name="key" size={16} color="rgba(255,255,255,0.7)" />
-              <Text style={styles.codeRevealText}>{newKey?.code}</Text>
-            </LinearGradient>
-            <View style={[styles.celebNote, { backgroundColor: 'rgba(255,255,255,0.06)', borderColor: 'rgba(255,255,255,0.1)' }]}>
-              <Feather name="alert-circle" size={13} color="rgba(255,255,255,0.5)" />
+
+            {/* Tap-to-copy single-line code */}
+            <TouchableOpacity activeOpacity={0.85} onPress={() => newKey && handleCopyCode(newKey.code)} style={{ width: '100%' }}>
+              <LinearGradient
+                colors={codeCopied ? ['#10B981','#059669'] : ROLE_GRADS[newKey?.role ?? 'safaikarmi']}
+                style={styles.codeReveal}
+              >
+                <Feather name={codeCopied ? 'check' : 'key'} size={16} color="rgba(255,255,255,0.8)" />
+                <Text style={styles.codeRevealText} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
+                  {codeCopied ? 'Copied!' : newKey?.code}
+                </Text>
+                {!codeCopied && <Feather name="copy" size={16} color="rgba(255,255,255,0.7)" />}
+              </LinearGradient>
+            </TouchableOpacity>
+
+            <View style={[styles.celebNote, { backgroundColor: 'rgba(255,255,255,0.05)', borderColor: 'rgba(255,255,255,0.09)' }]}>
+              <Feather name="alert-circle" size={12} color="rgba(255,255,255,0.45)" />
               <Text style={styles.celebNoteText}>Share this code securely. It will not be shown again after closing.</Text>
             </View>
-            <TouchableOpacity onPress={() => setNewKey(null)} activeOpacity={0.85}>
-              <LinearGradient colors={ROLE_GRADS[newKey?.role ?? 'admin']} style={styles.celebDoneBtn}>
+            <TouchableOpacity onPress={() => { setNewKey(null); setCodeCopied(false); }} activeOpacity={0.85}>
+              <LinearGradient colors={ROLE_GRADS[newKey?.role ?? 'safaikarmi']} style={styles.celebDoneBtn}>
                 <Text style={styles.celebDoneText}>Done</Text>
               </LinearGradient>
             </TouchableOpacity>

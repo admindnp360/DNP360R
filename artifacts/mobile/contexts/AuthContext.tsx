@@ -42,15 +42,15 @@ const SUPER_ADMIN: User & { password: string; secretCode: string; mobile: string
 };
 
 const DEMO_USERS: (User & { password: string })[] = [
-  { id: 'C001', name: 'Rahul Kumar', email: 'citizen.dnp360@gmail.com', mobile: '9876543210', role: 'citizen', address: 'Ward 5, Daudnagar, Bihar', isActive: true, createdAt: '2024-01-15', password: '12345678' },
-  { id: 'SK001', name: 'Amit Kumar', email: 'safaikarmi.dnp360@gmail.com', mobile: '9876543211', role: 'safaikarmi', wardId: 'W42', employeeId: 'SK2291', isActive: true, createdAt: '2023-06-01', password: '12345678' },
-  { id: 'OFF001', name: 'Rajesh Gupta', email: 'official.dnp360@gmail.com', mobile: '9876543212', role: 'official', wardId: 'W12', employeeId: 'OFF4412', isActive: true, createdAt: '2022-03-10', password: '12345678' },
-  { id: 'AD001', name: 'Sandeep Kumar', email: 'ad001.dnp360@gmail.com', mobile: '9876543213', role: 'admin', employeeId: 'AD9921', isActive: true, createdAt: '2021-01-01', password: '12345678' },
+  { id: 'CT4821M', name: 'Rahul Kumar',   email: 'citizen.dnp360@gmail.com',    mobile: '9876543210', role: 'citizen',     address: 'Ward 5, Daudnagar, Bihar', isActive: true, createdAt: '2024-01-15', password: '12345678' },
+  { id: 'SK1538Q', name: 'Amit Kumar',    email: 'sk1538q.dnp360@gmail.com',    mobile: '9876543211', role: 'safaikarmi', wardId: 'W42', employeeId: 'SK2291', isActive: true, createdAt: '2023-06-01', password: '12345678' },
+  { id: 'OF7642B', name: 'Rajesh Gupta', email: 'of7642b.dnp360@gmail.com',    mobile: '9876543212', role: 'official',   wardId: 'W12', employeeId: 'OF4412', isActive: true, createdAt: '2022-03-10', password: '12345678' },
+  { id: 'AD9305X', name: 'Sandeep Kumar',email: 'ad9305x.dnp360@gmail.com',    mobile: '9876543213', role: 'admin',      employeeId: 'AD9305X', isActive: true, createdAt: '2021-01-01', password: '12345678' },
 ];
 
 const SECRET_CODES: Record<string, { role: UserRole; userId: string }> = {
-  'SK-2566-F000': { role: 'safaikarmi', userId: 'SK001' },
-  'OF-4416-A000': { role: 'official',   userId: 'OF001' },
+  'SK-2566-F000': { role: 'safaikarmi', userId: 'SK1538Q' },
+  'OF-4416-A000': { role: 'official',   userId: 'OF7642B' },
 };
 
 function genUserId(role: string): string {

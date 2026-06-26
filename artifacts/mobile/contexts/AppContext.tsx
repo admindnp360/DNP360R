@@ -71,7 +71,7 @@ interface AppContextType {
   isTodayAttendanceMarked: (workerId: string) => boolean;
 }
 
-const STORAGE_VERSION = '5';
+const STORAGE_VERSION = '6';
 const RTDB_BASE = 'dnp360';
 
 function uid() {
@@ -117,12 +117,12 @@ const d = (daysAgo: number) => {
 };
 
 const SEED_WARDS: Ward[] = [
-  { id: 'W1', wardNumber: '1', name: 'Daudnagar Ward 1', area: 'Station Road Area', assignedWorkers: ['SK001'], totalHouses: 120, officialId: 'OFF001' },
-  { id: 'W2', wardNumber: '2', name: 'Daudnagar Ward 2', area: 'Market Area', assignedWorkers: [], totalHouses: 98, officialId: 'OFF001' },
-  { id: 'W3', wardNumber: '3', name: 'Daudnagar Ward 3', area: 'Old Town', assignedWorkers: [], totalHouses: 145 },
-  { id: 'W4', wardNumber: '4', name: 'Daudnagar Ward 4', area: 'Civil Line', assignedWorkers: [], totalHouses: 87 },
-  { id: 'W42', wardNumber: '42', name: 'Daudnagar Ward 42', area: 'Sector 7 High Street', assignedWorkers: ['SK001'], totalHouses: 65, officialId: 'OFF001' },
-  { id: 'W12', wardNumber: '12', name: 'Daudnagar Ward 12', area: 'Zone 4', assignedWorkers: [], totalHouses: 110, officialId: 'OFF001' },
+  { id: 'W1',  wardNumber: '1',  name: 'Daudnagar Ward 1',  area: 'Station Road Area',   assignedWorkers: ['SK7291R'], totalHouses: 120, officialId: 'OF7642B' },
+  { id: 'W2',  wardNumber: '2',  name: 'Daudnagar Ward 2',  area: 'Market Area',          assignedWorkers: [],          totalHouses: 98,  officialId: 'OF3815C' },
+  { id: 'W3',  wardNumber: '3',  name: 'Daudnagar Ward 3',  area: 'Old Town',             assignedWorkers: [],          totalHouses: 145 },
+  { id: 'W4',  wardNumber: '4',  name: 'Daudnagar Ward 4',  area: 'Civil Line',           assignedWorkers: [],          totalHouses: 87  },
+  { id: 'W42', wardNumber: '42', name: 'Daudnagar Ward 42', area: 'Sector 7 High Street', assignedWorkers: ['SK1538Q'], totalHouses: 65,  officialId: 'OF7642B' },
+  { id: 'W12', wardNumber: '12', name: 'Daudnagar Ward 12', area: 'Zone 4',               assignedWorkers: [],          totalHouses: 110, officialId: 'OF7642B' },
 ];
 
 const SEED_GROUPS: Group[] = [
@@ -153,33 +153,32 @@ const SEED_NOTICES: Notice[] = [
 ];
 
 const SEED_COMPLAINTS: Complaint[] = [
-  { id: 'CPL001', citizenId: 'C001', citizenName: 'Rahul Kumar', category: 'garbage_collection', description: 'Garbage has not been collected from our street for 3 days.', location: 'Ward 5, Near Post Office, Daudnagar', status: 'submitted', createdAt: d(2), updatedAt: d(2), wardId: 'W1', wardNumber: '1' },
-  { id: 'CPL002', citizenId: 'C001', citizenName: 'Rahul Kumar', category: 'drainage', description: 'Open drain near our house is blocked and overflowing during rain.', location: 'Ward 5, Ram Nagar, Daudnagar', status: 'assigned', createdAt: d(5), updatedAt: d(3), assignedTo: 'SK001', assignedToName: 'Amit Kumar', wardId: 'W1', wardNumber: '1' },
-  { id: 'CPL003', citizenId: 'C001', citizenName: 'Rahul Kumar', category: 'street_light', description: 'Street light near our house is not working for a week.', location: 'Ward 5, Main Road, Daudnagar', status: 'resolved', createdAt: d(15), updatedAt: d(8), wardId: 'W1', wardNumber: '1' },
-  { id: 'CPL004', citizenId: 'C002', citizenName: 'Priya Singh', category: 'water_supply', description: 'No water supply for 2 days in our area.', location: 'Ward 12, Civil Line, Daudnagar', status: 'in_progress', createdAt: d(1), updatedAt: d(0), assignedTo: 'SK001', assignedToName: 'Amit Kumar', wardId: 'W12', wardNumber: '12' },
-  { id: 'CPL005', citizenId: 'C003', citizenName: 'Suresh Yadav', category: 'road_damage', description: 'Large pothole on main road causing accidents.', location: 'Ward 3, Station Road, Daudnagar', status: 'submitted', createdAt: d(0), updatedAt: d(0), wardId: 'W3', wardNumber: '3' },
-  { id: 'CPL006', citizenId: 'C004', citizenName: 'Meena Devi', category: 'cleanliness', description: 'Public park is very dirty. Garbage piled up near the gate.', location: 'Ward 2, Central Park, Daudnagar', status: 'assigned', createdAt: d(3), updatedAt: d(2), wardId: 'W2', wardNumber: '2' },
+  { id: 'CPL001', citizenId: 'CT4821M', citizenName: 'Rahul Kumar',  category: 'garbage_collection', description: 'Garbage has not been collected from our street for 3 days.', location: 'Ward 5, Near Post Office, Daudnagar', status: 'submitted',   createdAt: d(2),  updatedAt: d(2),  wardId: 'W1',  wardNumber: '1'  },
+  { id: 'CPL002', citizenId: 'CT4821M', citizenName: 'Rahul Kumar',  category: 'drainage',           description: 'Open drain near our house is blocked and overflowing during rain.', location: 'Ward 5, Ram Nagar, Daudnagar',     status: 'assigned',    createdAt: d(5),  updatedAt: d(3),  assignedTo: 'SK1538Q', assignedToName: 'Amit Kumar', wardId: 'W1',  wardNumber: '1'  },
+  { id: 'CPL003', citizenId: 'CT4821M', citizenName: 'Rahul Kumar',  category: 'street_light',       description: 'Street light near our house is not working for a week.',           location: 'Ward 5, Main Road, Daudnagar',       status: 'resolved',    createdAt: d(15), updatedAt: d(8),  wardId: 'W1',  wardNumber: '1'  },
+  { id: 'CPL004', citizenId: 'CT5629N', citizenName: 'Priya Singh',  category: 'water_supply',       description: 'No water supply for 2 days in our area.',                          location: 'Ward 12, Civil Line, Daudnagar',     status: 'in_progress', createdAt: d(1),  updatedAt: d(0),  assignedTo: 'SK1538Q', assignedToName: 'Amit Kumar', wardId: 'W12', wardNumber: '12' },
+  { id: 'CPL005', citizenId: 'CT8834P', citizenName: 'Suresh Yadav', category: 'road_damage',        description: 'Large pothole on main road causing accidents.',                      location: 'Ward 3, Station Road, Daudnagar',    status: 'submitted',   createdAt: d(0),  updatedAt: d(0),  wardId: 'W3',  wardNumber: '3'  },
+  { id: 'CPL006', citizenId: 'CT2017K', citizenName: 'Meena Devi',   category: 'cleanliness',        description: 'Public park is very dirty. Garbage piled up near the gate.',        location: 'Ward 2, Central Park, Daudnagar',    status: 'assigned',    createdAt: d(3),  updatedAt: d(2),  wardId: 'W2',  wardNumber: '2'  },
 ];
 
 const SEED_USERS: User[] = [
-  { id: 'C001', name: 'Rahul Kumar', email: 'citizen.dnp360@gmail.com', mobile: '9876543210', role: 'citizen', address: 'Ward 5, Daudnagar', isActive: true, createdAt: '2024-01-15' },
-  { id: 'C002', name: 'Priya Singh', email: 'priya.singh@gmail.com', mobile: '9876543220', role: 'citizen', isActive: true, createdAt: '2024-02-20' },
-  { id: 'C003', name: 'Suresh Yadav', email: 'suresh.yadav@gmail.com', mobile: '9876543221', role: 'citizen', isActive: true, createdAt: '2024-03-10' },
-  { id: 'C004', name: 'Meena Devi', email: 'meena.devi@gmail.com', mobile: '9876543222', role: 'citizen', isActive: true, createdAt: '2024-04-05' },
-  { id: 'SK001', name: 'Amit Kumar', email: 'safaikarmi.dnp360@gmail.com', mobile: '9876543211', role: 'safaikarmi', wardId: 'W42', employeeId: 'SK2291', isActive: true, createdAt: '2023-06-01' },
-  { id: 'SK002', name: 'Raju Prasad', email: 'raju.prasad@dnp360.in', mobile: '9876543215', role: 'safaikarmi', wardId: 'W1', employeeId: 'SK2292', isActive: true, createdAt: '2023-07-01' },
-  { id: 'SK003', name: 'Bholu Kumar', email: 'bholu.kumar@dnp360.in', mobile: '9876543216', role: 'safaikarmi', wardId: 'W3', employeeId: 'SK2293', isActive: false, createdAt: '2023-08-01' },
-  { id: 'OFF001', name: 'Rajesh Gupta', email: 'official.dnp360@gmail.com', mobile: '9876543212', role: 'official', wardId: 'W12', employeeId: 'OFF4412', isActive: true, createdAt: '2022-03-10' },
-  { id: 'OFF002', name: 'Deepak Sinha', email: 'deepak.sinha@dnp360.in', mobile: '9876543217', role: 'official', wardId: 'W2', employeeId: 'OFF4413', isActive: true, createdAt: '2022-05-15' },
-  { id: 'AD001', name: 'Sandeep Kumar', email: 'admin.dnp360@gmail.com', mobile: '9876543213', role: 'admin', employeeId: 'AD9921', isActive: true, createdAt: '2021-01-01' },
+  { id: 'CT4821M', name: 'Rahul Kumar',   email: 'citizen.dnp360@gmail.com',   mobile: '9876543210', role: 'citizen',    address: 'Ward 5, Daudnagar', isActive: true,  createdAt: '2024-01-15' },
+  { id: 'CT5629N', name: 'Priya Singh',   email: 'priya.singh@gmail.com',      mobile: '9876543220', role: 'citizen',    isActive: true,  createdAt: '2024-02-20' },
+  { id: 'CT8834P', name: 'Suresh Yadav', email: 'suresh.yadav@gmail.com',     mobile: '9876543221', role: 'citizen',    isActive: true,  createdAt: '2024-03-10' },
+  { id: 'CT2017K', name: 'Meena Devi',   email: 'meena.devi@gmail.com',       mobile: '9876543222', role: 'citizen',    isActive: true,  createdAt: '2024-04-05' },
+  { id: 'SK1538Q', name: 'Amit Kumar',   email: 'sk1538q.dnp360@gmail.com',   mobile: '9876543211', role: 'safaikarmi', wardId: 'W42',  employeeId: 'SK2291', isActive: true,  createdAt: '2023-06-01' },
+  { id: 'SK7291R', name: 'Raju Prasad',  email: 'sk7291r.dnp360@gmail.com',   mobile: '9876543215', role: 'safaikarmi', wardId: 'W1',   employeeId: 'SK2292', isActive: true,  createdAt: '2023-07-01' },
+  { id: 'SK4403S', name: 'Bholu Kumar',  email: 'sk4403s.dnp360@gmail.com',   mobile: '9876543216', role: 'safaikarmi', wardId: 'W3',   employeeId: 'SK2293', isActive: false, createdAt: '2023-08-01' },
+  { id: 'OF7642B', name: 'Rajesh Gupta', email: 'of7642b.dnp360@gmail.com',   mobile: '9876543212', role: 'official',   wardId: 'W12',  employeeId: 'OF4412', isActive: true,  createdAt: '2022-03-10' },
+  { id: 'OF3815C', name: 'Deepak Sinha', email: 'of3815c.dnp360@gmail.com',   mobile: '9876543217', role: 'official',   wardId: 'W2',   employeeId: 'OF4413', isActive: true,  createdAt: '2022-05-15' },
+  { id: 'AD9305X', name: 'Sandeep Kumar',email: 'ad9305x.dnp360@gmail.com',   mobile: '9876543213', role: 'admin',      employeeId: 'AD9305X', isActive: true,  createdAt: '2021-01-01' },
 ];
 
 const SEED_KEYS: SecretKey[] = [
-  { id: 'KEY001', code: 'SK2566F', role: 'safaikarmi', isActive: true, usedBy: 'SK001', usedByName: 'Amit Kumar', createdAt: d(30) },
-  { id: 'KEY002', code: 'OFF4416A', role: 'official', isActive: true, usedBy: 'OFF001', usedByName: 'Rajesh Gupta', createdAt: d(30) },
-  { id: 'KEY003', code: 'ADMIN5790X', role: 'admin', isActive: true, usedBy: 'AD001', usedByName: 'Sandeep Kumar', createdAt: d(30) },
-  { id: 'KEY004', code: 'SK3891B', role: 'safaikarmi', isActive: false, createdAt: d(10) },
-  { id: 'KEY005', code: 'OFF7234C', role: 'official', isActive: true, createdAt: d(5) },
+  { id: 'KEY001', code: 'SK-2566-F000', role: 'safaikarmi', isActive: true,  usedBy: 'SK1538Q', usedByName: 'Amit Kumar',    createdAt: d(30) },
+  { id: 'KEY002', code: 'OF-4416-A000', role: 'official',   isActive: true,  usedBy: 'OF7642B', usedByName: 'Rajesh Gupta',  createdAt: d(30) },
+  { id: 'KEY003', code: 'SK-3891-B000', role: 'safaikarmi', isActive: false, createdAt: d(10) },
+  { id: 'KEY004', code: 'OF-7234-C000', role: 'official',   isActive: true,  createdAt: d(5)  },
 ];
 
 const DEFAULT_SUPPORT: SupportDetails = {
@@ -196,7 +195,7 @@ function seedAttendance(): Attendance[] {
     if (new Date(date).getDay() === 0) continue;
     records.push({
       id: `ATT${i}`,
-      workerId: 'SK001',
+      workerId: 'SK1538Q',
       date,
       status: i === 0 ? 'present' : Math.random() > 0.15 ? 'present' : 'absent',
       checkInTime: '08:00',
@@ -222,7 +221,7 @@ function seedHouseVisits(): HouseVisit[] {
           houseRegistrationNumber: house.registrationNumber,
           ownerName: house.ownerName,
           address: house.address,
-          workerId: 'SK001',
+          workerId: 'SK1538Q',
           workerName: 'Amit Kumar',
           wardId: house.wardId,
           visitDate: date,
