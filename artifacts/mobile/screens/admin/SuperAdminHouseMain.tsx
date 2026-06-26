@@ -1,6 +1,7 @@
 import { Feather } from '@expo/vector-icons';
 import React, { useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useColors } from '@/hooks/useColors';
 import SuperAdminHouseDB from './SuperAdminHouseDB';
 import SuperAdminImport from './SuperAdminImport';
@@ -20,7 +21,7 @@ export default function SuperAdminHouseMain({ embedded = false }: { embedded?: b
   const activeTab = TABS.find(t => t.key === tab)!;
 
   return (
-    <View style={{ flex: 1, backgroundColor: colors.background }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={['top']}>
       {/* Top inner tab bar */}
       <View style={[s.innerTabBar, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
         {TABS.map(t => {
@@ -51,7 +52,7 @@ export default function SuperAdminHouseMain({ embedded = false }: { embedded?: b
       {tab === 'housedb' && <SuperAdminHouseDB />}
       {tab === 'import' && <SuperAdminImport />}
       {tab === 'groups' && <SuperAdminGroups />}
-    </View>
+    </SafeAreaView>
   );
 }
 

@@ -5,12 +5,11 @@ import {
   Modal, Pressable, ScrollView, StyleSheet,
   Text, TouchableOpacity, View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { SearchBar } from '@/components/SearchBar';
 import { useAlert } from '@/contexts/AlertContext';
 import { useAppData } from '@/contexts/AppContext';
 import { useColors } from '@/hooks/useColors';
-import type { Group, House, Ward } from '@/types';
+import type { Group, Ward } from '@/types';
 
 const WARD_GRADS = [
   ['#4F46E5', '#7C3AED'],
@@ -23,35 +22,61 @@ const WARD_GRADS = [
 
 const GROUP_COLORS = ['#10B981', '#0EA5E9', '#F97316', '#8B5CF6', '#EC4899', '#EF4444', '#F59E0B', '#06B6D4'];
 
+type ViewMode = 'groups' | 'houses';
+
 export default function SuperAdminGroups() {
   const { houses, wards, groups, assignGroupToHouses, removeGroupFromHouses } = useAppData();
   const colors = useColors();
   const { showAlert } = useAlert();
 
   const [selectedWard, setSelectedWard] = useState<Ward | null>(null);
+  const [viewMode, setViewMode] = useState<ViewMode>('groups');
+  const [selectedGroupFilter, setSelectedGroupFilter] = useState<Group | null>(null);
   const [search, setSearch] = useState('');
   const [selectedHouseIds, setSelectedHouseIds] = useState<Set<string>>(new Set());
-  const [filterUngrouped, setFilterUngrouped] = useState(false);
   const [showGroupModal, setShowGroupModal] = useState(false);
   const [assigning, setAssigning] = useState(false);
 
-  const wardHouses = selectedWard
-    ? houses.filter(h => {
-        if (h.wardId !== selectedWard.id) return false;
-        if (filterUngrouped && h.groupId) return false;
-        if (search.trim()) {
-          const q = search.toLowerCase();
-          return (
-            h.registrationNumber.toLowerCase().includes(q) ||
-            h.ownerName.toLowerCase().includes(q) ||
-            h.address.toLowerCase().includes(q)
-          );
-        }
-        return true;
-      })
-    : [];
-
   const wardGroups = selectedWard ? groups.filter(g => g.wardId === selectedWard.id) : [];
+
+  const wardHouses = (() => {
+    if (!selectedWard) return [];
+    let list = houses.filter(h => h.wardId === selectedWard.id);
+    if (selectedGroupFilter) {
+      list = list.filter(h => h.groupId === selectedGroupFilter.id);
+    }
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      list = list.filter(h =>
+        h.registrationNumber.toLowerCase().includes(q) ||
+        h.ownerName.toLowerCase().includes(q) ||
+        h.address.toLowerCase().includes(q)
+      );
+    }
+    return list;
+  })();
+
+  function selectWard(ward: Ward) {
+    setSelectedWard(ward);
+    setViewMode('groups');
+    setSelectedGroupFilter(null);
+    setSelectedHouseIds(new Set());
+    setSearch('');
+  }
+
+  function openGroup(group: Group) {
+    setSelectedGroupFilter(group);
+    setViewMode('houses');
+    setSelectedHouseIds(new Set());
+    setSearch('');
+  }
+
+  function goBackToGroups() {
+    setViewMode('groups');
+    setSelectedGroupFilter(null);
+    setSelectedHouseIds(new Set());
+    setSearch('');
+  }
 
   function toggleHouse(id: string) {
     setSelectedHouseIds(prev => {
@@ -96,23 +121,12 @@ export default function SuperAdminGroups() {
     ], 'warning');
   }
 
+  const assignableGroups = selectedGroupFilter
+    ? wardGroups.filter(g => g.id !== selectedGroupFilter.id)
+    : wardGroups;
+
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={['top']}>
-      <LinearGradient colors={['#1a0533', '#0D1B4B']} style={s.header}>
-        <View style={s.headerTop}>
-          <View style={{ flex: 1 }}>
-            <View style={s.superBadge}>
-              <Feather name="star" size={10} color="#FFD700" />
-              <Text style={s.superBadgeText}>SUPER ADMIN</Text>
-            </View>
-            <Text style={s.headerTitle}>Group Assignment</Text>
-            <Text style={s.headerSub}>Assign houses to groups by ward</Text>
-          </View>
-          <View style={s.headerIcon}>
-            <Feather name="layers" size={22} color="#fff" />
-          </View>
-        </View>
-      </LinearGradient>
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
 
       {/* Ward Pills */}
       <View style={[s.wardPillBar, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
@@ -122,11 +136,7 @@ export default function SuperAdminGroups() {
             const active = selectedWard?.id === ward.id;
             const grad = WARD_GRADS[idx % WARD_GRADS.length];
             return (
-              <TouchableOpacity
-                key={ward.id}
-                onPress={() => { setSelectedWard(active ? null : ward); setSelectedHouseIds(new Set()); setSearch(''); }}
-                activeOpacity={0.8}
-              >
+              <TouchableOpacity key={ward.id} onPress={() => selectWard(ward)} activeOpacity={0.8}>
                 {active ? (
                   <LinearGradient colors={grad} style={s.wardPillActive}>
                     <Text style={s.wardPillActiveText}>W{ward.wardNumber}</Text>
@@ -144,29 +154,82 @@ export default function SuperAdminGroups() {
 
       {!selectedWard ? (
         <View style={s.emptyCenter}>
-          <LinearGradient colors={['#4F46E5', '#7C3AED']} style={s.emptyIcon}>
-            <Feather name="map-pin" size={28} color="#fff" />
+          <LinearGradient colors={['#10B981', '#059669']} style={s.emptyIcon}>
+            <Feather name="layers" size={28} color="#fff" />
           </LinearGradient>
           <Text style={[s.emptyTitle, { color: colors.text }]}>Select a Ward</Text>
-          <Text style={[s.emptySub, { color: colors.mutedForeground }]}>Choose a ward above to assign houses to groups</Text>
+          <Text style={[s.emptySub, { color: colors.mutedForeground }]}>Choose a ward above to view and manage groups</Text>
         </View>
-      ) : (
-        <View style={{ flex: 1 }}>
-          {/* Filter & Search bar */}
-          <View style={{ paddingHorizontal: 16, paddingTop: 14, gap: 10 }}>
-            <SearchBar value={search} onChangeText={setSearch} placeholder="Search houses..." />
-            <View style={s.filterRow}>
-              <TouchableOpacity
-                style={[s.filterPill, filterUngrouped && { backgroundColor: '#F97316', borderColor: '#F97316' }, { borderColor: colors.border }]}
-                onPress={() => setFilterUngrouped(p => !p)}
-              >
-                <Feather name="filter" size={12} color={filterUngrouped ? '#fff' : colors.mutedForeground} />
-                <Text style={[s.filterPillText, { color: filterUngrouped ? '#fff' : colors.mutedForeground }]}>Ungrouped Only</Text>
-              </TouchableOpacity>
-              <Text style={[s.houseCount, { color: colors.mutedForeground }]}>
-                {wardHouses.length} house{wardHouses.length !== 1 ? 's' : ''}
-              </Text>
+
+      ) : viewMode === 'groups' ? (
+        /* ── GROUP CARDS VIEW ── */
+        <ScrollView contentContainerStyle={{ padding: 16, gap: 12, paddingBottom: 120 }}>
+          <Text style={[s.sectionLabel, { color: colors.mutedForeground }]}>
+            Ward {selectedWard.wardNumber} · {wardGroups.length} group{wardGroups.length !== 1 ? 's' : ''}
+          </Text>
+
+          {wardGroups.length === 0 ? (
+            <View style={[s.emptyCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+              <Feather name="layers" size={32} color={colors.mutedForeground} />
+              <Text style={[s.emptyTitle, { color: colors.text }]}>No Groups Yet</Text>
+              <Text style={[s.emptySub, { color: colors.mutedForeground }]}>Create groups in the House DB tab first</Text>
             </View>
+          ) : (
+            wardGroups.map((g, idx) => {
+              const color = g.color || GROUP_COLORS[idx % GROUP_COLORS.length];
+              const count = houses.filter(h => h.groupId === g.id).length;
+              return (
+                <TouchableOpacity
+                  key={g.id}
+                  style={[s.groupCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+                  onPress={() => openGroup(g)}
+                  activeOpacity={0.85}
+                >
+                  <View style={[s.groupColorBar, { backgroundColor: color }]} />
+                  <View style={[s.groupIconBox, { backgroundColor: color + '20' }]}>
+                    <Feather name="layers" size={20} color={color} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[s.groupName, { color: colors.text }]}>{g.name}</Text>
+                    {g.description ? (
+                      <Text style={[s.groupDesc, { color: colors.mutedForeground }]}>{g.description}</Text>
+                    ) : null}
+                  </View>
+                  <View style={[s.countBadge, { backgroundColor: color + '20' }]}>
+                    <Feather name="home" size={11} color={color} />
+                    <Text style={[s.countBadgeText, { color }]}>{count}</Text>
+                  </View>
+                  <Feather name="chevron-right" size={18} color={colors.mutedForeground} style={{ marginLeft: 4 }} />
+                </TouchableOpacity>
+              );
+            })
+          )}
+        </ScrollView>
+
+      ) : (
+        /* ── INGROUP HOUSE LIST VIEW ── */
+        <View style={{ flex: 1 }}>
+          {/* Header bar with back + group name */}
+          <View style={[s.housesHeader, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
+            <TouchableOpacity style={s.backBtn} onPress={goBackToGroups} activeOpacity={0.7}>
+              <Feather name="arrow-left" size={18} color="#6366F1" />
+            </TouchableOpacity>
+            {selectedGroupFilter && (
+              <View style={[s.groupChip, { backgroundColor: (selectedGroupFilter.color || '#6366F1') + '20' }]}>
+                <View style={[s.groupChipDot, { backgroundColor: selectedGroupFilter.color || '#6366F1' }]} />
+                <Text style={[s.groupChipText, { color: selectedGroupFilter.color || '#6366F1' }]}>
+                  {selectedGroupFilter.name}
+                </Text>
+              </View>
+            )}
+            <Text style={[s.houseCountLabel, { color: colors.mutedForeground }]}>
+              {wardHouses.length} house{wardHouses.length !== 1 ? 's' : ''}
+            </Text>
+          </View>
+
+          {/* Search */}
+          <View style={{ paddingHorizontal: 16, paddingTop: 12 }}>
+            <SearchBar value={search} onChangeText={setSearch} placeholder="Search houses..." />
           </View>
 
           {/* Selection Bar */}
@@ -194,19 +257,19 @@ export default function SuperAdminGroups() {
                     style={[s.actionBtn, { backgroundColor: '#4F46E5', borderColor: '#4F46E5' }]}
                     onPress={() => setShowGroupModal(true)}
                   >
-                    <Feather name="layers" size={13} color="#fff" />
-                    <Text style={[s.actionBtnText, { color: '#fff' }]}>Assign</Text>
+                    <Feather name="arrow-right-circle" size={13} color="#fff" />
+                    <Text style={[s.actionBtnText, { color: '#fff' }]}>Move</Text>
                   </TouchableOpacity>
                 </View>
               )}
             </View>
           )}
 
-          <ScrollView contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 170, gap: 8, paddingTop: 10 }}>
-            {wardHouses.map((h, idx) => {
+          <ScrollView contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 140, gap: 8, paddingTop: 10 }}>
+            {wardHouses.map(h => {
               const isSelected = selectedHouseIds.has(h.id);
-              const group = groups.find(g => g.id === h.groupId);
-              const groupColor = group?.color || '#6B7280';
+              const grp = groups.find(g => g.id === h.groupId);
+              const groupColor = grp?.color || '#6B7280';
               return (
                 <TouchableOpacity
                   key={h.id}
@@ -225,13 +288,13 @@ export default function SuperAdminGroups() {
                     <View style={s.houseCardTop}>
                       <Text style={[s.houseReg, { color: '#6366F1' }]}>{h.registrationNumber}</Text>
                       {h.groupId ? (
-                        <View style={[s.groupChip, { backgroundColor: groupColor + '20', borderColor: groupColor + '40' }]}>
+                        <View style={[s.groupSmallChip, { backgroundColor: groupColor + '20', borderColor: groupColor + '40' }]}>
                           <View style={[s.groupChipDot, { backgroundColor: groupColor }]} />
-                          <Text style={[s.groupChipText, { color: groupColor }]}>{h.groupName}</Text>
+                          <Text style={[s.groupSmallChipText, { color: groupColor }]}>{h.groupName}</Text>
                         </View>
                       ) : (
-                        <View style={[s.groupChip, { backgroundColor: '#F9731620', borderColor: '#F9731640' }]}>
-                          <Text style={[s.groupChipText, { color: '#F97316' }]}>Ungrouped</Text>
+                        <View style={[s.groupSmallChip, { backgroundColor: '#F9731620', borderColor: '#F9731640' }]}>
+                          <Text style={[s.groupSmallChipText, { color: '#F97316' }]}>Ungrouped</Text>
                         </View>
                       )}
                     </View>
@@ -242,36 +305,36 @@ export default function SuperAdminGroups() {
               );
             })}
             {wardHouses.length === 0 && (
-              <View style={[s.empty, { backgroundColor: colors.card }]}>
+              <View style={[s.emptyCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
                 <Feather name="home" size={32} color={colors.mutedForeground} />
-                <Text style={[s.emptyTitle, { color: colors.mutedForeground }]}>No houses found</Text>
+                <Text style={[s.emptyTitle, { color: colors.text }]}>No houses found</Text>
               </View>
             )}
           </ScrollView>
         </View>
       )}
 
-      {/* Group Selection Modal */}
+      {/* Move to Group Modal */}
       <Modal visible={showGroupModal} animationType="slide" presentationStyle="pageSheet">
-        <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
+        <View style={{ flex: 1, backgroundColor: colors.background }}>
           <LinearGradient colors={['#4F46E5', '#7C3AED']} style={s.modalHdr}>
             <View style={{ flex: 1 }}>
-              <Text style={s.modalTitle}>Select Group</Text>
-              <Text style={s.modalSub}>Assign {selectedHouseIds.size} house(s) to a group</Text>
+              <Text style={s.modalTitle}>Move to Group</Text>
+              <Text style={s.modalSub}>Move {selectedHouseIds.size} house(s) to a different group</Text>
             </View>
             <Pressable onPress={() => setShowGroupModal(false)} style={s.closeBtn}>
               <Feather name="x" size={20} color="#fff" />
             </Pressable>
           </LinearGradient>
           <ScrollView contentContainerStyle={{ padding: 16, gap: 12 }}>
-            {wardGroups.length === 0 ? (
-              <View style={[s.empty, { backgroundColor: colors.card }]}>
+            {assignableGroups.length === 0 ? (
+              <View style={[s.emptyCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
                 <Feather name="layers" size={32} color={colors.mutedForeground} />
-                <Text style={[s.emptyTitle, { color: colors.mutedForeground }]}>No groups in this ward</Text>
-                <Text style={[s.emptySub, { color: colors.mutedForeground }]}>Create groups in House DB tab first</Text>
+                <Text style={[s.emptyTitle, { color: colors.text }]}>No other groups available</Text>
+                <Text style={[s.emptySub, { color: colors.mutedForeground }]}>Create more groups in the House DB tab</Text>
               </View>
             ) : (
-              wardGroups.map((g, idx) => {
+              assignableGroups.map((g, idx) => {
                 const color = g.color || GROUP_COLORS[idx % GROUP_COLORS.length];
                 const count = houses.filter(h => h.groupId === g.id).length;
                 return (
@@ -285,68 +348,77 @@ export default function SuperAdminGroups() {
                     <View style={[s.groupColorDot, { backgroundColor: color }]} />
                     <View style={{ flex: 1 }}>
                       <Text style={[s.groupSelectName, { color: colors.text }]}>{g.name}</Text>
-                      {g.description && <Text style={[s.groupSelectDesc, { color: colors.mutedForeground }]}>{g.description}</Text>}
+                      {g.description ? <Text style={[s.groupSelectDesc, { color: colors.mutedForeground }]}>{g.description}</Text> : null}
                     </View>
-                    <View style={[s.groupCountBadge, { backgroundColor: color + '20' }]}>
-                      <Text style={[s.groupCountText, { color }]}>{count}</Text>
+                    <View style={[s.countBadge, { backgroundColor: color + '20' }]}>
+                      <Feather name="home" size={11} color={color} />
+                      <Text style={[s.countBadgeText, { color }]}>{count}</Text>
                     </View>
-                    <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
+                    <Feather name="chevron-right" size={16} color={colors.mutedForeground} style={{ marginLeft: 6 }} />
                   </TouchableOpacity>
                 );
               })
             )}
           </ScrollView>
-        </SafeAreaView>
+        </View>
       </Modal>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const s = StyleSheet.create({
-  header: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 20 },
-  headerTop: { flexDirection: 'row', alignItems: 'flex-start' },
-  superBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#FFD70020', borderRadius: 20, paddingHorizontal: 8, paddingVertical: 3, alignSelf: 'flex-start', marginBottom: 6 },
-  superBadgeText: { color: '#FFD700', fontSize: 10, fontFamily: 'Inter_700Bold' },
-  headerTitle: { color: '#fff', fontSize: 26, fontFamily: 'Inter_700Bold' },
-  headerSub: { color: '#FFFFFFAA', fontSize: 12, fontFamily: 'Inter_400Regular', marginTop: 2 },
-  headerIcon: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#FFFFFF15', justifyContent: 'center', alignItems: 'center' },
   wardPillBar: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1 },
   wardLabel: { fontSize: 12, fontFamily: 'Inter_600SemiBold' },
   wardPill: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20, borderWidth: 1 },
   wardPillText: { fontSize: 12, fontFamily: 'Inter_600SemiBold' },
   wardPillActive: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20 },
   wardPillActiveText: { color: '#fff', fontSize: 12, fontFamily: 'Inter_700Bold' },
+
   emptyCenter: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 16, padding: 40 },
+  emptyCard: { borderRadius: 16, borderWidth: 1, padding: 36, alignItems: 'center', gap: 12 },
   emptyIcon: { width: 72, height: 72, borderRadius: 22, justifyContent: 'center', alignItems: 'center' },
-  emptyTitle: { fontSize: 18, fontFamily: 'Inter_700Bold' },
+  emptyTitle: { fontSize: 17, fontFamily: 'Inter_700Bold' },
   emptySub: { fontSize: 13, fontFamily: 'Inter_400Regular', textAlign: 'center' },
-  filterRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  filterPill: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, borderWidth: 1 },
-  filterPillText: { fontSize: 12, fontFamily: 'Inter_500Medium' },
-  houseCount: { fontSize: 12, fontFamily: 'Inter_500Medium' },
+
+  sectionLabel: { fontSize: 12, fontFamily: 'Inter_600SemiBold', marginBottom: 4 },
+
+  groupCard: { borderRadius: 16, borderWidth: 1, flexDirection: 'row', alignItems: 'center', overflow: 'hidden', paddingRight: 14, paddingVertical: 14, gap: 12 },
+  groupColorBar: { width: 4, alignSelf: 'stretch' },
+  groupIconBox: { width: 44, height: 44, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
+  groupName: { fontSize: 15, fontFamily: 'Inter_700Bold' },
+  groupDesc: { fontSize: 12, fontFamily: 'Inter_400Regular', marginTop: 2 },
+  countBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20 },
+  countBadgeText: { fontSize: 13, fontFamily: 'Inter_700Bold' },
+
+  housesHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 14, paddingVertical: 12, borderBottomWidth: 1 },
+  backBtn: { width: 36, height: 36, borderRadius: 10, justifyContent: 'center', alignItems: 'center', backgroundColor: '#6366F115' },
+  groupChip: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20 },
+  groupChipDot: { width: 8, height: 8, borderRadius: 4 },
+  groupChipText: { fontSize: 12, fontFamily: 'Inter_700Bold' },
+  houseCountLabel: { marginLeft: 'auto', fontSize: 12, fontFamily: 'Inter_500Medium' },
+
   selectionBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginHorizontal: 16, marginTop: 10, borderRadius: 12, borderWidth: 1, padding: 10 },
   selectAllBtn: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  checkbox: { width: 18, height: 18, borderRadius: 5, borderWidth: 1.5, justifyContent: 'center', alignItems: 'center' },
+  checkbox: { width: 20, height: 20, borderRadius: 6, borderWidth: 1.5, justifyContent: 'center', alignItems: 'center' },
   selectAllText: { fontSize: 13, fontFamily: 'Inter_600SemiBold' },
   selectionActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   selectedCount: { fontSize: 12, fontFamily: 'Inter_700Bold' },
-  actionBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 10, borderWidth: 1 },
+  actionBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 10, borderWidth: 1 },
   actionBtnText: { fontSize: 12, fontFamily: 'Inter_600SemiBold' },
+
   houseCard: { borderRadius: 14, borderWidth: 1, padding: 14, flexDirection: 'row', alignItems: 'center', gap: 12 },
-  houseCardTop: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  houseCardTop: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
   houseReg: { fontSize: 13, fontFamily: 'Inter_700Bold' },
-  groupChip: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 20, borderWidth: 1 },
-  groupChipDot: { width: 5, height: 5, borderRadius: 3 },
-  groupChipText: { fontSize: 10, fontFamily: 'Inter_600SemiBold' },
+  groupSmallChip: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 20, borderWidth: 1 },
+  groupSmallChipText: { fontSize: 10, fontFamily: 'Inter_600SemiBold' },
   houseOwner: { fontSize: 14, fontFamily: 'Inter_600SemiBold' },
   houseAddr: { fontSize: 12, fontFamily: 'Inter_400Regular' },
-  empty: { borderRadius: 16, padding: 40, alignItems: 'center', gap: 12 },
-  groupColorDot: { width: 14, height: 14, borderRadius: 7 },
+
   groupSelectCard: { borderRadius: 16, borderWidth: 1, padding: 16, flexDirection: 'row', alignItems: 'center', gap: 12 },
+  groupColorDot: { width: 14, height: 14, borderRadius: 7 },
   groupSelectName: { fontSize: 15, fontFamily: 'Inter_600SemiBold' },
   groupSelectDesc: { fontSize: 12, fontFamily: 'Inter_400Regular', marginTop: 2 },
-  groupCountBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 },
-  groupCountText: { fontSize: 14, fontFamily: 'Inter_700Bold' },
+
   modalHdr: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 20 },
   modalTitle: { color: '#fff', fontSize: 18, fontFamily: 'Inter_700Bold' },
   modalSub: { color: '#FFFFFFAA', fontSize: 12, fontFamily: 'Inter_400Regular', marginTop: 2 },
