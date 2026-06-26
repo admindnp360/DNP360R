@@ -20,7 +20,13 @@ service cloud.firestore {
     function isSafaikarmi() { return callerRole() == 'safaikarmi'; }
 
     function isAdminOrOfficial() { return isAdmin() || isOfficial(); }
-    function isStaff() { return isAdmin() || isOfficial() || isSafaikarmi(); }
+    function isStaff()           { return isAdmin() || isOfficial() || isSafaikarmi(); }
+
+    // Super Admin guard — protects the SUPERADMIN doc and any doc with isSuperAdmin=true
+    function isSuperAdminDoc(docId) {
+      return docId == 'SUPERADMIN'
+        || (resource != null && resource.data.get('isSuperAdmin', false) == true);
+    }
 
     // ── All reads are open ─────────────────────────────────────────────────────
     // The app enforces its own role-based UI; reads are non-sensitive municipal
@@ -35,10 +41,12 @@ service cloud.firestore {
     }
 
     // ── Users ──────────────────────────────────────────────────────────────────
+    // SUPERADMIN document can NEVER be deleted by anyone.
     match /users/{userId} {
       allow create: if isSignedIn();
       allow update: if isSignedIn() && (request.auth.uid == userId || isAdmin());
-      allow delete: if isAdmin();
+      // Super admin cannot be deleted — by anyone, ever.
+      allow delete: if isSignedIn() && isAdmin() && !isSuperAdminDoc(userId);
     }
 
     // Mobile → UID lookup
@@ -72,21 +80,21 @@ service cloud.firestore {
     match /complaints/{complaintId} {
       allow create: if isSignedIn();
       allow update: if isSignedIn();
-      allow delete: if isSignedIn() && isAdmin();
+      allow delete:  if isSignedIn() && isAdmin();
     }
 
     // ── Attendance ─────────────────────────────────────────────────────────────
     match /attendance/{attendanceId} {
       allow create: if isSignedIn();
       allow update: if isSignedIn() && isAdmin();
-      allow delete: if isSignedIn() && isAdmin();
+      allow delete:  if isSignedIn() && isAdmin();
     }
 
     // ── House Visits ───────────────────────────────────────────────────────────
     match /houseVisits/{visitId} {
       allow create: if isSignedIn();
       allow update: if isSignedIn() && isAdmin();
-      allow delete: if isSignedIn() && isAdmin();
+      allow delete:  if isSignedIn() && isAdmin();
     }
 
     // ── Secret Keys ────────────────────────────────────────────────────────────
@@ -103,7 +111,7 @@ service cloud.firestore {
     match /passwordResetRequests/{reqId} {
       allow create: if isSignedIn();
       allow update: if isSignedIn() && isAdmin();
-      allow delete: if isSignedIn() && isAdmin();
+      allow delete:  if isSignedIn() && isAdmin();
     }
 
     // ── Import History ─────────────────────────────────────────────────────────

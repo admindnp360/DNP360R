@@ -645,6 +645,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }
 
   async function deleteUser(id: string) {
+    const target = users.find(u => u.id === id);
+    if (
+      id === 'SUPERADMIN' ||
+      (target as any)?.isSuperAdmin ||
+      (target as any)?.cannotBeDeleted
+    ) return;
     setUsers(prev => prev.filter(u => u.id !== id));
     await fsDeleteDoc('users', id);
   }

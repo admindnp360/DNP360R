@@ -139,14 +139,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   async function login(identifier: string, password: string, method: 'email' | 'mobile' = 'email'): Promise<boolean> {
     const trimmed = identifier.trim();
 
-    if (method === 'email' && trimmed.toLowerCase() === SUPER_ADMIN.email.toLowerCase() && password === SUPER_ADMIN.password) {
+    const isSuperAdminLogin =
+      (method === 'email'  && trimmed.toLowerCase() === SUPER_ADMIN.email.toLowerCase() && password === SUPER_ADMIN.password) ||
+      (method === 'mobile' && trimmed === SUPER_ADMIN.mobile && password === SUPER_ADMIN.password);
+
+    if (isSuperAdminLogin) {
       const { password: _, secretCode: __, ...userData } = SUPER_ADMIN;
-      setUser(userData);
-      await AsyncStorage.setItem('dnp360_user', JSON.stringify(userData));
-      return true;
-    }
-    if (method === 'mobile' && trimmed === SUPER_ADMIN.mobile && password === SUPER_ADMIN.password) {
-      const { password: _, secretCode: __, ...userData } = SUPER_ADMIN;
+      // Try real Firebase Auth sign-in so the Firestore SDK has a valid token.
+      // This succeeds once the user updates the Firebase password to ADMIN9999A
+      // in the Firebase Console → Authentication → admin.dnp360@gmail.com.
+      try {
+        await signInWithEmailAndPassword(firebaseAuth, SUPER_ADMIN.email, SUPER_ADMIN.password);
+      } catch { /* fall back to local session — app still works */ }
+      // Ensure super admin user doc exists in Firestore (for rules + real-time sync)
+      try {
+        await saveUserToFirestore('SUPERADMIN', userData as User);
+      } catch { /* ignore offline failures */ }
       setUser(userData);
       await AsyncStorage.setItem('dnp360_user', JSON.stringify(userData));
       return true;
