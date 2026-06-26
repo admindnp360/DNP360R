@@ -1,6 +1,5 @@
-import { onValue, ref } from 'firebase/database';
 import { useEffect, useRef, useState } from 'react';
-import { rtdb } from '@/lib/firebase';
+import { Platform } from 'react-native';
 
 export type FirebaseStatus = 'connected' | 'offline';
 
@@ -10,27 +9,42 @@ export function useFirebaseStatus(): FirebaseStatus {
   const didConnect = useRef(false);
 
   useEffect(() => {
-    const connRef = ref(rtdb, '.info/connected');
-    const unsub = onValue(connRef, (snap) => {
-      const connected = snap.val() as boolean;
+    if (Platform.OS !== 'web') {
+      setStatus('connected');
+      didConnect.current = true;
+      return;
+    }
 
+    const handleOnline = () => {
       if (offlineTimer.current) {
         clearTimeout(offlineTimer.current);
         offlineTimer.current = null;
       }
+      didConnect.current = true;
+      setStatus('connected');
+    };
 
-      if (connected) {
+    const handleOffline = () => {
+      offlineTimer.current = setTimeout(() => {
+        setStatus('offline');
+      }, didConnect.current ? 1500 : 5000);
+    };
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    if (typeof navigator !== 'undefined') {
+      if (navigator.onLine) {
         didConnect.current = true;
         setStatus('connected');
       } else {
-        offlineTimer.current = setTimeout(() => {
-          setStatus('offline');
-        }, didConnect.current ? 1500 : 5000);
+        setStatus('offline');
       }
-    });
+    }
 
     return () => {
-      unsub();
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
       if (offlineTimer.current) clearTimeout(offlineTimer.current);
     };
   }, []);
