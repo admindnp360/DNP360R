@@ -67,6 +67,7 @@ export default function AdminUsers() {
   const [editKeyCode, setEditKeyCode] = useState('');
   const [showKey, setShowKey]         = useState(false);
   const [saving, setSaving]           = useState(false);
+  const [copiedId, setCopiedId]       = useState<string | null>(null);
 
   /* stats counts */
   const countSafaikarmi = users.filter(u => u.role === 'safaikarmi').length;
@@ -384,15 +385,27 @@ export default function AdminUsers() {
                   <View style={s.tdCodeCell}>
                     {linkedKey ? (
                       <TouchableOpacity
-                        activeOpacity={0.7}
-                        onLongPress={async () => {
+                        activeOpacity={0.75}
+                        onPress={async () => {
                           await Clipboard.setStringAsync(linkedKey.code);
-                          showAlert('Copied!', `Secret code "${linkedKey.code}" copied to clipboard.`, undefined, 'success');
+                          setCopiedId(u.id);
+                          setTimeout(() => setCopiedId(null), 1400);
                         }}
-                        delayLongPress={400}
                       >
-                        <View style={[s.codePill, { backgroundColor: currentTab.grad[0] + '18' }]}>
-                          <Text style={[s.codeText, { color: currentTab.grad[0] }]} numberOfLines={1}>{linkedKey.code}</Text>
+                        <View style={[
+                          s.codePill,
+                          copiedId === u.id
+                            ? { backgroundColor: '#10B98130', borderWidth: 1, borderColor: '#10B98160' }
+                            : { backgroundColor: currentTab.grad[0] + '18' },
+                        ]}>
+                          {copiedId === u.id ? (
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+                              <Feather name="check" size={9} color="#10B981" />
+                              <Text style={[s.codeText, { color: '#10B981' }]}>Copied!</Text>
+                            </View>
+                          ) : (
+                            <Text style={[s.codeText, { color: currentTab.grad[0] }]} numberOfLines={1}>{linkedKey.code}</Text>
+                          )}
                         </View>
                       </TouchableOpacity>
                     ) : (
