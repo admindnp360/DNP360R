@@ -20,6 +20,7 @@ const CATEGORIES = Object.entries(COMPLAINT_CATEGORIES) as [string, string][];
 
 const STATUS_CONFIG: Record<string, { label: string; grad: readonly [string, string]; icon: string; bg: string; color: string }> = {
   submitted:   { label: 'Submitted',   grad: ['#3B82F6','#2563EB'], icon: 'send',         bg: '#EFF6FF', color: '#2563EB' },
+  assigned:    { label: 'Assigned',    grad: ['#8B5CF6','#7C3AED'], icon: 'user-check',   bg: '#F5F3FF', color: '#7C3AED' },
   in_progress: { label: 'In Progress', grad: ['#F59E0B','#D97706'], icon: 'loader',       bg: '#FFFBEB', color: '#D97706' },
   resolved:    { label: 'Resolved',    grad: ['#10B981','#059669'], icon: 'check-circle',  bg: '#ECFDF5', color: '#059669' },
 };
@@ -30,8 +31,7 @@ const CAT_ICONS: Record<string, string> = {
   water_supply:       'droplet',
   street_light:       'zap',
   drainage:           'wind',
-  encroachment:       'home',
-  noise_pollution:    'volume-x',
+  cleanliness:        'home',
   other:              'more-horizontal',
 };
 

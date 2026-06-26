@@ -19,6 +19,7 @@ function getGreeting() {
 
 const STATUS_CONFIG: Record<string, { label: string; grad: readonly [string, string]; icon: string }> = {
   submitted:   { label: 'Submitted',   grad: ['#3B82F6', '#2563EB'], icon: 'send' },
+  assigned:    { label: 'Assigned',    grad: ['#8B5CF6', '#7C3AED'], icon: 'user-check' },
   in_progress: { label: 'In Progress', grad: ['#F59E0B', '#D97706'], icon: 'loader' },
   resolved:    { label: 'Resolved',    grad: ['#10B981', '#059669'], icon: 'check-circle' },
 };

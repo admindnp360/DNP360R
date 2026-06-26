@@ -376,7 +376,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       // 3 — real-time listeners (fire immediately with cached data, then live updates)
       //     Each listener falls back to seed data on permission-denied so the app
       //     is always functional even before Firestore rules are deployed.
-      const snap2arr = <T>(snap: any) =>
+      const snap2arr = <T,>(snap: any) =>
         snap.docs.map((d: any) => ({ id: d.id, ...d.data() }) as T);
 
       function listen<T>(
@@ -554,7 +554,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   async function removeGroupFromHouses(houseIds: string[]) {
     setHouses(prev => prev.map(h =>
-      houseIds.includes(h.id) ? { ...h, groupId: null, groupName: null, updatedAt: today() } : h
+      houseIds.includes(h.id) ? { ...h, groupId: undefined, groupName: undefined, updatedAt: today() } : h
     ));
     const b = writeBatch(db);
     for (const houseId of houseIds) {
