@@ -486,18 +486,18 @@ export default function SuperAdminHouseDB() {
           </View>
         </View>
 
-        {/* Stats pills */}
-        <View style={s.statRow}>
+        {/* Stats — compact inline text row */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16, marginTop: 10 }}>
           {[
-            { label: 'Total',     value: totalHouses,    grad: ['#4F46E5','#7C3AED'] as const, icon: 'home' },
-            { label: 'Active',    value: activeHouses,   grad: ['#10B981','#059669'] as const, icon: 'check-circle' },
-            { label: 'Ungrouped', value: ungroupedHouses, grad: ['#F97316','#EA580C'] as const, icon: 'alert-circle' },
-          ].map(st => (
-            <LinearGradient key={st.label} colors={st.grad} style={s.statPill}>
-              <Feather name={st.icon as any} size={12} color="rgba(255,255,255,0.7)" />
-              <Text style={s.statNum}>{st.value}</Text>
-              <Text style={s.statLbl}>{st.label}</Text>
-            </LinearGradient>
+            { label: 'Total',     value: totalHouses,     color: '#818CF8' },
+            { label: 'Active',    value: activeHouses,    color: '#34D399' },
+            { label: 'Ungrouped', value: ungroupedHouses, color: '#FB923C' },
+          ].map((st, i) => (
+            <View key={st.label} style={{ flexDirection: 'row', alignItems: 'baseline', gap: 4 }}>
+              {i > 0 && <View style={{ width: 1, height: 12, backgroundColor: GLASS_BD, marginRight: 12 }} />}
+              <Text style={{ fontSize: 18, fontFamily: 'Inter_700Bold', color: st.color }}>{st.value}</Text>
+              <Text style={{ fontSize: 11, fontFamily: 'Inter_400Regular', color: MUTED }}>{st.label}</Text>
+            </View>
           ))}
         </View>
       </LinearGradient>
