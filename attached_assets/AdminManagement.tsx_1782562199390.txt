@@ -246,12 +246,10 @@ export default function AdminManagement() {
         <ScrollView contentContainerStyle={{ padding: 16, gap: 12, paddingBottom: 110 }}>
           <TouchableOpacity onPress={() => setShowNoticeModal(true)} activeOpacity={0.85}>
             <LinearGradient colors={['#0EA5E9', '#0284C7']} style={s.publishBtn}>
-              <View style={s.publishBtnContainer}>
-                <View style={s.publishBtnIcon}>
-                  <Feather name="plus" size={16} color="rgba(255,255,255,0.9)" />
-                </View>
-                <Text style={s.publishBtnText}>Publish New Notice</Text>
+              <View style={s.publishBtnIcon}>
+                <Feather name="plus" size={16} color="rgba(255,255,255,0.9)" />
               </View>
+              <Text style={s.publishBtnText}>Publish New Notice</Text>
             </LinearGradient>
           </TouchableOpacity>
 
@@ -609,10 +607,9 @@ const s = StyleSheet.create({
   fieldSub:   { fontSize: 11, fontFamily: 'Inter_400Regular', marginTop: 2 },
 
   // ── publish btn
-  publishBtn:          { borderRadius: 16, overflow: 'hidden' },
-  publishBtnContainer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, paddingVertical: 15, paddingHorizontal: 20 },
-  publishBtnIcon:      { width: 32, height: 32, borderRadius: 10, backgroundColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center' },
-  publishBtnText:      { color: '#fff', fontSize: 15, fontFamily: 'Inter_700Bold' },
+  publishBtn:     { borderRadius: 16, overflow: 'hidden' },
+  publishBtnIcon: { width: 32, height: 32, borderRadius: 10, backgroundColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center' },
+  publishBtnText: { color: '#fff', fontSize: 15, fontFamily: 'Inter_700Bold', flex: 1, textAlign: 'center' },
 
   // ── notice card
   noticeCard:     { borderRadius: 16, borderWidth: 1, flexDirection: 'row', overflow: 'hidden' },
@@ -687,4 +684,7 @@ const s = StyleSheet.create({
   celebNoteTxt: { color: MUTED, fontSize: 12, fontFamily: 'Inter_400Regular', flex: 1, lineHeight: 18 },
   celebDoneBtn: { borderRadius: 16, paddingVertical: 14, paddingHorizontal: 60 },
   celebDoneTxt: { color: '#fff', fontSize: 16, fontFamily: 'Inter_700Bold' },
+
+  // ── publish btn inner
+  publishBtnContainer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, paddingVertical: 15, paddingHorizontal: 20 },
 });
