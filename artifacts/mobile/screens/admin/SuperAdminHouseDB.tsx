@@ -461,47 +461,6 @@ export default function SuperAdminHouseDB() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: BG }} edges={['top']}>
 
-      {/* ── GLASS HEADER ─────────────────────────────────────────────── */}
-      <LinearGradient colors={['#0F1A3E', '#0D1535', BG]} style={s.header}>
-        {/* glow orbs */}
-        <View style={[s.orb, { top: -30, right: -20, width: 140, height: 140, backgroundColor: '#4F46E518' }]} />
-        <View style={[s.orb, { top: 10, left: -30, width: 100, height: 100, backgroundColor: '#10B98110' }]} />
-
-        <View style={s.headerTop}>
-          <View style={{ flex: 1 }}>
-            <View style={s.superBadge}>
-              <Feather name="star" size={9} color="#FFD700" />
-              <Text style={s.superBadgeText}>SUPER ADMIN</Text>
-            </View>
-            <Text style={s.headerTitle}>House Database</Text>
-            <Text style={s.headerSub}>
-              {totalHouses} total · {wards.length} wards · {groups.length} groups
-            </Text>
-          </View>
-          <View style={s.syncWrap}>
-            <Animated.View style={[s.syncDot, { opacity: syncPulse, backgroundColor: syncColor }]} />
-            <Text style={[s.syncLabel, { color: syncColor }]}>
-              {syncStatus === 'synced' ? 'Synced' : syncStatus === 'pending' ? 'Saving…' : 'Offline'}
-            </Text>
-          </View>
-        </View>
-
-        {/* Stats — compact inline text row */}
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16, marginTop: 10 }}>
-          {[
-            { label: 'Total',     value: totalHouses,     color: '#818CF8' },
-            { label: 'Active',    value: activeHouses,    color: '#34D399' },
-            { label: 'Ungrouped', value: ungroupedHouses, color: '#FB923C' },
-          ].map((st, i) => (
-            <View key={st.label} style={{ flexDirection: 'row', alignItems: 'baseline', gap: 4 }}>
-              {i > 0 && <View style={{ width: 1, height: 12, backgroundColor: GLASS_BD, marginRight: 12 }} />}
-              <Text style={{ fontSize: 18, fontFamily: 'Inter_700Bold', color: st.color }}>{st.value}</Text>
-              <Text style={{ fontSize: 11, fontFamily: 'Inter_400Regular', color: MUTED }}>{st.label}</Text>
-            </View>
-          ))}
-        </View>
-      </LinearGradient>
-
       {/* ── SEGMENT BAR: DB / Groups ─────────────────────────────────── */}
       <View style={s.segBar}>
         {([

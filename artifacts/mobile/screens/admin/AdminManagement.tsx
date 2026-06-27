@@ -245,18 +245,6 @@ export default function AdminManagement() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: BG }} edges={['top']}>
 
-      {/* ── HEADER ── */}
-      <LinearGradient colors={['#0F1A3E', '#0A1128', BG]} style={s.header}>
-        <View style={[s.orb, { top: -20, right: -10, backgroundColor: activeTab.color + '18', width: 120, height: 120 }]} />
-        <Text style={s.headerTitle}>Management</Text>
-        <Text style={s.headerSub}>
-          {tab === 'notices' ? `${notices.length} notices · ${notices.filter(n => n.isActive).length} active`
-            : tab === 'resets' ? `${pendingResets} pending reset${pendingResets !== 1 ? 's' : ''}`
-            : tab === 'import' ? 'Bulk import via Excel or CSV'
-            : `${allUnused.length} unused key${allUnused.length !== 1 ? 's' : ''} · ${secretKeys.length} total`}
-        </Text>
-      </LinearGradient>
-
       {/* ── TAB BAR ── */}
       <View style={s.tabBar}>
         {TAB_CFG.map(t => {
