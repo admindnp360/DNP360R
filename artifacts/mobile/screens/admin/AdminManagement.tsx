@@ -12,75 +12,96 @@ import { useAppData } from '@/contexts/AppContext';
 import { useAuth } from '@/contexts/AuthContext';
 import type { PasswordResetRequest, SecretKey } from '@/types';
 
-// ── Glass design tokens ──────────────────────────────────────────────
-const BG        = '#060B18';
-const GLASS     = 'rgba(255,255,255,0.06)';
-const GLASS_HI  = 'rgba(255,255,255,0.09)';
-const GLASS_BD  = 'rgba(255,255,255,0.10)';
-const TEXT      = '#F0F4FF';
-const MUTED     = 'rgba(255,255,255,0.42)';
+// ── Design tokens ────────────────────────────────────────────────────
+const BG       = '#060B18';
+const GLASS    = 'rgba(255,255,255,0.06)';
+const GLASS_HI = 'rgba(255,255,255,0.10)';
+const GLASS_BD = 'rgba(255,255,255,0.10)';
+const TEXT     = '#F0F4FF';
+const MUTED    = 'rgba(255,255,255,0.42)';
+
+// Role colour system
+const SK_GRAD: readonly [string, string]  = ['#10B981', '#059669'];
+const OFF_GRAD: readonly [string, string] = ['#F59E0B', '#EF4444'];
+const ROLE_GRADS: Record<string, readonly [string, string]> = {
+  safaikarmi: SK_GRAD,
+  official:   OFF_GRAD,
+  admin:      ['#6366F1', '#8B5CF6'],
+};
+const ROLE_COLOR: Record<string, string> = {
+  safaikarmi: '#34D399',
+  official:   '#FCD34D',
+};
+
+const PRIORITY = {
+  high:   { color: '#FB7185', bg: 'rgba(251,113,133,0.12)', border: 'rgba(251,113,133,0.28)' },
+  medium: { color: '#FCD34D', bg: 'rgba(252,211,77,0.10)',  border: 'rgba(252,211,77,0.28)'  },
+  low:    { color: '#34D399', bg: 'rgba(52,211,153,0.10)',  border: 'rgba(52,211,153,0.28)'  },
+};
 
 type Tab = 'genkey' | 'notices' | 'resets';
 
 const TAB_CFG = [
-  { key: 'notices', label: 'Notices',  icon: 'volume-2', color: '#22D3EE', grad: ['#0EA5E9', '#0284C7'] as const },
-  { key: 'resets',  label: 'Resets',   icon: 'unlock',   color: '#FB7185', grad: ['#F97316', '#EF4444'] as const },
-  { key: 'genkey',  label: 'Gen Key',  icon: 'key',      color: '#C084FC', grad: ['#7C3AED', '#4F46E5'] as const },
+  { key: 'notices', label: 'Notices',  icon: 'volume-2', color: '#22D3EE', grad: ['#0EA5E9','#0284C7'] as const },
+  { key: 'resets',  label: 'Resets',   icon: 'unlock',   color: '#FB7185', grad: ['#F97316','#EF4444'] as const },
+  { key: 'genkey',  label: 'Gen Key',  icon: 'key',      color: '#C084FC', grad: ['#7C3AED','#4F46E5'] as const },
 ] as const;
 
-const PRIORITY = {
-  high:   { color: '#FB7185', bg: 'rgba(251,113,133,0.12)', border: 'rgba(251,113,133,0.28)' },
-  medium: { color: '#FCD34D', bg: 'rgba(252,211,77,0.10)',  border: 'rgba(252,211,77,0.28)' },
-  low:    { color: '#34D399', bg: 'rgba(52,211,153,0.10)',  border: 'rgba(52,211,153,0.28)' },
-};
-
-const ROLE_GRADS: Record<string, readonly [string, string]> = {
-  safaikarmi: ['#10B981', '#059669'],
-  official:   ['#0EA5E9', '#2563EB'],
-  admin:      ['#6366F1', '#8B5CF6'],
-};
-
-const GEN_ROLES = [
-  { role: 'safaikarmi' as SecretKey['role'], label: 'Safai Karmi', desc: 'SK-XXXX-XXXX', icon: 'trash-2',   grad: ['#10B981', '#059669'] as const },
-  { role: 'official'   as SecretKey['role'], label: 'Official',    desc: 'OF-XXXX-XXXX', icon: 'briefcase', grad: ['#F59E0B', '#EF4444'] as const },
-];
+// ─────────────────────────────────────────────────────────────────────
 
 export default function AdminManagement() {
-  const { notices, passwordResetRequests, secretKeys, addNotice, deleteNotice, updatePasswordResetRequest, addSecretKey } = useAppData();
+  const {
+    notices, passwordResetRequests, secretKeys,
+    addNotice, deleteNotice, updatePasswordResetRequest, addSecretKey,
+  } = useAppData();
   const { resetUserPassword } = useAuth();
   const { showAlert } = useAlert();
 
-  const [tab, setTab]                   = useState<Tab>('notices');
-  const [generating, setGenerating]     = useState<string | null>(null);
-  const [newKey, setNewKey]             = useState<SecretKey | null>(null);
-  const [codeCopied, setCodeCopied]     = useState(false);
-  const [showNoticeModal, setShowNoticeModal]   = useState(false);
-  const [showApproveModal, setShowApproveModal] = useState(false);
-  const [selectedRequest, setSelectedRequest]   = useState<PasswordResetRequest | null>(null);
-  const [tempPassword, setTempPassword] = useState('');
-  const [adminNote, setAdminNote]       = useState('');
-  const [noticeTitle, setNoticeTitle]   = useState('');
-  const [noticeContent, setNoticeContent] = useState('');
-  const [noticeType, setNoticeType]     = useState<'notice' | 'announcement' | 'alert'>('notice');
-  const [noticePriority, setNoticePriority] = useState<'low' | 'medium' | 'high'>('medium');
-  const [saving, setSaving]             = useState(false);
+  const [tab, setTab]                 = useState<Tab>('notices');
+  const [generating, setGenerating]   = useState<string | null>(null);
+  const [newKey, setNewKey]           = useState<SecretKey | null>(null);
+  const [copiedId, setCopiedId]       = useState<string | null>(null);
+
+  const [showNoticeModal, setShowNoticeModal]     = useState(false);
+  const [showApproveModal, setShowApproveModal]   = useState(false);
+  const [selectedRequest, setSelectedRequest]     = useState<PasswordResetRequest | null>(null);
+  const [tempPassword, setTempPassword]           = useState('');
+  const [adminNote, setAdminNote]                 = useState('');
+  const [noticeTitle, setNoticeTitle]             = useState('');
+  const [noticeContent, setNoticeContent]         = useState('');
+  const [noticeType, setNoticeType]               = useState<'notice'|'announcement'|'alert'>('notice');
+  const [noticePriority, setNoticePriority]       = useState<'low'|'medium'|'high'>('medium');
+  const [saving, setSaving]                       = useState(false);
 
   const pendingResets = passwordResetRequests.filter(r => r.status === 'pending').length;
   const allResets     = [...passwordResetRequests].sort((a, b) => b.requestedAt.localeCompare(a.requestedAt));
-  const latestKey     = secretKeys.length > 0 ? [...secretKeys].sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0] : null;
   const activeTab     = TAB_CFG.find(t => t.key === tab)!;
+
+  // keys split by role
+  const skKeys   = secretKeys.filter(k => k.role === 'safaikarmi');
+  const offKeys  = secretKeys.filter(k => k.role === 'official');
+  const unusedSK  = skKeys.filter(k => k.isActive && !k.usedBy);
+  const unusedOff = offKeys.filter(k => k.isActive && !k.usedBy);
+  const allUnused = [...secretKeys]
+    .filter(k => k.isActive && !k.usedBy)
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 
   async function handleGenerate(role: SecretKey['role']) {
     setGenerating(role);
-    try { setNewKey(await addSecretKey(role)); } finally { setGenerating(null); }
+    try { setNewKey(await addSecretKey(role)); }
+    finally { setGenerating(null); }
   }
-  async function handleCopyCode(code: string) {
+
+  async function handleCopy(code: string, id: string) {
     await Clipboard.setStringAsync(code);
-    setCodeCopied(true);
-    setTimeout(() => setCodeCopied(false), 1500);
+    setCopiedId(id);
+    setTimeout(() => setCopiedId(null), 1500);
   }
+
   async function handleAddNotice() {
-    if (!noticeTitle.trim() || !noticeContent.trim()) { showAlert('Missing', 'Title and content required.', undefined, 'warning'); return; }
+    if (!noticeTitle.trim() || !noticeContent.trim()) {
+      showAlert('Missing', 'Title and content required.', undefined, 'warning'); return;
+    }
     setSaving(true);
     try {
       await addNotice({ title: noticeTitle.trim(), content: noticeContent.trim(), type: noticeType, priority: noticePriority, isActive: true });
@@ -88,7 +109,11 @@ export default function AdminManagement() {
       showAlert('Published', 'Notice is now visible to all citizens.', undefined, 'success');
     } finally { setSaving(false); }
   }
-  function openApproveModal(req: PasswordResetRequest) { setSelectedRequest(req); setTempPassword(''); setAdminNote(''); setShowApproveModal(true); }
+
+  function openApproveModal(req: PasswordResetRequest) {
+    setSelectedRequest(req); setTempPassword(''); setAdminNote(''); setShowApproveModal(true);
+  }
+
   async function handleApproveReset() {
     if (!selectedRequest) return;
     if (tempPassword.trim().length < 6) { showAlert('Too Short', 'Password must be at least 6 characters.', undefined, 'warning'); return; }
@@ -98,14 +123,121 @@ export default function AdminManagement() {
       if (!ok) { showAlert('Error', 'No user found with this email.', undefined, 'error'); return; }
       await updatePasswordResetRequest(selectedRequest.id, 'approved', adminNote.trim() || undefined);
       setShowApproveModal(false); setSelectedRequest(null); setTempPassword(''); setAdminNote('');
-      showAlert('Approved', `Password reset for ${selectedRequest.name}. Temp: ${tempPassword.trim()}. Contact via registered mobile.`, undefined, 'success');
+      showAlert('Approved', `Password reset for ${selectedRequest.name}.`, undefined, 'success');
     } finally { setSaving(false); }
   }
+
   async function handleRejectReset(req: PasswordResetRequest) {
     showAlert('Reject Request', `Reject reset for ${req.name}?`, [
       { text: 'Cancel', style: 'cancel' },
       { text: 'Reject', style: 'destructive', onPress: () => updatePasswordResetRequest(req.id, 'rejected') },
     ], 'warning');
+  }
+
+  // ─── Key card for horizontal list ──────────────────────────────────
+  function KeyCard({ k }: { k: SecretKey }) {
+    const grad  = ROLE_GRADS[k.role] ?? SK_GRAD;
+    const color = ROLE_COLOR[k.role] ?? '#34D399';
+    const isCopied = copiedId === k.id;
+    const label = k.role === 'safaikarmi' ? 'Safai Karmi' : 'Official';
+    const used  = !!k.usedBy;
+    return (
+      <TouchableOpacity
+        onPress={() => !used && handleCopy(k.code, k.id)}
+        activeOpacity={used ? 1 : 0.8}
+        style={[
+          s.keyCard,
+          { borderColor: used ? GLASS_BD : color + '45' },
+          used && { opacity: 0.5 },
+        ]}
+      >
+        <LinearGradient colors={used ? ['#1E293B','#0F172A'] : [grad[0]+'22', grad[1]+'10']} style={StyleSheet.absoluteFill} />
+
+        {/* top row: role pill + status */}
+        <View style={s.keyCardTop}>
+          <View style={[s.keyRolePill, { backgroundColor: color + '22', borderColor: color + '35' }]}>
+            <View style={[s.keyRoleDot, { backgroundColor: color }]} />
+            <Text style={[s.keyRoleTxt, { color }]}>{label}</Text>
+          </View>
+          {used
+            ? <View style={s.usedPill}><Text style={s.usedTxt}>Used</Text></View>
+            : <View style={s.freePill}><Text style={s.freeTxt}>Unused</Text></View>
+          }
+        </View>
+
+        {/* code */}
+        <LinearGradient
+          colors={isCopied ? ['#10B981','#059669'] : grad}
+          style={s.keyCodeBox}
+        >
+          <Feather name={isCopied ? 'check' : 'key'} size={10} color="rgba(255,255,255,0.8)" />
+          <Text style={s.keyCodeTxt} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
+            {isCopied ? 'Copied!' : k.code}
+          </Text>
+          {!isCopied && !used && <Feather name="copy" size={9} color="rgba(255,255,255,0.65)" />}
+        </LinearGradient>
+
+        {/* date */}
+        <View style={s.keyCardBottom}>
+          <Feather name="clock" size={9} color={MUTED} />
+          <Text style={s.keyDate}>{k.createdAt}</Text>
+        </View>
+      </TouchableOpacity>
+    );
+  }
+
+  // ─── Generate row ───────────────────────────────────────────────────
+  function GenRow({
+    role, label, subtitle, icon, grad, color,
+  }: {
+    role: SecretKey['role'];
+    label: string;
+    subtitle: string;
+    icon: string;
+    grad: readonly [string, string];
+    color: string;
+  }) {
+    const isThis  = generating === role;
+    const isOther = generating !== null && generating !== role;
+    const unused  = secretKeys.filter(k => k.role === role && k.isActive && !k.usedBy).length;
+    return (
+      <TouchableOpacity
+        onPress={() => handleGenerate(role)}
+        disabled={generating !== null}
+        activeOpacity={0.85}
+        style={[s.genRow, { borderColor: color + '40', opacity: isOther ? 0.35 : 1 }]}
+      >
+        <LinearGradient colors={[grad[0]+'1A', grad[1]+'0D']} style={StyleSheet.absoluteFill} />
+
+        {/* left icon */}
+        <LinearGradient colors={grad} style={s.genRowIcon}>
+          <Feather name={isThis ? 'loader' : icon as any} size={20} color="#fff" />
+        </LinearGradient>
+
+        {/* middle text */}
+        <View style={{ flex: 1 }}>
+          <Text style={s.genRowLabel}>{label}</Text>
+          <Text style={s.genRowSub}>{subtitle}</Text>
+        </View>
+
+        {/* unused badge */}
+        <View style={[s.unusedBadge, { backgroundColor: color + '20', borderColor: color + '40' }]}>
+          <Text style={[s.unusedBadgeTxt, { color }]}>{unused}</Text>
+          <Text style={[s.unusedBadgeLabel, { color }]}>free</Text>
+        </View>
+
+        {/* generate button */}
+        <LinearGradient colors={grad} style={s.genPill}>
+          {isThis
+            ? <Feather name="loader" size={13} color="#fff" />
+            : <>
+                <Feather name="plus" size={13} color="#fff" />
+                <Text style={s.genPillTxt}>Generate</Text>
+              </>
+          }
+        </LinearGradient>
+      </TouchableOpacity>
+    );
   }
 
   return (
@@ -117,12 +249,12 @@ export default function AdminManagement() {
         <Text style={s.headerTitle}>Management</Text>
         <Text style={s.headerSub}>
           {tab === 'notices' ? `${notices.length} notices · ${notices.filter(n => n.isActive).length} active`
-            : tab === 'resets'  ? `${pendingResets} pending reset${pendingResets !== 1 ? 's' : ''}`
-            : 'Generate secure registration keys'}
+            : tab === 'resets' ? `${pendingResets} pending reset${pendingResets !== 1 ? 's' : ''}`
+            : `${allUnused.length} unused key${allUnused.length !== 1 ? 's' : ''} · ${secretKeys.length} total`}
         </Text>
       </LinearGradient>
 
-      {/* ── PILL TAB BAR ── */}
+      {/* ── TAB BAR ── */}
       <View style={s.tabBar}>
         {TAB_CFG.map(t => {
           const isActive = tab === t.key;
@@ -148,105 +280,124 @@ export default function AdminManagement() {
         })}
       </View>
 
-      {/* ══════════════════════════════════
-           GEN KEY TAB
-         ══════════════════════════════════ */}
+      {/* ══════════════════════════════════════════════════════════════
+           GEN KEY TAB  ──  full redesign
+         ══════════════════════════════════════════════════════════════ */}
       {tab === 'genkey' && (
-        <ScrollView contentContainerStyle={{ padding: 16, gap: 14, paddingBottom: 110 }}>
-          {/* Main glass card */}
-          <View style={s.gkCard}>
-            <LinearGradient colors={['rgba(124,58,237,0.22)', 'rgba(79,70,229,0.12)']} style={StyleSheet.absoluteFill} />
-            <View style={s.gkCardTop}>
-              <View style={[s.gkCardIcon, { backgroundColor: 'rgba(192,132,252,0.18)' }]}>
-                <Feather name="plus-circle" size={18} color="#C084FC" />
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingBottom: 110, gap: 20, paddingTop: 8 }}
+        >
+          {/* ── STATS ROW ── */}
+          <View style={s.statsRow}>
+            {[
+              { label: 'Total',     value: secretKeys.length,                                     color: '#C084FC', icon: 'key'        },
+              { label: 'Unused',    value: allUnused.length,                                      color: '#34D399', icon: 'unlock'     },
+              { label: 'SK Keys',   value: unusedSK.length,                                       color: '#34D399', icon: 'trash-2'    },
+              { label: 'Off. Keys', value: unusedOff.length,                                      color: '#FCD34D', icon: 'briefcase'  },
+            ].map(stat => (
+              <View key={stat.label} style={[s.statCell, { borderColor: stat.color + '30', backgroundColor: stat.color + '10' }]}>
+                <Feather name={stat.icon as any} size={13} color={stat.color} />
+                <Text style={[s.statVal, { color: stat.color }]}>{stat.value}</Text>
+                <Text style={s.statLbl}>{stat.label}</Text>
               </View>
-              <View style={{ flex: 1 }}>
-                <Text style={s.gkCardTitle}>Generate New Key</Text>
-                <Text style={s.gkCardSub}>Unique access code for staff registration</Text>
+            ))}
+          </View>
+
+          {/* ── GENERATE SECTION ── */}
+          <View style={{ paddingHorizontal: 16, gap: 12 }}>
+            {/* Section header */}
+            <View style={s.sectionHdr}>
+              <LinearGradient colors={['#7C3AED','#4F46E5']} style={s.sectionHdrIcon}>
+                <Feather name="zap" size={12} color="#fff" />
+              </LinearGradient>
+              <Text style={s.sectionHdrTxt}>Generate New Key</Text>
+            </View>
+
+            {/* Row 1 — Safai Karmi */}
+            <GenRow
+              role="safaikarmi"
+              label="Safai Karmi"
+              subtitle="SK-XXXX-XXXX  ·  Sanitation worker access"
+              icon="trash-2"
+              grad={SK_GRAD}
+              color="#34D399"
+            />
+
+            {/* Row 2 — Official */}
+            <GenRow
+              role="official"
+              label="Official"
+              subtitle="OF-XXXX-XXXX  ·  Government officer access"
+              icon="briefcase"
+              grad={OFF_GRAD}
+              color="#FCD34D"
+            />
+          </View>
+
+          {/* ── ALL UNUSED KEYS (horizontal list) ── */}
+          <View style={{ gap: 12 }}>
+            <View style={[s.sectionHdr, { paddingHorizontal: 16 }]}>
+              <LinearGradient colors={['#34D399','#059669']} style={s.sectionHdrIcon}>
+                <Feather name="unlock" size={12} color="#fff" />
+              </LinearGradient>
+              <Text style={s.sectionHdrTxt}>Unused Keys</Text>
+              <View style={s.unusedCount}>
+                <Text style={s.unusedCountTxt}>{allUnused.length}</Text>
               </View>
             </View>
 
-            <View style={s.gkBtnRow}>
-              {GEN_ROLES.map(item => {
-                const isThis  = generating === item.role;
-                const isOther = generating !== null && generating !== item.role;
-                return (
-                  <TouchableOpacity
-                    key={item.role}
-                    style={[s.gkBtnWrap, isOther && { opacity: 0.35 }]}
-                    onPress={() => handleGenerate(item.role)}
-                    disabled={generating !== null}
-                    activeOpacity={0.85}
-                  >
-                    <LinearGradient colors={item.grad} style={s.gkBtn}>
-                      <View style={s.gkBtnIcon}>
-                        <Feather name={isThis ? 'loader' : item.icon as any} size={16} color="#fff" />
-                      </View>
-                      <View style={{ flex: 1 }}>
-                        <Text style={s.gkBtnLabel}>{item.label}</Text>
-                        <Text style={s.gkBtnDesc}>{item.desc}</Text>
-                      </View>
-                      {!isThis && (
-                        <View style={s.gkPlusCircle}>
-                          <Feather name="plus" size={12} color="rgba(255,255,255,0.9)" />
-                        </View>
-                      )}
-                    </LinearGradient>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-
-            {latestKey && (
-              <View style={s.gkLatest}>
-                <View style={s.gkLatestHdr}>
-                  <Feather name="clock" size={11} color={MUTED} />
-                  <Text style={s.gkLatestLbl}>Latest Generated</Text>
-                  <View style={[s.gkRolePill, { backgroundColor: (ROLE_GRADS[latestKey.role]?.[0] ?? '#10B981') + '30' }]}>
-                    <Text style={[s.gkRolePillTxt, { color: ROLE_GRADS[latestKey.role]?.[0] ?? '#10B981' }]}>
-                      {latestKey.role === 'safaikarmi' ? 'Safai Karmi' : 'Official'}
-                    </Text>
-                  </View>
-                </View>
-                <TouchableOpacity activeOpacity={0.8} onPress={() => handleCopyCode(latestKey.code)} style={{ width: '100%' }}>
-                  <LinearGradient
-                    colors={codeCopied ? ['#10B981', '#059669'] : (ROLE_GRADS[latestKey.role] ?? ['#10B981', '#059669'] as const)}
-                    style={s.gkCodeBar}
-                  >
-                    <Feather name={codeCopied ? 'check' : 'key'} size={14} color="rgba(255,255,255,0.85)" />
-                    <Text style={s.gkCodeTxt} numberOfLines={1}>
-                      {codeCopied ? 'Copied!' : latestKey.code}
-                    </Text>
-                    {!codeCopied && <Feather name="copy" size={13} color="rgba(255,255,255,0.7)" />}
-                  </LinearGradient>
-                </TouchableOpacity>
-                <Text style={s.gkCodeDate}>Created {latestKey.createdAt}</Text>
+            {allUnused.length === 0 ? (
+              <View style={[s.emptyCard, { marginHorizontal: 16 }]}>
+                <LinearGradient colors={['rgba(192,132,252,0.18)','rgba(79,70,229,0.10)']} style={s.emptyIconBox}>
+                  <Feather name="key" size={24} color="#C084FC" />
+                </LinearGradient>
+                <Text style={s.emptyTitle}>No Unused Keys</Text>
+                <Text style={s.emptyText}>Generate keys above to get started</Text>
               </View>
+            ) : (
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={{ paddingHorizontal: 16, gap: 10 }}
+              >
+                {allUnused.map(k => <KeyCard key={k.id} k={k} />)}
+              </ScrollView>
             )}
           </View>
 
-          {/* All keys count */}
-          <View style={[s.glassCard, { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14 }]}>
-            <View style={[s.infoIconBox, { backgroundColor: 'rgba(192,132,252,0.18)' }]}>
-              <Feather name="key" size={15} color="#C084FC" />
+          {/* ── ALL KEYS (used) ── */}
+          {secretKeys.some(k => k.usedBy) && (
+            <View style={{ gap: 12 }}>
+              <View style={[s.sectionHdr, { paddingHorizontal: 16 }]}>
+                <LinearGradient colors={['#6B7280','#374151']} style={s.sectionHdrIcon}>
+                  <Feather name="check-circle" size={12} color="#fff" />
+                </LinearGradient>
+                <Text style={s.sectionHdrTxt}>Used Keys</Text>
+                <View style={[s.unusedCount, { backgroundColor: 'rgba(107,114,128,0.18)', borderColor: 'rgba(107,114,128,0.28)' }]}>
+                  <Text style={[s.unusedCountTxt, { color: MUTED }]}>{secretKeys.filter(k => k.usedBy).length}</Text>
+                </View>
+              </View>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={{ paddingHorizontal: 16, gap: 10 }}
+              >
+                {secretKeys.filter(k => k.usedBy).map(k => <KeyCard key={k.id} k={k} />)}
+              </ScrollView>
             </View>
-            <View style={{ flex: 1 }}>
-              <Text style={[s.fieldLabel, { color: TEXT }]}>Total Keys Generated</Text>
-              <Text style={[s.fieldSub, { color: MUTED }]}>{secretKeys.filter(k => k.isActive).length} active · {secretKeys.length} total</Text>
-            </View>
-            <Text style={{ color: '#C084FC', fontSize: 22, fontFamily: 'Inter_700Bold' }}>{secretKeys.length}</Text>
-          </View>
+          )}
         </ScrollView>
       )}
 
-      {/* ══════════════════════════════════
+      {/* ══════════════════════════════════════════════════════════════
            NOTICES TAB
-         ══════════════════════════════════ */}
+         ══════════════════════════════════════════════════════════════ */}
       {tab === 'notices' && (
         <ScrollView contentContainerStyle={{ padding: 16, gap: 12, paddingBottom: 110 }}>
           <TouchableOpacity onPress={() => setShowNoticeModal(true)} activeOpacity={0.85}>
             <LinearGradient colors={['#0EA5E9', '#0284C7']} style={s.publishBtn}>
-              <View style={s.publishBtnContainer}>
+              <View style={s.publishBtnInner}>
                 <View style={s.publishBtnIcon}>
                   <Feather name="plus" size={16} color="rgba(255,255,255,0.9)" />
                 </View>
@@ -266,9 +417,7 @@ export default function AdminManagement() {
                       <Feather name={n.priority === 'high' ? 'alert-triangle' : n.priority === 'medium' ? 'alert-circle' : 'info'} size={10} color={pc.color} />
                       <Text style={[s.priorityChipTxt, { color: pc.color }]}>{n.priority.toUpperCase()}</Text>
                     </View>
-                    <View style={s.typeChip}>
-                      <Text style={s.typeChipTxt}>{n.type}</Text>
-                    </View>
+                    <View style={s.typeChip}><Text style={s.typeChipTxt}>{n.type}</Text></View>
                     <View style={{ flex: 1 }} />
                     <TouchableOpacity
                       onPress={() => showAlert('Delete?', n.title, [{ text: 'Cancel', style: 'cancel' }, { text: 'Delete', style: 'destructive', onPress: () => deleteNotice(n.id) }], 'error')}
@@ -289,9 +438,9 @@ export default function AdminManagement() {
           })}
 
           {notices.length === 0 && (
-            <View style={[s.emptyCard]}>
-              <View style={[s.emptyIcon, { backgroundColor: 'rgba(34,211,238,0.14)' }]}>
-                <Feather name="volume-x" size={26} color="#22D3EE" />
+            <View style={s.emptyCard}>
+              <View style={[s.emptyIconBox, { backgroundColor: 'rgba(34,211,238,0.12)' }]}>
+                <Feather name="volume-x" size={24} color="#22D3EE" />
               </View>
               <Text style={s.emptyTitle}>No Notices Yet</Text>
               <Text style={s.emptyText}>Publish your first notice above</Text>
@@ -300,9 +449,9 @@ export default function AdminManagement() {
         </ScrollView>
       )}
 
-      {/* ══════════════════════════════════
+      {/* ══════════════════════════════════════════════════════════════
            RESETS TAB
-         ══════════════════════════════════ */}
+         ══════════════════════════════════════════════════════════════ */}
       {tab === 'resets' && (
         <ScrollView contentContainerStyle={{ padding: 16, gap: 12, paddingBottom: 110 }}>
           <View style={[s.glassCard, { flexDirection: 'row', gap: 10, padding: 14, alignItems: 'flex-start' }]}>
@@ -323,7 +472,7 @@ export default function AdminManagement() {
 
           {allResets.length === 0 ? (
             <View style={s.emptyCard}>
-              <LinearGradient colors={['#10B981', '#059669']} style={s.emptyIcon}>
+              <LinearGradient colors={['#10B981', '#059669']} style={s.emptyIconBox}>
                 <Feather name="check" size={22} color="#fff" />
               </LinearGradient>
               <Text style={s.emptyTitle}>All Clear</Text>
@@ -345,7 +494,7 @@ export default function AdminManagement() {
                   {isPending && <View style={s.resetUrgentBar} />}
                   <View style={s.resetInner}>
                     <LinearGradient
-                      colors={isPending ? ['#F97316', '#EF4444'] : isApproved ? ['#10B981', '#059669'] : ['#6B7280', '#4B5563']}
+                      colors={isPending ? ['#F97316','#EF4444'] : isApproved ? ['#10B981','#059669'] : ['#6B7280','#4B5563']}
                       style={s.resetAvatar}
                     >
                       <Text style={s.resetAvatarLetter}>{req.name[0]?.toUpperCase()}</Text>
@@ -370,7 +519,7 @@ export default function AdminManagement() {
                         <Text style={s.rejectBtnTxt}>Reject</Text>
                       </TouchableOpacity>
                       <TouchableOpacity style={s.approveBtn} onPress={() => openApproveModal(req)} activeOpacity={0.85}>
-                        <LinearGradient colors={['#10B981', '#059669']} style={s.approveBtnGrad}>
+                        <LinearGradient colors={['#10B981','#059669']} style={s.approveBtnGrad}>
                           <Feather name="check" size={13} color="#fff" />
                           <Text style={s.approveBtnTxt}>Approve & Set Password</Text>
                         </LinearGradient>
@@ -384,30 +533,38 @@ export default function AdminManagement() {
         </ScrollView>
       )}
 
-      {/* ══════════════════════════════════
-           NEW KEY MODAL
-         ══════════════════════════════════ */}
+      {/* ══════════════════════════════════════════════════════════════
+           NEW KEY SUCCESS MODAL
+         ══════════════════════════════════════════════════════════════ */}
       <Modal visible={!!newKey} animationType="slide" transparent>
         <View style={s.overlay}>
           <LinearGradient colors={['#0D1535', '#060B18']} style={s.newKeySheet}>
+            {/* glow ring */}
             <View style={s.celebRing}>
               <LinearGradient colors={ROLE_GRADS[newKey?.role ?? 'safaikarmi']} style={s.celebGrad}>
                 <Feather name="key" size={30} color="#fff" />
               </LinearGradient>
             </View>
             <Text style={s.celebTitle}>Key Generated!</Text>
-            <Text style={s.celebRole}>{newKey?.role === 'safaikarmi' ? 'Safai Karmi' : 'Official'} Access Code</Text>
+            <Text style={s.celebRole}>
+              {newKey?.role === 'safaikarmi' ? 'Safai Karmi' : 'Official'} Access Code
+            </Text>
 
-            <TouchableOpacity activeOpacity={0.85} onPress={() => newKey && handleCopyCode(newKey.code)} style={{ width: '100%' }}>
+            {/* tap to copy */}
+            <TouchableOpacity
+              activeOpacity={0.85}
+              onPress={() => newKey && handleCopy(newKey.code, newKey.id)}
+              style={{ width: '100%' }}
+            >
               <LinearGradient
-                colors={codeCopied ? ['#10B981', '#059669'] : ROLE_GRADS[newKey?.role ?? 'safaikarmi']}
+                colors={copiedId === newKey?.id ? ['#10B981','#059669'] : ROLE_GRADS[newKey?.role ?? 'safaikarmi']}
                 style={s.codeReveal}
               >
-                <Feather name={codeCopied ? 'check' : 'key'} size={16} color="rgba(255,255,255,0.8)" />
+                <Feather name={copiedId === newKey?.id ? 'check' : 'key'} size={16} color="rgba(255,255,255,0.8)" />
                 <Text style={s.codeRevealTxt} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
-                  {codeCopied ? 'Copied!' : newKey?.code}
+                  {copiedId === newKey?.id ? 'Copied!' : newKey?.code}
                 </Text>
-                {!codeCopied && <Feather name="copy" size={16} color="rgba(255,255,255,0.7)" />}
+                {copiedId !== newKey?.id && <Feather name="copy" size={16} color="rgba(255,255,255,0.7)" />}
               </LinearGradient>
             </TouchableOpacity>
 
@@ -415,7 +572,7 @@ export default function AdminManagement() {
               <Feather name="alert-circle" size={12} color={MUTED} />
               <Text style={s.celebNoteTxt}>Share this code securely. It will not be shown again after closing.</Text>
             </View>
-            <TouchableOpacity onPress={() => { setNewKey(null); setCodeCopied(false); }} activeOpacity={0.85}>
+            <TouchableOpacity onPress={() => setNewKey(null)} activeOpacity={0.85}>
               <LinearGradient colors={ROLE_GRADS[newKey?.role ?? 'safaikarmi']} style={s.celebDoneBtn}>
                 <Text style={s.celebDoneTxt}>Done</Text>
               </LinearGradient>
@@ -424,9 +581,9 @@ export default function AdminManagement() {
         </View>
       </Modal>
 
-      {/* ══════════════════════════════════
+      {/* ══════════════════════════════════════════════════════════════
            NOTICE MODAL
-         ══════════════════════════════════ */}
+         ══════════════════════════════════════════════════════════════ */}
       <Modal visible={showNoticeModal} animationType="slide" presentationStyle="pageSheet">
         <SafeAreaView style={{ flex: 1, backgroundColor: '#080E22' }}>
           <LinearGradient colors={['#0EA5E9', '#0284C7']} style={s.modalHdr}>
@@ -438,7 +595,7 @@ export default function AdminManagement() {
           <ScrollView contentContainerStyle={{ padding: 16, gap: 14 }}>
             <Text style={[s.fieldLabel, { color: TEXT }]}>Type</Text>
             <View style={s.chipRow}>
-              {(['notice', 'announcement', 'alert'] as const).map(t => (
+              {(['notice','announcement','alert'] as const).map(t => (
                 <Pressable
                   key={t}
                   style={[s.chip, { borderColor: noticeType === t ? '#0EA5E9' : GLASS_BD, backgroundColor: noticeType === t ? 'rgba(14,165,233,0.14)' : GLASS }]}
@@ -452,7 +609,7 @@ export default function AdminManagement() {
             </View>
             <Text style={[s.fieldLabel, { color: TEXT }]}>Priority</Text>
             <View style={s.chipRow}>
-              {(['low', 'medium', 'high'] as const).map(p => {
+              {(['low','medium','high'] as const).map(p => {
                 const pc = PRIORITY[p];
                 return (
                   <Pressable
@@ -470,21 +627,15 @@ export default function AdminManagement() {
             <Text style={[s.fieldLabel, { color: TEXT }]}>Title *</Text>
             <TextInput
               style={[s.fieldInput, { color: TEXT, backgroundColor: GLASS, borderColor: GLASS_BD }]}
-              placeholder="Notice title…"
-              placeholderTextColor={MUTED}
-              value={noticeTitle}
-              onChangeText={setNoticeTitle}
+              placeholder="Notice title…" placeholderTextColor={MUTED}
+              value={noticeTitle} onChangeText={setNoticeTitle}
             />
             <Text style={[s.fieldLabel, { color: TEXT }]}>Content *</Text>
             <TextInput
               style={[s.textarea, { color: TEXT, backgroundColor: GLASS, borderColor: GLASS_BD }]}
-              placeholder="Write content…"
-              placeholderTextColor={MUTED}
-              multiline
-              numberOfLines={5}
-              value={noticeContent}
-              onChangeText={setNoticeContent}
-              textAlignVertical="top"
+              placeholder="Write content…" placeholderTextColor={MUTED}
+              multiline numberOfLines={5} value={noticeContent}
+              onChangeText={setNoticeContent} textAlignVertical="top"
             />
             <TouchableOpacity onPress={handleAddNotice} disabled={saving} activeOpacity={0.85} style={saving ? { opacity: 0.6 } : {}}>
               <LinearGradient colors={['#0EA5E9', '#0284C7']} style={s.submitBtn}>
@@ -496,9 +647,9 @@ export default function AdminManagement() {
         </SafeAreaView>
       </Modal>
 
-      {/* ══════════════════════════════════
+      {/* ══════════════════════════════════════════════════════════════
            APPROVE RESET MODAL
-         ══════════════════════════════════ */}
+         ══════════════════════════════════════════════════════════════ */}
       <Modal visible={showApproveModal && !!selectedRequest} animationType="slide" presentationStyle="pageSheet">
         {selectedRequest && (
           <SafeAreaView style={{ flex: 1, backgroundColor: '#080E22' }}>
@@ -525,22 +676,14 @@ export default function AdminManagement() {
               <Text style={[s.fieldLabel, { color: TEXT }]}>Temporary Password *</Text>
               <TextInput
                 style={[s.fieldInput, { color: TEXT, backgroundColor: GLASS, borderColor: GLASS_BD }]}
-                placeholder="Min. 6 characters"
-                placeholderTextColor={MUTED}
-                value={tempPassword}
-                onChangeText={setTempPassword}
-                autoCapitalize="none"
+                placeholder="Min. 6 characters" placeholderTextColor={MUTED}
+                value={tempPassword} onChangeText={setTempPassword} autoCapitalize="none"
               />
               <Text style={[s.fieldLabel, { color: TEXT }]}>Note to User (optional)</Text>
               <TextInput
                 style={[s.textarea, { color: TEXT, backgroundColor: GLASS, borderColor: GLASS_BD }]}
-                placeholder="e.g. Contact office if you need help…"
-                placeholderTextColor={MUTED}
-                value={adminNote}
-                onChangeText={setAdminNote}
-                multiline
-                numberOfLines={3}
-                textAlignVertical="top"
+                placeholder="e.g. Contact office if you need help…" placeholderTextColor={MUTED}
+                value={adminNote} onChangeText={setAdminNote} multiline numberOfLines={3} textAlignVertical="top"
               />
               <TouchableOpacity onPress={handleApproveReset} disabled={saving} activeOpacity={0.85} style={saving ? { opacity: 0.6 } : {}}>
                 <LinearGradient colors={['#10B981', '#059669']} style={s.submitBtn}>
@@ -549,11 +692,11 @@ export default function AdminManagement() {
                 </LinearGradient>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[s.cancelBtn]}
+                style={s.cancelBtn}
                 onPress={() => { setShowApproveModal(false); setSelectedRequest(null); }}
                 activeOpacity={0.8}
               >
-                <Text style={[s.cancelBtnTxt]}>Cancel</Text>
+                <Text style={s.cancelBtnTxt}>Cancel</Text>
               </TouchableOpacity>
             </ScrollView>
           </SafeAreaView>
@@ -564,57 +707,80 @@ export default function AdminManagement() {
   );
 }
 
+// ─── Styles ────────────────────────────────────────────────────────────────────
 const s = StyleSheet.create({
   orb: { position: 'absolute', borderRadius: 999 },
 
-  // ── header
-  header: { paddingTop: 18, paddingBottom: 22, paddingHorizontal: 20, overflow: 'hidden' },
-  headerTitle: { color: TEXT, fontSize: 28, fontFamily: 'Inter_700Bold', zIndex: 1 },
+  // header
+  header:      { paddingTop: 18, paddingBottom: 22, paddingHorizontal: 20, overflow: 'hidden' },
+  headerTitle: { color: TEXT,  fontSize: 28, fontFamily: 'Inter_700Bold',    zIndex: 1 },
   headerSub:   { color: MUTED, fontSize: 12, fontFamily: 'Inter_400Regular', marginTop: 4, zIndex: 1 },
 
-  // ── tab bar
-  tabBar:   { flexDirection: 'row', gap: 8, paddingHorizontal: 16, paddingVertical: 10, backgroundColor: BG, borderBottomWidth: 1, borderBottomColor: GLASS_BD },
-  tabPill:  { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 9, borderRadius: 14, borderWidth: 1, borderColor: 'transparent' },
-  tabBadge: { position: 'absolute', top: -5, right: -8, width: 16, height: 16, borderRadius: 8, backgroundColor: '#EF4444', justifyContent: 'center', alignItems: 'center' },
+  // tab bar
+  tabBar:      { flexDirection: 'row', gap: 8, paddingHorizontal: 16, paddingVertical: 10, backgroundColor: BG, borderBottomWidth: 1, borderBottomColor: GLASS_BD },
+  tabPill:     { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 9, borderRadius: 14, borderWidth: 1, borderColor: 'transparent' },
+  tabBadge:    { position: 'absolute', top: -5, right: -8, width: 16, height: 16, borderRadius: 8, backgroundColor: '#EF4444', justifyContent: 'center', alignItems: 'center' },
   tabBadgeTxt: { color: '#fff', fontSize: 9, fontFamily: 'Inter_700Bold' },
-  tabLabel: { fontSize: 12 },
+  tabLabel:    { fontSize: 12 },
 
-  // ── gen key
-  gkCard:       { borderRadius: 22, borderWidth: 1, borderColor: 'rgba(124,58,237,0.30)', padding: 18, gap: 16, overflow: 'hidden' },
-  gkCardTop:    { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  gkCardIcon:   { width: 44, height: 44, borderRadius: 13, justifyContent: 'center', alignItems: 'center' },
-  gkCardTitle:  { color: TEXT, fontSize: 16, fontFamily: 'Inter_700Bold' },
-  gkCardSub:    { color: MUTED, fontSize: 11, fontFamily: 'Inter_400Regular', marginTop: 2 },
-  gkBtnRow:     { flexDirection: 'row', gap: 10 },
-  gkBtnWrap:    { flex: 1 },
-  gkBtn:        { borderRadius: 16, paddingVertical: 14, paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center', gap: 10 },
-  gkBtnIcon:    { width: 34, height: 34, borderRadius: 10, backgroundColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center' },
-  gkBtnLabel:   { color: '#fff', fontSize: 13, fontFamily: 'Inter_700Bold' },
-  gkBtnDesc:    { color: 'rgba(255,255,255,0.6)', fontSize: 9, fontFamily: 'Inter_400Regular', marginTop: 1 },
-  gkPlusCircle: { width: 24, height: 24, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center' },
-  gkLatest:     { gap: 8 },
-  gkLatestHdr:  { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  gkLatestLbl:  { color: MUTED, fontSize: 11, fontFamily: 'Inter_500Medium', flex: 1 },
-  gkRolePill:   { borderRadius: 99, paddingHorizontal: 8, paddingVertical: 3 },
-  gkRolePillTxt:{ fontSize: 10, fontFamily: 'Inter_700Bold' },
-  gkCodeBar:    { borderRadius: 14, flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 16, paddingVertical: 12 },
-  gkCodeTxt:    { flex: 1, color: '#fff', fontSize: 16, fontFamily: 'Inter_700Bold', letterSpacing: 2 },
-  gkCodeDate:   { color: MUTED, fontSize: 10, fontFamily: 'Inter_400Regular' },
+  // ── GEN KEY TAB ──────────────────────────────────────────────
+  // stats row
+  statsRow:  { flexDirection: 'row', gap: 8, paddingHorizontal: 16, paddingTop: 8 },
+  statCell:  { flex: 1, borderRadius: 16, borderWidth: 1, paddingVertical: 12, alignItems: 'center', gap: 3 },
+  statVal:   { fontSize: 18, fontFamily: 'Inter_700Bold' },
+  statLbl:   { color: MUTED, fontSize: 8, fontFamily: 'Inter_600SemiBold', textAlign: 'center', textTransform: 'uppercase', letterSpacing: 0.3 },
 
-  // ── glass card
-  glassCard: { backgroundColor: GLASS, borderRadius: 18, borderWidth: 1, borderColor: GLASS_BD, overflow: 'hidden' },
+  // section header
+  sectionHdr:     { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  sectionHdrIcon: { width: 26, height: 26, borderRadius: 8, justifyContent: 'center', alignItems: 'center' },
+  sectionHdrTxt:  { color: TEXT, fontSize: 15, fontFamily: 'Inter_700Bold', flex: 1 },
+  unusedCount:    { backgroundColor: 'rgba(52,211,153,0.18)', borderWidth: 1, borderColor: 'rgba(52,211,153,0.35)', borderRadius: 99, paddingHorizontal: 8, paddingVertical: 2 },
+  unusedCountTxt: { color: '#34D399', fontSize: 11, fontFamily: 'Inter_700Bold' },
+
+  // generate row (full width)
+  genRow:      { flexDirection: 'row', alignItems: 'center', gap: 14, borderRadius: 20, borderWidth: 1, padding: 16, overflow: 'hidden' },
+  genRowIcon:  { width: 48, height: 48, borderRadius: 15, justifyContent: 'center', alignItems: 'center' },
+  genRowLabel: { color: TEXT,  fontSize: 15, fontFamily: 'Inter_700Bold' },
+  genRowSub:   { color: MUTED, fontSize: 10, fontFamily: 'Inter_400Regular', marginTop: 2 },
+  unusedBadge: { borderRadius: 12, borderWidth: 1, paddingHorizontal: 8, paddingVertical: 5, alignItems: 'center', minWidth: 38 },
+  unusedBadgeTxt:   { fontSize: 16, fontFamily: 'Inter_700Bold' },
+  unusedBadgeLabel: { fontSize: 8,  fontFamily: 'Inter_600SemiBold', textTransform: 'uppercase', letterSpacing: 0.3 },
+  genPill:     { flexDirection: 'row', alignItems: 'center', gap: 5, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 9 },
+  genPillTxt:  { color: '#fff', fontSize: 12, fontFamily: 'Inter_700Bold' },
+
+  // key card (horizontal list item)
+  keyCard:      { width: 158, borderRadius: 18, borderWidth: 1, padding: 12, gap: 8, overflow: 'hidden' },
+  keyCardTop:   { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  keyRolePill:  { flexDirection: 'row', alignItems: 'center', gap: 4, borderRadius: 99, borderWidth: 1, paddingHorizontal: 6, paddingVertical: 3 },
+  keyRoleDot:   { width: 5, height: 5, borderRadius: 3 },
+  keyRoleTxt:   { fontSize: 9, fontFamily: 'Inter_700Bold' },
+  freePill:     { backgroundColor: 'rgba(52,211,153,0.15)', borderRadius: 99, paddingHorizontal: 6, paddingVertical: 2 },
+  freeTxt:      { color: '#34D399', fontSize: 9, fontFamily: 'Inter_700Bold' },
+  usedPill:     { backgroundColor: 'rgba(107,114,128,0.20)', borderRadius: 99, paddingHorizontal: 6, paddingVertical: 2 },
+  usedTxt:      { color: MUTED, fontSize: 9, fontFamily: 'Inter_600SemiBold' },
+  keyCodeBox:   { flexDirection: 'row', alignItems: 'center', gap: 5, borderRadius: 10, paddingHorizontal: 8, paddingVertical: 7 },
+  keyCodeTxt:   { flex: 1, color: '#fff', fontSize: 11, fontFamily: 'Inter_700Bold', letterSpacing: 1 },
+  keyCardBottom:{ flexDirection: 'row', alignItems: 'center', gap: 4 },
+  keyDate:      { color: MUTED, fontSize: 9, fontFamily: 'Inter_400Regular' },
+
+  // empty state
+  emptyCard:    { backgroundColor: GLASS, borderRadius: 20, borderWidth: 1, borderColor: GLASS_BD, padding: 32, alignItems: 'center', gap: 10 },
+  emptyIconBox: { width: 56, height: 56, borderRadius: 16, justifyContent: 'center', alignItems: 'center' },
+  emptyTitle:   { color: TEXT,  fontSize: 16, fontFamily: 'Inter_700Bold' },
+  emptyText:    { color: MUTED, fontSize: 13, fontFamily: 'Inter_400Regular' },
+
+  // glass card
+  glassCard:   { backgroundColor: GLASS, borderRadius: 18, borderWidth: 1, borderColor: GLASS_BD, overflow: 'hidden' },
   infoIconBox: { width: 34, height: 34, borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
-  infoText: { fontSize: 12, fontFamily: 'Inter_500Medium', lineHeight: 18, color: MUTED },
-  fieldLabel: { fontSize: 13, fontFamily: 'Inter_600SemiBold', marginBottom: 4 },
-  fieldSub:   { fontSize: 11, fontFamily: 'Inter_400Regular', marginTop: 2 },
+  infoText:    { fontSize: 12, fontFamily: 'Inter_500Medium', lineHeight: 18, color: MUTED },
 
-  // ── publish btn
-  publishBtn:          { borderRadius: 16, overflow: 'hidden' },
-  publishBtnContainer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, paddingVertical: 15, paddingHorizontal: 20 },
-  publishBtnIcon:      { width: 32, height: 32, borderRadius: 10, backgroundColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center' },
-  publishBtnText:      { color: '#fff', fontSize: 15, fontFamily: 'Inter_700Bold' },
+  // publish btn
+  publishBtn:     { borderRadius: 16, overflow: 'hidden' },
+  publishBtnInner:{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, paddingVertical: 15 },
+  publishBtnIcon: { width: 32, height: 32, borderRadius: 10, backgroundColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center' },
+  publishBtnText: { color: '#fff', fontSize: 15, fontFamily: 'Inter_700Bold' },
 
-  // ── notice card
+  // notice card
   noticeCard:     { borderRadius: 16, borderWidth: 1, flexDirection: 'row', overflow: 'hidden' },
   noticeSidebar:  { width: 4 },
   noticeBody:     { flex: 1, padding: 13, gap: 6 },
@@ -624,62 +790,39 @@ const s = StyleSheet.create({
   typeChip:       { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 99, backgroundColor: GLASS },
   typeChipTxt:    { fontSize: 9, fontFamily: 'Inter_500Medium', color: MUTED },
   deleteBtn:      { padding: 4 },
-  noticeTitle:    { color: TEXT, fontSize: 14, fontFamily: 'Inter_700Bold' },
+  noticeTitle:    { color: TEXT,  fontSize: 14, fontFamily: 'Inter_700Bold' },
   noticeContent:  { color: MUTED, fontSize: 12, fontFamily: 'Inter_400Regular', lineHeight: 17 },
   noticeFooter:   { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 },
   noticeDate:     { color: MUTED, fontSize: 10, fontFamily: 'Inter_400Regular' },
 
-  // ── pending header
+  // resets
   pendingHeader: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   pendingDot:    { width: 8, height: 8, borderRadius: 4, backgroundColor: '#FCD34D' },
   pendingLbl:    { color: '#FCD34D', fontSize: 13, fontFamily: 'Inter_700Bold' },
+  resetCard:         { borderRadius: 18, borderWidth: 1, overflow: 'hidden' },
+  resetUrgentBar:    { height: 3, backgroundColor: '#FCD34D' },
+  resetInner:        { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14 },
+  resetAvatar:       { width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center' },
+  resetAvatarLetter: { color: '#fff', fontSize: 18, fontFamily: 'Inter_700Bold' },
+  resetName:         { color: TEXT,  fontSize: 14, fontFamily: 'Inter_700Bold' },
+  resetEmail:        { color: MUTED, fontSize: 11, fontFamily: 'Inter_400Regular', marginTop: 1 },
+  resetDate:         { color: MUTED, fontSize: 10, fontFamily: 'Inter_400Regular' },
+  statusPill:        { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 99 },
+  statusDot:         { width: 6, height: 6, borderRadius: 3 },
+  statusTxt:         { fontSize: 11, fontFamily: 'Inter_700Bold' },
+  resetActions:      { flexDirection: 'row', gap: 10, padding: 12, borderTopWidth: 1 },
+  rejectBtn:         { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, borderRadius: 12, borderWidth: 1, borderColor: 'rgba(251,113,133,0.40)', backgroundColor: 'rgba(251,113,133,0.10)', paddingVertical: 10 },
+  rejectBtnTxt:      { color: '#FB7185', fontSize: 13, fontFamily: 'Inter_700Bold' },
+  approveBtn:        { flex: 2, borderRadius: 12, overflow: 'hidden' },
+  approveBtnGrad:    { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 10 },
+  approveBtnTxt:     { color: '#fff', fontSize: 13, fontFamily: 'Inter_700Bold' },
 
-  // ── reset card
-  resetCard:        { borderRadius: 18, borderWidth: 1, overflow: 'hidden' },
-  resetUrgentBar:   { height: 3, backgroundColor: '#FCD34D' },
-  resetInner:       { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14 },
-  resetAvatar:      { width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center' },
-  resetAvatarLetter:{ color: '#fff', fontSize: 18, fontFamily: 'Inter_700Bold' },
-  resetName:        { color: TEXT, fontSize: 14, fontFamily: 'Inter_700Bold' },
-  resetEmail:       { color: MUTED, fontSize: 11, fontFamily: 'Inter_400Regular', marginTop: 1 },
-  resetDate:        { color: MUTED, fontSize: 10, fontFamily: 'Inter_400Regular' },
-  statusPill:       { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 99 },
-  statusDot:        { width: 6, height: 6, borderRadius: 3 },
-  statusTxt:        { fontSize: 11, fontFamily: 'Inter_700Bold' },
-  resetActions:     { flexDirection: 'row', gap: 10, padding: 12, borderTopWidth: 1 },
-  rejectBtn:        { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, borderRadius: 12, borderWidth: 1, borderColor: 'rgba(251,113,133,0.40)', backgroundColor: 'rgba(251,113,133,0.10)', paddingVertical: 10 },
-  rejectBtnTxt:     { color: '#FB7185', fontSize: 13, fontFamily: 'Inter_700Bold' },
-  approveBtn:       { flex: 2, borderRadius: 12, overflow: 'hidden' },
-  approveBtnGrad:   { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 10 },
-  approveBtnTxt:    { color: '#fff', fontSize: 13, fontFamily: 'Inter_700Bold' },
-
-  // ── empty
-  emptyCard:  { backgroundColor: GLASS, borderRadius: 20, borderWidth: 1, borderColor: GLASS_BD, padding: 36, alignItems: 'center', gap: 12 },
-  emptyIcon:  { width: 60, height: 60, borderRadius: 18, justifyContent: 'center', alignItems: 'center' },
-  emptyTitle: { color: TEXT, fontSize: 17, fontFamily: 'Inter_700Bold' },
-  emptyText:  { color: MUTED, fontSize: 13, fontFamily: 'Inter_400Regular' },
-
-  // ── modal
-  modalHdr:     { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 18 },
-  modalHdrTitle:{ color: '#fff', fontSize: 20, fontFamily: 'Inter_700Bold' },
-  closeBtn:     { width: 34, height: 34, borderRadius: 17, backgroundColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center' },
-
-  fieldInput: { borderRadius: 14, borderWidth: 1, padding: 14, fontSize: 14, fontFamily: 'Inter_400Regular' },
-  textarea:   { borderRadius: 14, borderWidth: 1, padding: 13, fontSize: 14, fontFamily: 'Inter_400Regular', minHeight: 120 },
-  chipRow:    { flexDirection: 'row', gap: 8 },
-  chip:       { flex: 1, paddingVertical: 10, borderRadius: 12, borderWidth: 1, alignItems: 'center' },
-  chipTxt:    { fontSize: 12, fontFamily: 'Inter_600SemiBold' },
-  submitBtn:  { borderRadius: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 15 },
-  submitBtnTxt: { color: '#fff', fontSize: 15, fontFamily: 'Inter_700Bold' },
-  cancelBtn:  { borderRadius: 14, paddingVertical: 14, alignItems: 'center', borderWidth: 1, borderColor: GLASS_BD },
-  cancelBtnTxt: { color: MUTED, fontSize: 14, fontFamily: 'Inter_500Medium' },
-
-  // ── new key modal
-  overlay:      { flex: 1, backgroundColor: 'rgba(0,0,0,0.80)', justifyContent: 'flex-end' },
-  newKeySheet:  { borderTopLeftRadius: 30, borderTopRightRadius: 30, padding: 28, gap: 16, alignItems: 'center' },
+  // new key modal
+  overlay:      { flex: 1, backgroundColor: 'rgba(0,0,0,0.82)', justifyContent: 'flex-end' },
+  newKeySheet:  { borderTopLeftRadius: 32, borderTopRightRadius: 32, padding: 28, gap: 16, alignItems: 'center' },
   celebRing:    { width: 92, height: 92, borderRadius: 46, borderWidth: 1.5, borderColor: GLASS_BD, justifyContent: 'center', alignItems: 'center' },
   celebGrad:    { width: 76, height: 76, borderRadius: 38, justifyContent: 'center', alignItems: 'center' },
-  celebTitle:   { color: TEXT, fontSize: 26, fontFamily: 'Inter_700Bold' },
+  celebTitle:   { color: TEXT,  fontSize: 26, fontFamily: 'Inter_700Bold' },
   celebRole:    { color: MUTED, fontSize: 14, fontFamily: 'Inter_400Regular' },
   codeReveal:   { borderRadius: 18, flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 20, paddingVertical: 18, alignSelf: 'stretch', justifyContent: 'center' },
   codeRevealTxt:{ color: '#fff', fontSize: 22, fontFamily: 'Inter_700Bold', letterSpacing: 3, flex: 1, textAlign: 'center' },
@@ -687,4 +830,19 @@ const s = StyleSheet.create({
   celebNoteTxt: { color: MUTED, fontSize: 12, fontFamily: 'Inter_400Regular', flex: 1, lineHeight: 18 },
   celebDoneBtn: { borderRadius: 16, paddingVertical: 14, paddingHorizontal: 60 },
   celebDoneTxt: { color: '#fff', fontSize: 16, fontFamily: 'Inter_700Bold' },
+
+  // modals
+  modalHdr:      { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 18 },
+  modalHdrTitle: { color: '#fff', fontSize: 20, fontFamily: 'Inter_700Bold' },
+  closeBtn:      { width: 34, height: 34, borderRadius: 17, backgroundColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center' },
+  fieldLabel:    { fontSize: 13, fontFamily: 'Inter_600SemiBold', marginBottom: 4 },
+  fieldInput:    { borderRadius: 14, borderWidth: 1, padding: 14, fontSize: 14, fontFamily: 'Inter_400Regular' },
+  textarea:      { borderRadius: 14, borderWidth: 1, padding: 13, fontSize: 14, fontFamily: 'Inter_400Regular', minHeight: 120 },
+  chipRow:       { flexDirection: 'row', gap: 8 },
+  chip:          { flex: 1, paddingVertical: 10, borderRadius: 12, borderWidth: 1, alignItems: 'center' },
+  chipTxt:       { fontSize: 12, fontFamily: 'Inter_600SemiBold' },
+  submitBtn:     { borderRadius: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 15 },
+  submitBtnTxt:  { color: '#fff', fontSize: 15, fontFamily: 'Inter_700Bold' },
+  cancelBtn:     { borderRadius: 14, paddingVertical: 14, alignItems: 'center', borderWidth: 1, borderColor: GLASS_BD },
+  cancelBtnTxt:  { color: MUTED, fontSize: 14, fontFamily: 'Inter_500Medium' },
 });
