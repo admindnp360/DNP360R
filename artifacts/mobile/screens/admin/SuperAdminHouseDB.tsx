@@ -1657,7 +1657,7 @@ const s = StyleSheet.create({
   waSearchIn:      { flex: 1, fontSize: 13, fontFamily: 'Inter_400Regular', padding: 0 },
   waSecHdr:        { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 7 },
   waSecTxt:        { fontSize: 10, fontFamily: 'Inter_700Bold', color: '#818CF8', letterSpacing: 0.8, textTransform: 'uppercase' },
-  waCommRow:       { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 8, paddingVertical: 5 },
+  waCommRow:       { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 8, paddingVertical: 3 },
   waCommAvatar:    { width: 22, height: 22, borderRadius: 11, justifyContent: 'center', alignItems: 'center' },
   waCommAvatarTxt: { color: '#fff', fontSize: 7, fontFamily: 'Inter_700Bold' },
   waListRow:       { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 16, paddingVertical: 7 },
