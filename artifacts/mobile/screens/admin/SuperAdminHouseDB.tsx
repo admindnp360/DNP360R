@@ -13,6 +13,7 @@ import { useAppData } from '@/contexts/AppContext';
 import { useAuth } from '@/contexts/AuthContext';
 import type { Group, House, Ward } from '@/types';
 import { PROPERTY_TYPES } from '@/types';
+import SuperAdminImport from './SuperAdminImport';
 
 // ─── Glass Design Tokens ──────────────────────────────────────────────
 const BG        = '#060B18';
@@ -24,7 +25,6 @@ const MUTED     = 'rgba(255,255,255,0.45)';
 const MUTED2    = 'rgba(255,255,255,0.25)';
 
 type View_ = 'wards' | 'groups' | 'houses';
-type InnerSegment = 'db' | 'groups';
 
 const WARD_GRADS: readonly [string, string][] = [
   ['#4F46E5', '#7C3AED'],
@@ -51,22 +51,11 @@ export default function SuperAdminHouseDB() {
 
   // ── Navigation state ──────────────────────────────────────────────
   const [view, setView]                   = useState<View_>('wards');
-  const [segment, setSegment]             = useState<InnerSegment>('db');
   const [selectedWard, setSelectedWard]   = useState<Ward | null>(null);
   const [selectedGroup, setSelectedGroup] = useState<Group | null>(null);
   const [expandedHouseId, setExpandedHouseId] = useState<string | null>(null);
   const [search, setSearch]               = useState('');
   const [globalSearch, setGlobalSearch]   = useState('');
-
-  // ── Groups segment state ───────────────────────────────────────────
-  const [grpWard, setGrpWard]             = useState<Ward | null>(null);
-  const [grpGroupFilter, setGrpGroupFilter] = useState<Group | null>(null);
-  const [grpShowUngrouped, setGrpShowUngrouped] = useState(false);
-  const [grpViewMode, setGrpViewMode]     = useState<'cards' | 'houses'>('cards');
-  const [grpSearch, setGrpSearch]         = useState('');
-  const [grpSelectedIds, setGrpSelectedIds] = useState<Set<string>>(new Set());
-  const [showGrpAssignModal, setShowGrpAssignModal] = useState(false);
-  const [assigning, setAssigning]         = useState(false);
 
   // ── Modal state ────────────────────────────────────────────────────
   const [showAddHouseModal, setShowAddHouseModal]   = useState(false);
@@ -78,6 +67,7 @@ export default function SuperAdminHouseDB() {
   const [showEditGroupModal, setShowEditGroupModal] = useState(false);
   const [showMoveModal, setShowMoveModal]           = useState(false);
   const [showExportModal, setShowExportModal]       = useState(false);
+  const [showImportModal, setShowImportModal]       = useState(false);
 
   // ── Form state ─────────────────────────────────────────────────────
   const [editingHouse, setEditingHouse]   = useState<House | null>(null);
@@ -150,73 +140,6 @@ export default function SuperAdminHouseDB() {
     setMoveWardId(selectedWard?.id ?? wards[0]?.id ?? '');
     setMoveGroupId(null);
     setShowMoveModal(true);
-  }
-
-  // ── Groups Segment helpers ─────────────────────────────────────────
-  function grpSelectWard(ward: Ward) {
-    setGrpWard(ward); setGrpViewMode('cards'); setGrpGroupFilter(null);
-    setGrpShowUngrouped(false); setGrpSelectedIds(new Set()); setGrpSearch('');
-  }
-  function grpOpenGroup(g: Group) {
-    setGrpGroupFilter(g); setGrpShowUngrouped(false); setGrpViewMode('houses');
-    setGrpSelectedIds(new Set()); setGrpSearch('');
-  }
-  function grpOpenUngrouped() {
-    setGrpGroupFilter(null); setGrpShowUngrouped(true); setGrpViewMode('houses');
-    setGrpSelectedIds(new Set()); setGrpSearch('');
-  }
-  function grpGoBack() {
-    setGrpViewMode('cards'); setGrpGroupFilter(null);
-    setGrpShowUngrouped(false); setGrpSelectedIds(new Set()); setGrpSearch('');
-  }
-  function grpToggle(id: string) {
-    setGrpSelectedIds(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
-  }
-  function grpSelectAll(list: House[]) {
-    setGrpSelectedIds(prev => prev.size === list.length ? new Set() : new Set(list.map(h => h.id)));
-  }
-
-  const grpHouseList = useMemo(() => {
-    if (!grpWard) return [];
-    let list = grpGroupFilter
-      ? houses.filter(h => h.groupId === grpGroupFilter.id)
-      : grpShowUngrouped
-        ? houses.filter(h => h.wardId === grpWard.id && !h.groupId)
-        : [];
-    if (grpSearch.trim()) {
-      const q = grpSearch.toLowerCase();
-      list = list.filter(h =>
-        h.registrationNumber.toLowerCase().includes(q) ||
-        h.ownerName.toLowerCase().includes(q) ||
-        h.address.toLowerCase().includes(q)
-      );
-    }
-    return list;
-  }, [houses, grpWard, grpGroupFilter, grpShowUngrouped, grpSearch]);
-
-  const grpUngroupedCount = useMemo(() => grpWard ? houses.filter(h => h.wardId === grpWard.id && !h.groupId).length : 0, [houses, grpWard]);
-  const grpAssignable = useMemo(() => grpGroupFilter ? groups.filter(g => g.id !== grpGroupFilter.id) : groups, [groups, grpGroupFilter]);
-
-  async function grpHandleAssign(g: Group) {
-    if (grpSelectedIds.size === 0) return;
-    setAssigning(true);
-    try {
-      await assignGroupToHouses([...grpSelectedIds], g.id, g.name);
-      showAlert('Assigned', `${grpSelectedIds.size} house(s) assigned to "${g.name}"`, undefined, 'success');
-      setGrpSelectedIds(new Set()); setShowGrpAssignModal(false);
-    } finally { setAssigning(false); }
-  }
-  async function grpHandleRemove() {
-    if (grpSelectedIds.size === 0) return;
-    showAlert('Remove Group?', `Remove group from ${grpSelectedIds.size} house(s)?`, [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Remove', style: 'destructive', onPress: async () => {
-          await removeGroupFromHouses([...grpSelectedIds]);
-          showAlert('Done', 'Group removed.', undefined, 'success');
-          setGrpSelectedIds(new Set());
-        },
-      },
-    ], 'warning');
   }
 
   // ── House detail modal ────────────────────────────────────────────
@@ -464,35 +387,7 @@ export default function SuperAdminHouseDB() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: BG }} edges={['top']}>
 
-      {/* ── SEGMENT BAR: DB / Groups ─────────────────────────────────── */}
-      <View style={s.segBar}>
-        {([
-          { key: 'db',     label: 'Database',   icon: 'database', color: '#6366F1' },
-          { key: 'groups', label: 'Groups',      icon: 'layers',   color: '#10B981' },
-        ] as const).map(seg => {
-          const active = segment === seg.key;
-          return (
-            <TouchableOpacity
-              key={seg.key}
-              style={[s.segBtn, active && { backgroundColor: seg.color + '20', borderColor: seg.color + '50' }]}
-              onPress={() => setSegment(seg.key)}
-              activeOpacity={0.7}
-            >
-              <Feather name={seg.icon as any} size={14} color={active ? seg.color : MUTED} />
-              <Text style={[s.segLabel, { color: active ? seg.color : MUTED, fontFamily: active ? 'Inter_700Bold' : 'Inter_500Medium' }]}>
-                {seg.label}
-              </Text>
-              {active && <View style={[s.segUnderline, { backgroundColor: seg.color }]} />}
-            </TouchableOpacity>
-          );
-        })}
-      </View>
-
-      {/* ═══════════════════════════════════════════════════════════════
-           DATABASE SEGMENT
-         ═══════════════════════════════════════════════════════════════ */}
-      {segment === 'db' && (
-        <>
+      
           {/* ── Permanent Info Bar ─────────────────────────────────── */}
           <View style={s.infoBar}>
             <View style={s.infoBarStat}>
@@ -640,10 +535,16 @@ export default function SuperAdminHouseDB() {
                   {/* Action chips row */}
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                     <Text style={s.sectionLabel}>All Wards · {wards.length}</Text>
-                    <TouchableOpacity style={[s.actionChip, { borderColor: '#10B98145', backgroundColor: '#10B98112' }]} onPress={() => setShowAddGroupModal(true)} activeOpacity={0.8}>
-                      <Feather name="layers" size={12} color="#10B981" />
-                      <Text style={[s.actionChipText, { color: '#10B981' }]}>Add Group</Text>
-                    </TouchableOpacity>
+                    <View style={{ flexDirection: 'row', gap: 8 }}>
+                      <TouchableOpacity style={[s.actionChip, { borderColor: '#F9731645', backgroundColor: '#F9731612' }]} onPress={() => setShowImportModal(true)} activeOpacity={0.8}>
+                        <Feather name="upload" size={12} color="#F97316" />
+                        <Text style={[s.actionChipText, { color: '#F97316' }]}>Import CSV</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity style={[s.actionChip, { borderColor: '#10B98145', backgroundColor: '#10B98112' }]} onPress={() => setShowAddGroupModal(true)} activeOpacity={0.8}>
+                        <Feather name="layers" size={12} color="#10B981" />
+                        <Text style={[s.actionChipText, { color: '#10B981' }]}>Add Group</Text>
+                      </TouchableOpacity>
+                    </View>
                   </View>
 
                   {/* Ward cards */}
@@ -911,258 +812,21 @@ export default function SuperAdminHouseDB() {
               </TouchableOpacity>
             </View>
           )}
-        </>
-      )}
-
-      {/* ═══════════════════════════════════════════════════════════════
-           GROUPS SEGMENT
-         ═══════════════════════════════════════════════════════════════ */}
-      {segment === 'groups' && (
-        <View style={{ flex: 1 }}>
-          {/* Ward pill bar */}
-          <View style={s.wardPillBar}>
-            <Text style={[s.wardPillLabel, { color: MUTED }]}>Ward</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingRight: 8 }}>
-              {wards.map((ward, idx) => {
-                const active = grpWard?.id === ward.id;
-                const grad = WARD_GRADS[idx % WARD_GRADS.length];
-                return (
-                  <TouchableOpacity key={ward.id} onPress={() => grpSelectWard(ward)} activeOpacity={0.8}>
-                    {active
-                      ? <LinearGradient colors={grad} style={s.wardPillActive}><Text style={s.wardPillActiveText}>W{ward.wardNumber}</Text></LinearGradient>
-                      : <View style={s.wardPill}><Text style={[s.wardPillText, { color: MUTED }]}>W{ward.wardNumber}</Text></View>
-                    }
-                  </TouchableOpacity>
-                );
-              })}
-            </ScrollView>
-          </View>
-
-          {!grpWard ? (
-            <View style={s.emptyCenter}>
-              <LinearGradient colors={['#10B98130','#05966920']} style={s.emptyIcon}>
-                <Feather name="layers" size={30} color="#10B981" />
-              </LinearGradient>
-              <Text style={[s.emptyTitle, { color: TEXT }]}>Select a Ward</Text>
-              <Text style={[s.emptySub, { color: MUTED }]}>Choose a ward above to view and manage groups</Text>
-            </View>
-
-          ) : grpViewMode === 'cards' ? (
-            <ScrollView contentContainerStyle={{ padding: 14, gap: 10, paddingBottom: 180 }}>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-                <Text style={s.sectionLabel}>All Groups · {groups.length}</Text>
-                <View style={s.crossBadge}>
-                  <Feather name="shuffle" size={9} color="#F97316" />
-                  <Text style={s.crossBadgeText}>Cross-ward</Text>
-                </View>
-              </View>
-
-              {groups.length === 0 ? (
-                <View style={s.emptyCard}>
-                  <LinearGradient colors={['#10B98120','#05966912']} style={s.emptyIcon}>
-                    <Feather name="layers" size={26} color="#10B981" />
-                  </LinearGradient>
-                  <Text style={[s.emptyTitle, { color: TEXT }]}>No Groups Yet</Text>
-                  <Text style={[s.emptySub, { color: MUTED }]}>Create groups in the Database tab</Text>
-                </View>
-              ) : (
-                groups.map((g, idx) => {
-                  const color = g.color || GROUP_COLORS[idx % GROUP_COLORS.length];
-                  const count = houses.filter(h => h.groupId === g.id).length;
-                  return (
-                    <TouchableOpacity key={g.id} style={[s.grpGroupCard, { borderColor: color + '35' }]} onPress={() => grpOpenGroup(g)} activeOpacity={0.85}>
-                      <LinearGradient colors={[color + '18', color + '08']} style={StyleSheet.absoluteFill} />
-                      <View style={[s.grpColorBar, { backgroundColor: color }]} />
-                      <View style={[s.groupIconBox, { backgroundColor: color + '20' }]}>
-                        <Feather name="layers" size={18} color={color} />
-                      </View>
-                      <View style={{ flex: 1, gap: 2 }}>
-                        <Text style={[s.groupName, { color: TEXT }]}>{g.name}</Text>
-                        {g.description ? <Text style={[s.groupDesc, { color: MUTED }]}>{g.description}</Text> : null}
-                      </View>
-                      <View style={[s.countBadge, { backgroundColor: color + '22', borderColor: color + '35' }]}>
-                        <Feather name="home" size={9} color={color} />
-                        <Text style={[s.countBadgeText, { color }]}>{count}</Text>
-                      </View>
-                      <Feather name="chevron-right" size={16} color={MUTED} />
-                    </TouchableOpacity>
-                  );
-                })
-              )}
-
-              {grpUngroupedCount > 0 && (
-                <TouchableOpacity style={[s.grpGroupCard, { borderColor: '#F9731635' }]} onPress={grpOpenUngrouped} activeOpacity={0.85}>
-                  <LinearGradient colors={['#F9731618','#F9731608']} style={StyleSheet.absoluteFill} />
-                  <View style={[s.grpColorBar, { backgroundColor: '#F97316' }]} />
-                  <View style={[s.groupIconBox, { backgroundColor: '#F9731620' }]}>
-                    <Feather name="alert-circle" size={18} color="#F97316" />
-                  </View>
-                  <View style={{ flex: 1, gap: 2 }}>
-                    <Text style={[s.groupName, { color: TEXT }]}>Ungrouped Houses</Text>
-                    <Text style={[s.groupDesc, { color: MUTED }]}>Not assigned to any group</Text>
-                  </View>
-                  <View style={[s.countBadge, { backgroundColor: '#F9731622', borderColor: '#F9731635' }]}>
-                    <Feather name="home" size={9} color="#F97316" />
-                    <Text style={[s.countBadgeText, { color: '#F97316' }]}>{grpUngroupedCount}</Text>
-                  </View>
-                  <Feather name="chevron-right" size={16} color={MUTED} />
-                </TouchableOpacity>
-              )}
-            </ScrollView>
-
-          ) : (
-            /* Houses inside group */
-            <View style={{ flex: 1 }}>
-              <View style={s.grpHousesHeader}>
-                <TouchableOpacity style={s.grpBackBtn} onPress={grpGoBack}>
-                  <Feather name="arrow-left" size={17} color="#6366F1" />
-                </TouchableOpacity>
-                {grpGroupFilter ? (
-                  <View style={[s.groupChip, { backgroundColor: (grpGroupFilter.color || '#6366F1') + '20' }]}>
-                    <View style={[s.groupChipDot, { backgroundColor: grpGroupFilter.color || '#6366F1' }]} />
-                    <Text style={[s.groupChipText, { color: grpGroupFilter.color || '#6366F1' }]}>{grpGroupFilter.name}</Text>
-                  </View>
-                ) : (
-                  <View style={[s.groupChip, { backgroundColor: '#F9731620' }]}>
-                    <View style={[s.groupChipDot, { backgroundColor: '#F97316' }]} />
-                    <Text style={[s.groupChipText, { color: '#F97316' }]}>Ungrouped</Text>
-                  </View>
-                )}
-                <Text style={[s.grpHouseCount, { color: MUTED }]}>{grpHouseList.length} houses</Text>
-              </View>
-
-              {/* Search */}
-              <View style={{ paddingHorizontal: 14, paddingTop: 10 }}>
-                <View style={s.searchBox}>
-                  <Feather name="search" size={14} color={MUTED} />
-                  <TextInput
-                    style={[s.searchInput, { color: TEXT }]}
-                    placeholder="Search houses…"
-                    placeholderTextColor={MUTED}
-                    value={grpSearch}
-                    onChangeText={setGrpSearch}
-                  />
-                </View>
-              </View>
-
-              {/* Selection bar */}
-              {grpHouseList.length > 0 && (
-                <View style={[s.grpSelBar]}>
-                  <TouchableOpacity style={s.grpSelectAll} onPress={() => grpSelectAll(grpHouseList)}>
-                    <View style={[s.checkbox, { borderColor: '#4F46E5', backgroundColor: grpSelectedIds.size === grpHouseList.length ? '#4F46E5' : 'transparent' }]}>
-                      {grpSelectedIds.size === grpHouseList.length && <Feather name="check" size={9} color="#fff" />}
-                    </View>
-                    <Text style={[s.grpSelectAllText]}>
-                      {grpSelectedIds.size === grpHouseList.length ? 'Deselect All' : 'Select All'}
-                    </Text>
-                  </TouchableOpacity>
-                  {grpSelectedIds.size > 0 && (
-                    <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
-                      <Text style={[s.grpSelCount]}>{grpSelectedIds.size} selected</Text>
-                      {!grpShowUngrouped && (
-                        <TouchableOpacity style={[s.selAction, { backgroundColor: '#EF444415', borderColor: '#EF444430' }]} onPress={grpHandleRemove}>
-                          <Feather name="x-circle" size={12} color="#EF4444" />
-                          <Text style={[s.selActionText, { color: '#EF4444' }]}>Remove</Text>
-                        </TouchableOpacity>
-                      )}
-                      <TouchableOpacity style={[s.selAction, { backgroundColor: '#4F46E5', borderColor: '#4F46E5' }]} onPress={() => setShowGrpAssignModal(true)}>
-                        <Feather name="arrow-right-circle" size={12} color="#fff" />
-                        <Text style={[s.selActionText, { color: '#fff' }]}>Move</Text>
-                      </TouchableOpacity>
-                    </View>
-                  )}
-                </View>
-              )}
-
-              <ScrollView contentContainerStyle={{ paddingHorizontal: 14, paddingBottom: 160, gap: 8, paddingTop: 10 }}>
-                {grpHouseList.map(h => {
-                  const isSelected = grpSelectedIds.has(h.id);
-                  const grpColor = groups.find(g => g.id === h.groupId)?.color || '#6B7280';
-                  return (
-                    <TouchableOpacity
-                      key={h.id}
-                      style={[s.grpHouseCard, { borderColor: isSelected ? '#4F46E550' : GLASS_BD }]}
-                      onPress={() => grpToggle(h.id)}
-                      activeOpacity={0.85}
-                    >
-                      {isSelected && <LinearGradient colors={['#4F46E512','#7C3AED08']} style={StyleSheet.absoluteFill} />}
-                      <View style={[s.checkbox, { borderColor: isSelected ? '#4F46E5' : GLASS_BD, backgroundColor: isSelected ? '#4F46E5' : 'transparent' }]}>
-                        {isSelected && <Feather name="check" size={9} color="#fff" />}
-                      </View>
-                      <View style={{ flex: 1, gap: 3 }}>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                          <Text style={[s.regText, { color: '#818CF8' }]}>{h.registrationNumber}</Text>
-                          {h.groupId
-                            ? <View style={[s.groupSmallChip, { backgroundColor: grpColor + '20', borderColor: grpColor + '40' }]}>
-                                <View style={[s.groupChipDot, { backgroundColor: grpColor, width: 6, height: 6 }]} />
-                                <Text style={[s.grpSmallChipText, { color: grpColor }]}>{h.groupName}</Text>
-                              </View>
-                            : <View style={[s.groupSmallChip, { backgroundColor: '#F9731618', borderColor: '#F9731635' }]}>
-                                <Text style={[s.grpSmallChipText, { color: '#F97316' }]}>Ungrouped</Text>
-                              </View>
-                          }
-                        </View>
-                        <Text style={[s.ownerText, { color: TEXT, fontSize: 13 }]}>{h.ownerName}</Text>
-                        <Text style={[s.detailLabel, { color: MUTED }]} numberOfLines={1}>{h.address}</Text>
-                      </View>
-                    </TouchableOpacity>
-                  );
-                })}
-                {grpHouseList.length === 0 && (
-                  <View style={s.emptyCard}>
-                    <Feather name="home" size={28} color={MUTED2} />
-                    <Text style={[s.emptyTitle, { color: TEXT }]}>No houses found</Text>
-                  </View>
-                )}
-              </ScrollView>
-            </View>
-          )}
-        </View>
-      )}
 
       {/* ═══════════════════════════════════════════════════════════════
            MODALS
          ═══════════════════════════════════════════════════════════════ */}
 
-      {/* Groups segment – assign to group modal */}
-      <Modal visible={showGrpAssignModal} animationType="slide" presentationStyle="pageSheet">
+      {/* CSV Import Modal */}
+      <Modal visible={showImportModal} animationType="slide" presentationStyle="fullScreen">
         <View style={{ flex: 1, backgroundColor: BG }}>
-          <LinearGradient colors={['#4F46E5','#7C3AED']} style={s.modalHdr}>
-            <View style={{ flex: 1 }}>
-              <Text style={s.modalTitle}>{grpShowUngrouped ? 'Assign to Group' : 'Move to Group'}</Text>
-              <Text style={s.modalSub}>{grpSelectedIds.size} house(s) selected</Text>
-            </View>
-            <Pressable onPress={() => setShowGrpAssignModal(false)} style={s.closeBtn}>
-              <Feather name="x" size={19} color="#fff" />
-            </Pressable>
-          </LinearGradient>
-          <ScrollView contentContainerStyle={{ padding: 16, gap: 12 }}>
-            {grpAssignable.map((g, idx) => {
-              const color = g.color || GROUP_COLORS[idx % GROUP_COLORS.length];
-              const count = houses.filter(h => h.groupId === g.id).length;
-              return (
-                <TouchableOpacity key={g.id} style={[s.grpSelectCard, { borderColor: color + '35' }]} onPress={() => grpHandleAssign(g)} disabled={assigning} activeOpacity={0.85}>
-                  <LinearGradient colors={[color + '18', color + '08']} style={StyleSheet.absoluteFill} />
-                  <View style={[s.grpColorDot, { backgroundColor: color }]} />
-                  <View style={{ flex: 1 }}>
-                    <Text style={[s.groupName, { color: TEXT }]}>{g.name}</Text>
-                    {g.description ? <Text style={[s.groupDesc, { color: MUTED }]}>{g.description}</Text> : null}
-                  </View>
-                  <View style={[s.countBadge, { backgroundColor: color + '22', borderColor: color + '35' }]}>
-                    <Feather name="home" size={9} color={color} />
-                    <Text style={[s.countBadgeText, { color }]}>{count}</Text>
-                  </View>
-                  <Feather name="chevron-right" size={14} color={MUTED} />
-                </TouchableOpacity>
-              );
-            })}
-            {grpAssignable.length === 0 && (
-              <View style={s.emptyCard}>
-                <Feather name="layers" size={28} color={MUTED2} />
-                <Text style={[s.emptyTitle, { color: TEXT }]}>No other groups available</Text>
-              </View>
-            )}
-          </ScrollView>
+          <SuperAdminImport embedded />
+          <Pressable
+            style={{ position: 'absolute', top: 52, right: 16, zIndex: 100, backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 20, width: 36, height: 36, justifyContent: 'center', alignItems: 'center' }}
+            onPress={() => setShowImportModal(false)}
+          >
+            <Feather name="x" size={18} color="#fff" />
+          </Pressable>
         </View>
       </Modal>
 
@@ -1667,19 +1331,19 @@ const s = StyleSheet.create({
   searchResultLeft: { flex: 1, gap: 2 },
 
   // Ward cards
-  wardCard: { borderRadius: 18, borderWidth: 1, borderColor: 'rgba(255,255,255,0.10)', overflow: 'hidden', flexDirection: 'row', alignItems: 'center' },
+  wardCard: { borderRadius: 13, borderWidth: 1, borderColor: 'rgba(255,255,255,0.10)', overflow: 'hidden', flexDirection: 'row', alignItems: 'center' },
   wardAccentBar: { width: 4, alignSelf: 'stretch' },
-  wardRow: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12, paddingLeft: 14, paddingVertical: 16, paddingRight: 6 },
-  wardBadge: { width: 46, height: 46, borderRadius: 14, justifyContent: 'center', alignItems: 'center' },
-  wardBadgeText: { color: '#fff', fontSize: 13, fontFamily: 'Inter_700Bold' },
-  wardName: { fontSize: 15, fontFamily: 'Inter_700Bold' },
-  wardArea: { fontSize: 11, fontFamily: 'Inter_400Regular' },
+  wardRow: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8, paddingLeft: 10, paddingVertical: 11, paddingRight: 4 },
+  wardBadge: { width: 32, height: 32, borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
+  wardBadgeText: { color: '#fff', fontSize: 9, fontFamily: 'Inter_700Bold' },
+  wardName: { fontSize: 11, fontFamily: 'Inter_700Bold' },
+  wardArea: { fontSize: 8, fontFamily: 'Inter_400Regular' },
   wardMetaRow: { flexDirection: 'row', gap: 6 },
   wardActions: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingLeft: 6 },
-  wardActionsCol: { flexDirection: 'column', alignItems: 'center', gap: 5, paddingRight: 10, paddingVertical: 10 },
-  metaPill: { flexDirection: 'row', alignItems: 'center', gap: 4, borderRadius: 8, paddingHorizontal: 7, paddingVertical: 3, backgroundColor: 'rgba(255,255,255,0.06)' },
-  metaText: { fontSize: 10, fontFamily: 'Inter_600SemiBold' },
-  iconBtn: { width: 28, height: 28, borderRadius: 8, justifyContent: 'center', alignItems: 'center', borderWidth: 1 },
+  wardActionsCol: { flexDirection: 'column', alignItems: 'center', gap: 3, paddingRight: 7, paddingVertical: 7 },
+  metaPill: { flexDirection: 'row', alignItems: 'center', gap: 3, borderRadius: 6, paddingHorizontal: 5, paddingVertical: 2, backgroundColor: 'rgba(255,255,255,0.06)' },
+  metaText: { fontSize: 7, fontFamily: 'Inter_600SemiBold' },
+  iconBtn: { width: 20, height: 20, borderRadius: 6, justifyContent: 'center', alignItems: 'center', borderWidth: 1 },
 
   // Group views
   allHousesCard: { borderRadius: 16, borderWidth: 1, borderColor: '#6366F135', overflow: 'hidden', flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 14, paddingVertical: 14 },

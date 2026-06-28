@@ -416,6 +416,29 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const snap2arr = <T,>(snap: any) =>
         snap.docs.map((d: any) => ({ id: d.id, ...d.data() }) as T);
 
+      // Load offline cache before Firestore responds
+      const cacheKey = (col: string) => `dnp360_cache_${col}_v${STORAGE_VERSION}`;
+      async function loadCache<T>(colName: string, setter: React.Dispatch<React.SetStateAction<T[]>>) {
+        try {
+          const raw = await AsyncStorage.getItem(cacheKey(colName));
+          if (raw) {
+            const cached = JSON.parse(raw) as T[];
+            if (cached.length > 0) setter(cached);
+          }
+        } catch { /* ignore */ }
+      }
+      async function saveCache<T>(colName: string, data: T[]) {
+        try { await AsyncStorage.setItem(cacheKey(colName), JSON.stringify(data)); } catch { /* ignore */ }
+      }
+
+      // Pre-load critical collections from cache so app works instantly offline
+      await Promise.all([
+        loadCache<House>('houses', setHouses),
+        loadCache<Ward>('wards', setWards),
+        loadCache<Group>('groups', setGroups),
+        loadCache<User>('users', setUsers),
+      ]);
+
       function listen<T extends { id: string }>(
         colName: string,
         setter: React.Dispatch<React.SetStateAction<T[]>>,
@@ -431,6 +454,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
               const localOnly = prev.filter(d => !freshIds.has(d.id));
               return localOnly.length > 0 ? [...fresh, ...localOnly] : fresh;
             });
+            // Save to offline cache
+            saveCache(colName, fresh).catch(() => {});
             // Clear read-error flag when a snapshot succeeds
             _hadFsError.current = false;
             if (_pendingWrites.current === 0) setSyncStatus('synced');
