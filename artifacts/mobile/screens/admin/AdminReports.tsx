@@ -759,6 +759,8 @@ const s = StyleSheet.create({
   tableHdrRow: { flexDirection: 'row', backgroundColor: 'rgba(99,102,241,0.12)', paddingVertical: 8, paddingHorizontal: 6 },
   thCell: { fontSize: 10, fontFamily: 'Inter_700Bold', color: '#818CF8', textTransform: 'uppercase', letterSpacing: 0.3, paddingHorizontal: 3, textAlign: 'center' },
   dayCell: { width: 22, paddingHorizontal: 1 },
+  weekCell: { width: 38, paddingHorizontal: 2 },
+  monthCell: { width: 34, paddingHorizontal: 2 },
   tableRow: { flexDirection: 'row', paddingVertical: 7, paddingHorizontal: 6, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.05)' },
   tableRowEven: { backgroundColor: 'transparent' },
   tableRowOdd: { backgroundColor: 'rgba(255,255,255,0.025)' },
