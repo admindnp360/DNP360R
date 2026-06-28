@@ -400,58 +400,89 @@ export default function AdminManagement() {
            NOTICES TAB
          ══════════════════════════════════════════════════════════════ */}
       {tab === 'notices' && (
-        <ScrollView contentContainerStyle={{ padding: 16, gap: 12, paddingBottom: 110 }}>
-          <TouchableOpacity onPress={() => setShowNoticeModal(true)} activeOpacity={0.85}>
-            <LinearGradient colors={['#0EA5E9', '#0284C7']} style={s.publishBtn}>
-              <View style={s.publishBtnInner}>
-                <View style={s.publishBtnIcon}>
-                  <Feather name="plus" size={16} color="rgba(255,255,255,0.9)" />
-                </View>
-                <Text style={s.publishBtnText}>Publish New Notice</Text>
-              </View>
-            </LinearGradient>
-          </TouchableOpacity>
+        <ScrollView contentContainerStyle={{ paddingBottom: 110 }} showsVerticalScrollIndicator={false}>
 
-          {notices.map(n => {
-            const pc = PRIORITY[n.priority];
-            return (
-              <View key={n.id} style={[s.noticeCard, { backgroundColor: pc.bg, borderColor: pc.border }]}>
-                <View style={[s.noticeSidebar, { backgroundColor: pc.color }]} />
-                <View style={s.noticeBody}>
-                  <View style={s.noticeTopRow}>
-                    <View style={[s.priorityChip, { backgroundColor: pc.color + '22' }]}>
-                      <Feather name={n.priority === 'high' ? 'alert-triangle' : n.priority === 'medium' ? 'alert-circle' : 'info'} size={10} color={pc.color} />
-                      <Text style={[s.priorityChipTxt, { color: pc.color }]}>{n.priority.toUpperCase()}</Text>
-                    </View>
-                    <View style={s.typeChip}><Text style={s.typeChipTxt}>{n.type}</Text></View>
-                    <View style={{ flex: 1 }} />
-                    <TouchableOpacity
-                      onPress={() => showAlert('Delete?', n.title, [{ text: 'Cancel', style: 'cancel' }, { text: 'Delete', style: 'destructive', onPress: () => deleteNotice(n.id) }], 'error')}
-                      style={s.deleteBtn}
-                    >
-                      <Feather name="trash-2" size={14} color="#FB7185" />
-                    </TouchableOpacity>
-                  </View>
-                  <Text style={s.noticeTitle}>{n.title}</Text>
-                  <Text style={s.noticeContent} numberOfLines={2}>{n.content}</Text>
-                  <View style={s.noticeFooter}>
-                    <Feather name="calendar" size={10} color={MUTED} />
-                    <Text style={s.noticeDate}>{n.createdAt}</Text>
-                  </View>
-                </View>
+          {/* ── Hero banner ── */}
+          <LinearGradient colors={['#0A1A3A','#0E1F4A', '#060B18']} style={s.noticeHero}>
+            <View style={[s.noticeHeroOrb, { left: -30, top: -20 }]} />
+            <View style={[s.noticeHeroOrb, { right: -20, bottom: -30, backgroundColor: 'rgba(14,165,233,0.10)' }]} />
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+              <LinearGradient colors={['#0EA5E9','#0284C7']} style={s.noticeHeroIcon}>
+                <Feather name="volume-2" size={22} color="#fff" />
+              </LinearGradient>
+              <View style={{ flex: 1 }}>
+                <Text style={s.noticeHeroTitle}>Notices</Text>
+                <Text style={s.noticeHeroSub}>{notices.filter(n => n.isActive).length} active · {notices.length} total</Text>
               </View>
-            );
-          })}
-
-          {notices.length === 0 && (
-            <View style={s.emptyCard}>
-              <View style={[s.emptyIconBox, { backgroundColor: 'rgba(34,211,238,0.12)' }]}>
-                <Feather name="volume-x" size={24} color="#22D3EE" />
+              <View style={s.noticeHeroBadge}>
+                <Text style={s.noticeHeroBadgeTxt}>{notices.length}</Text>
               </View>
-              <Text style={s.emptyTitle}>No Notices Yet</Text>
-              <Text style={s.emptyText}>Publish your first notice above</Text>
             </View>
-          )}
+            <TouchableOpacity onPress={() => setShowNoticeModal(true)} activeOpacity={0.88} style={{ marginTop: 18 }}>
+              <LinearGradient colors={['#0EA5E9','#0284C7']} style={s.publishBtn}>
+                <Feather name="plus-circle" size={18} color="#fff" />
+                <Text style={s.publishBtnText}>Publish New Notice</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          </LinearGradient>
+
+          {/* ── Notice cards ── */}
+          <View style={{ padding: 16, gap: 12 }}>
+            {notices.length === 0 ? (
+              <View style={s.emptyCard}>
+                <LinearGradient colors={['rgba(34,211,238,0.18)','rgba(14,165,233,0.08)']} style={s.emptyIconBox}>
+                  <Feather name="volume-x" size={26} color="#22D3EE" />
+                </LinearGradient>
+                <Text style={s.emptyTitle}>No Notices Yet</Text>
+                <Text style={s.emptyText}>Tap "Publish" above to create the first one</Text>
+              </View>
+            ) : notices.map(n => {
+              const pc = PRIORITY[n.priority];
+              const iconName = n.priority === 'high' ? 'alert-triangle' : n.priority === 'medium' ? 'alert-circle' : 'bell';
+              return (
+                <View key={n.id} style={s.noticeGlassCard}>
+                  <LinearGradient colors={[pc.bg, 'rgba(255,255,255,0.02)']} style={StyleSheet.absoluteFill} />
+                  <View style={[s.noticeAccentBar, { backgroundColor: pc.color }]} />
+                  <View style={s.noticeCardInner}>
+                    {/* Top row */}
+                    <View style={s.noticeTopRow}>
+                      <LinearGradient colors={[pc.color + '33', pc.color + '18']} style={s.noticePriorityIcon}>
+                        <Feather name={iconName as any} size={12} color={pc.color} />
+                      </LinearGradient>
+                      <View style={[s.priorityChip, { backgroundColor: pc.color + '18', borderColor: pc.border }]}>
+                        <Text style={[s.priorityChipTxt, { color: pc.color }]}>{n.priority.toUpperCase()}</Text>
+                      </View>
+                      <View style={[s.typeChip, { marginLeft: 4 }]}>
+                        <Text style={s.typeChipTxt}>{n.type}</Text>
+                      </View>
+                      <View style={{ flex: 1 }} />
+                      {n.isActive && (
+                        <View style={s.activeDotWrap}>
+                          <View style={s.activeDot} />
+                          <Text style={s.activeTxt}>Live</Text>
+                        </View>
+                      )}
+                      <TouchableOpacity
+                        onPress={() => showAlert('Delete notice?', n.title, [{ text: 'Cancel', style: 'cancel' }, { text: 'Delete', style: 'destructive', onPress: () => deleteNotice(n.id) }], 'error')}
+                        style={s.deleteBtn}
+                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                      >
+                        <Feather name="trash-2" size={13} color="#FB7185" />
+                      </TouchableOpacity>
+                    </View>
+                    {/* Title + content */}
+                    <Text style={s.noticeTitle}>{n.title}</Text>
+                    <Text style={s.noticeContent} numberOfLines={3}>{n.content}</Text>
+                    {/* Footer */}
+                    <View style={s.noticeFooter}>
+                      <Feather name="calendar" size={10} color={MUTED} />
+                      <Text style={s.noticeDate}>{n.createdAt}</Text>
+                    </View>
+                  </View>
+                </View>
+              );
+            })}
+          </View>
         </ScrollView>
       )}
 
@@ -799,24 +830,42 @@ const s = StyleSheet.create({
   infoText:    { fontSize: 12, fontFamily: 'Inter_500Medium', lineHeight: 18, color: MUTED },
 
   // publish btn
-  publishBtn:     { borderRadius: 16, overflow: 'hidden' },
+  publishBtn:     { borderRadius: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, paddingVertical: 14, overflow: 'hidden' },
   publishBtnInner:{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, paddingVertical: 15 },
   publishBtnIcon: { width: 32, height: 32, borderRadius: 10, backgroundColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center' },
   publishBtnText: { color: '#fff', fontSize: 15, fontFamily: 'Inter_700Bold' },
 
-  // notice card
+  // notices hero
+  noticeHero:        { padding: 20, paddingTop: 22, overflow: 'hidden', position: 'relative' },
+  noticeHeroOrb:     { position: 'absolute', width: 140, height: 140, borderRadius: 70, backgroundColor: 'rgba(99,102,241,0.12)' },
+  noticeHeroIcon:    { width: 52, height: 52, borderRadius: 16, justifyContent: 'center', alignItems: 'center' },
+  noticeHeroTitle:   { color: '#F0F4FF', fontSize: 22, fontFamily: 'Inter_700Bold' },
+  noticeHeroSub:     { color: 'rgba(255,255,255,0.55)', fontSize: 12, fontFamily: 'Inter_400Regular', marginTop: 2 },
+  noticeHeroBadge:   { width: 42, height: 42, borderRadius: 21, backgroundColor: 'rgba(14,165,233,0.22)', borderWidth: 1, borderColor: 'rgba(14,165,233,0.40)', justifyContent: 'center', alignItems: 'center' },
+  noticeHeroBadgeTxt:{ color: '#22D3EE', fontSize: 17, fontFamily: 'Inter_700Bold' },
+
+  // notice glass card
+  noticeGlassCard:   { borderRadius: 18, borderWidth: 1, borderColor: 'rgba(255,255,255,0.09)', overflow: 'hidden', flexDirection: 'row' },
+  noticeAccentBar:   { width: 4, alignSelf: 'stretch' },
+  noticeCardInner:   { flex: 1, padding: 13, gap: 6 },
+  noticePriorityIcon:{ width: 26, height: 26, borderRadius: 8, justifyContent: 'center', alignItems: 'center' },
+  activeDotWrap:     { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(52,211,153,0.12)', paddingHorizontal: 7, paddingVertical: 3, borderRadius: 99, borderWidth: 1, borderColor: 'rgba(52,211,153,0.28)' },
+  activeDot:         { width: 5, height: 5, borderRadius: 3, backgroundColor: '#34D399' },
+  activeTxt:         { color: '#34D399', fontSize: 9, fontFamily: 'Inter_700Bold' },
+
+  // notice card (keep for backward compat)
   noticeCard:     { borderRadius: 16, borderWidth: 1, flexDirection: 'row', overflow: 'hidden' },
   noticeSidebar:  { width: 4 },
   noticeBody:     { flex: 1, padding: 13, gap: 6 },
-  noticeTopRow:   { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  priorityChip:   { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 99 },
+  noticeTopRow:   { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  priorityChip:   { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 7, paddingVertical: 3, borderRadius: 99, borderWidth: 1 },
   priorityChipTxt:{ fontSize: 9, fontFamily: 'Inter_700Bold', letterSpacing: 0.5 },
-  typeChip:       { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 99, backgroundColor: GLASS },
+  typeChip:       { paddingHorizontal: 7, paddingVertical: 3, borderRadius: 99, backgroundColor: GLASS },
   typeChipTxt:    { fontSize: 9, fontFamily: 'Inter_500Medium', color: MUTED },
   deleteBtn:      { padding: 4 },
   noticeTitle:    { color: TEXT,  fontSize: 14, fontFamily: 'Inter_700Bold' },
   noticeContent:  { color: MUTED, fontSize: 12, fontFamily: 'Inter_400Regular', lineHeight: 17 },
-  noticeFooter:   { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 },
+  noticeFooter:   { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 },
   noticeDate:     { color: MUTED, fontSize: 10, fontFamily: 'Inter_400Regular' },
 
   // resets

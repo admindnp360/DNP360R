@@ -1,8 +1,8 @@
 import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import React from 'react';
-import { Linking, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useState } from 'react';
+import { Linking, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LanguageSwitcher } from '@/components/LanguageSwitcher';
 import { useAppData } from '@/contexts/AppContext';
@@ -22,6 +22,8 @@ export default function AdminHome() {
   const { complaints, houses, wards, users, notices, secretKeys, passwordResetRequests } = useAppData();
   const { t } = useLanguage();
 
+  const [houseSearch, setHouseSearch] = useState('');
+
   const citizens  = users.filter(u => u.role === 'citizen');
   const workers   = users.filter(u => u.role === 'safaikarmi');
   const officials = users.filter(u => u.role === 'official');
@@ -29,6 +31,13 @@ export default function AdminHome() {
   const resolved  = complaints.filter(c => c.status === 'resolved').length;
   const rate      = complaints.length > 0 ? Math.round((resolved / complaints.length) * 100) : 0;
   const pendingResets = passwordResetRequests.filter(r => r.status === 'pending').length;
+
+  const trimmed = houseSearch.trim().toLowerCase();
+  const houseResults = trimmed.length >= 2 ? houses.filter(h =>
+    h.ownerName?.toLowerCase().includes(trimmed) ||
+    h.mobile?.toLowerCase().includes(trimmed) ||
+    h.registrationNumber?.toLowerCase().includes(trimmed)
+  ) : [];
 
   const STATS = [
     { label: 'Citizens',    value: citizens.length,                       icon: 'users',      color: '#818CF8', glow: 'rgba(99,102,241,0.14)',  tab: '/(tabs)/action' },
@@ -103,6 +112,56 @@ export default function AdminHome() {
               </LinearGradient>
             </TouchableOpacity>
           )}
+
+          {/* ── HOUSE SEARCH ── */}
+          <View style={s.searchCard}>
+            <View style={s.searchBar}>
+              <Feather name="search" size={15} color={MUTED} />
+              <TextInput
+                style={s.searchInput}
+                placeholder="Search houses — name, mobile, reg no…"
+                placeholderTextColor={MUTED}
+                value={houseSearch}
+                onChangeText={setHouseSearch}
+              />
+              {houseSearch.length > 0 && (
+                <TouchableOpacity onPress={() => setHouseSearch('')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                  <Feather name="x-circle" size={14} color={MUTED} />
+                </TouchableOpacity>
+              )}
+            </View>
+            {houseResults.length > 0 && (
+              <View style={s.searchResults}>
+                <Text style={s.searchResultsLabel}>{houseResults.length} house{houseResults.length !== 1 ? 's' : ''} found</Text>
+                {houseResults.slice(0, 8).map(h => (
+                  <TouchableOpacity
+                    key={h.id}
+                    style={s.searchResultRow}
+                    onPress={() => router.push('/(tabs)/tertiary')}
+                    activeOpacity={0.75}
+                  >
+                    <LinearGradient colors={['#4F46E5','#7C3AED']} style={s.searchResultAvatar}>
+                      <Feather name="home" size={12} color="#fff" />
+                    </LinearGradient>
+                    <View style={{ flex: 1 }}>
+                      <Text style={s.searchResultName} numberOfLines={1}>{h.ownerName}</Text>
+                      <Text style={s.searchResultSub} numberOfLines={1}>{h.registrationNumber} · W{h.wardNumber}{h.mobile ? ` · ${h.mobile}` : ''}</Text>
+                    </View>
+                    <Feather name="chevron-right" size={13} color={MUTED} />
+                  </TouchableOpacity>
+                ))}
+                {houseResults.length > 8 && (
+                  <Text style={s.searchResultMore}>+{houseResults.length - 8} more — go to House DB</Text>
+                )}
+              </View>
+            )}
+            {trimmed.length >= 2 && houseResults.length === 0 && (
+              <View style={s.searchEmpty}>
+                <Feather name="search" size={18} color={MUTED} />
+                <Text style={s.searchEmptyTxt}>No houses found</Text>
+              </View>
+            )}
+          </View>
 
           {/* ── COMPLAINTS METRICS ── */}
           <View style={s.metricsCard}>
@@ -308,4 +367,17 @@ const s = StyleSheet.create({
   contactIconBox: { width: 44, height: 44, borderRadius: 13, backgroundColor: 'rgba(99,102,241,0.20)', justifyContent: 'center', alignItems: 'center' },
   contactTitle: { color: TEXT, fontSize: 14, fontFamily: 'Inter_700Bold' },
   contactSub:   { color: MUTED, fontSize: 11, fontFamily: 'Inter_400Regular', marginTop: 2 },
+  // ── house search
+  searchCard:         { backgroundColor: GLASS, borderRadius: 18, borderWidth: 1, borderColor: GLASS_BD, overflow: 'hidden' },
+  searchBar:          { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 14, paddingVertical: 12 },
+  searchInput:        { flex: 1, fontSize: 13, fontFamily: 'Inter_400Regular', color: TEXT, padding: 0 },
+  searchResults:      { borderTopWidth: 1, borderTopColor: GLASS_BD, paddingHorizontal: 4, paddingBottom: 8 },
+  searchResultsLabel: { color: MUTED, fontSize: 10, fontFamily: 'Inter_700Bold', textTransform: 'uppercase', letterSpacing: 0.5, paddingHorizontal: 10, paddingVertical: 8 },
+  searchResultRow:    { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 10, paddingVertical: 10 },
+  searchResultAvatar: { width: 34, height: 34, borderRadius: 17, justifyContent: 'center', alignItems: 'center' },
+  searchResultName:   { color: TEXT, fontSize: 13, fontFamily: 'Inter_700Bold' },
+  searchResultSub:    { color: MUTED, fontSize: 11, fontFamily: 'Inter_400Regular', marginTop: 1 },
+  searchResultMore:   { color: MUTED, fontSize: 11, fontFamily: 'Inter_400Regular', textAlign: 'center', paddingBottom: 8 },
+  searchEmpty:        { flexDirection: 'row', alignItems: 'center', gap: 8, justifyContent: 'center', paddingVertical: 12, borderTopWidth: 1, borderTopColor: GLASS_BD },
+  searchEmptyTxt:     { color: MUTED, fontSize: 13, fontFamily: 'Inter_400Regular' },
 });
