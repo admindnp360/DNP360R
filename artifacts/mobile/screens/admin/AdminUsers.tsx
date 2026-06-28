@@ -790,6 +790,42 @@ export default function AdminUsers() {
                       )}
 
 
+                      {(profileUser.role === 'safaikarmi' || profileUser.role === 'official') && (() => {
+                        const userKey = secretKeys.find(k => k.usedBy === profileUser.id && k.isActive);
+                        return (
+                          <>
+                            <SectionHeading icon="key" label="Secret Key" color="#C084FC" />
+                            {userKey ? (
+                              <View style={{ gap: 8 }}>
+                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: 'rgba(192,132,252,0.08)', borderRadius: 12, borderWidth: 1, borderColor: 'rgba(192,132,252,0.22)', paddingHorizontal: 14, paddingVertical: 11 }}>
+                                  <Feather name="key" size={14} color="#C084FC" />
+                                  <Text style={{ color: '#C084FC', fontSize: 13, fontFamily: 'Inter_700Bold', letterSpacing: 1.5, flex: 1 }}>{userKey.code}</Text>
+                                  <TouchableOpacity onPress={async () => { await Clipboard.setStringAsync(userKey.code); setCopiedId('editkey_' + profileUser.id); setTimeout(() => setCopiedId(null), 1400); }} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}>
+                                    <Feather name={copiedId === 'editkey_' + profileUser.id ? 'check' : 'copy'} size={13} color={copiedId === 'editkey_' + profileUser.id ? '#34D399' : MUTED} />
+                                  </TouchableOpacity>
+                                </View>
+                                <TouchableOpacity onPress={() => handleRegenerateKey(profileUser)} activeOpacity={0.85}>
+                                  <LinearGradient colors={['#7C3AED','#6D28D9']} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, borderRadius: 12, paddingVertical: 12 }}>
+                                    <Feather name="refresh-cw" size={14} color="#fff" />
+                                    <Text style={{ color: '#fff', fontSize: 13, fontFamily: 'Inter_700Bold' }}>Regenerate Key</Text>
+                                  </LinearGradient>
+                                </TouchableOpacity>
+                              </View>
+                            ) : (
+                              <TouchableOpacity onPress={async () => {
+                                const sk = await assignSecretKeyToUser(profileUser.id, profileUser.name, profileUser.role as 'safaikarmi' | 'official');
+                                showAlert('Key Assigned', `Secret Key for ${profileUser.name}:\n\n${sk.code}\n\nShare this securely.`, undefined, 'success');
+                              }} activeOpacity={0.85}>
+                                <LinearGradient colors={['#059669','#047857']} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, borderRadius: 12, paddingVertical: 12 }}>
+                                  <Feather name="key" size={14} color="#fff" />
+                                  <Text style={{ color: '#fff', fontSize: 13, fontFamily: 'Inter_700Bold' }}>Assign Secret Key</Text>
+                                </LinearGradient>
+                              </TouchableOpacity>
+                            )}
+                          </>
+                        );
+                      })()}
+
                       <TouchableOpacity onPress={handleSave} disabled={saving} activeOpacity={0.85} style={saving ? { opacity: 0.6, marginTop: 4 } : { marginTop: 4 }}>
                         <LinearGradient colors={grad} style={s.saveBtn}>
                           <Feather name="check" size={16} color="#fff" />
