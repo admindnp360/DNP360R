@@ -80,6 +80,7 @@ export default function LoginScreen() {
   const [mobile, setMobile] = useState('');
   const [password, setPassword] = useState('');
   const [staffUserId, setStaffUserId] = useState('');
+  const [staffMode, setStaffMode] = useState<'userid' | 'secretkey'>('userid');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
@@ -268,19 +269,45 @@ export default function LoginScreen() {
             ) : (
               <>
                 <Text style={s.cardTitle}>Staff Login</Text>
-                <Text style={s.cardSub}>Enter your User ID to sign in</Text>
+                <Text style={s.cardSub}>{staffMode === 'userid' ? 'Enter your User ID to sign in' : 'Enter your Secret Key to sign in'}</Text>
+
+                {/* Mode toggle */}
+                <View style={s.staffModeRow}>
+                  <TouchableOpacity
+                    activeOpacity={0.8}
+                    onPress={() => { setStaffMode('userid'); setStaffUserId(''); }}
+                    style={[s.staffModeBtn, staffMode === 'userid' && s.staffModeBtnActive]}
+                  >
+                    <Feather name="hash" size={13} color={staffMode === 'userid' ? '#fff' : '#6366F1'} />
+                    <Text style={[s.staffModeTxt, staffMode === 'userid' && s.staffModeTxtActive]}>User ID</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    activeOpacity={0.8}
+                    onPress={() => { setStaffMode('secretkey'); setStaffUserId(''); }}
+                    style={[s.staffModeBtn, staffMode === 'secretkey' && s.staffModeBtnActive]}
+                  >
+                    <Feather name="key" size={13} color={staffMode === 'secretkey' ? '#fff' : '#6366F1'} />
+                    <Text style={[s.staffModeTxt, staffMode === 'secretkey' && s.staffModeTxtActive]}>Secret Key</Text>
+                  </TouchableOpacity>
+                </View>
 
                 <View style={s.inputBox}>
-                  <Feather name="hash" size={16} color="#8B5CF6" style={s.inputIcon} />
+                  <Feather name={staffMode === 'secretkey' ? 'key' : 'hash'} size={16} color="#8B5CF6" style={s.inputIcon} />
                   <TextInput
                     ref={codeRef}
-                    style={[s.input, { flex: 1, fontFamily: 'Inter_700Bold', letterSpacing: 2 }]}
-                    placeholder="e.g. OF1234A or SK1234A"
+                    style={[s.input, { flex: 1, fontFamily: 'Inter_700Bold', letterSpacing: staffMode === 'secretkey' ? 1.5 : 2 }]}
+                    placeholder={staffMode === 'secretkey' ? 'e.g. SK-AB12-XY34 or OF-AB12-XY34' : 'e.g. OF1234A or SK1234A'}
                     placeholderTextColor="#475569"
                     autoCapitalize="characters"
                     autoCorrect={false}
                     value={staffUserId}
-                    onChangeText={v => setStaffUserId(v.replace(/[^A-Za-z0-9]/g, '').toUpperCase())}
+                    onChangeText={v => {
+                      if (staffMode === 'secretkey') {
+                        setStaffUserId(v.replace(/[^A-Za-z0-9\-]/g, '').toUpperCase());
+                      } else {
+                        setStaffUserId(v.replace(/[^A-Za-z0-9]/g, '').toUpperCase());
+                      }
+                    }}
                     onSubmitEditing={handleStaffLogin}
                     returnKeyType="done"
                   />
@@ -288,11 +315,22 @@ export default function LoginScreen() {
 
                 <View style={s.prefixHint}>
                   <Feather name="info" size={10} color="#6366F1" />
-                  <Text style={s.prefixHintLabel}>Format: </Text>
-                  <Text style={s.prefixHintCode}>OF1234A</Text>
-                  <Text style={s.prefixHintLabel}> (Official) · </Text>
-                  <Text style={s.prefixHintCode}>SK1234A</Text>
-                  <Text style={s.prefixHintLabel}> (Safai Karmi)</Text>
+                  {staffMode === 'secretkey' ? (
+                    <>
+                      <Text style={s.prefixHintLabel}>Format: </Text>
+                      <Text style={s.prefixHintCode}>SK-XXXX-XXXX</Text>
+                      <Text style={s.prefixHintLabel}> · </Text>
+                      <Text style={s.prefixHintCode}>OF-XXXX-XXXX</Text>
+                    </>
+                  ) : (
+                    <>
+                      <Text style={s.prefixHintLabel}>Format: </Text>
+                      <Text style={s.prefixHintCode}>OF1234A</Text>
+                      <Text style={s.prefixHintLabel}> (Official) · </Text>
+                      <Text style={s.prefixHintCode}>SK1234A</Text>
+                      <Text style={s.prefixHintLabel}> (Safai Karmi)</Text>
+                    </>
+                  )}
                 </View>
 
                 <TouchableOpacity
@@ -302,20 +340,22 @@ export default function LoginScreen() {
                   style={[s.btnWrap, (loading || staffUserId.trim().length < 4) && { opacity: 0.4 }]}
                 >
                   <LinearGradient
-                    colors={['#7C3AED', '#6366F1']}
+                    colors={staffMode === 'secretkey' ? ['#C084FC', '#7C3AED'] : ['#7C3AED', '#6366F1']}
                     start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
                     style={s.btn}
                   >
                     {loading
                       ? <ActivityIndicator color="#fff" size="small" />
-                      : <Feather name="log-in" size={16} color="#fff" />}
+                      : <Feather name={staffMode === 'secretkey' ? 'key' : 'log-in'} size={16} color="#fff" />}
                     <Text style={s.btnTxt}>{loading ? 'Signing in…' : 'Sign In'}</Text>
                   </LinearGradient>
                 </TouchableOpacity>
 
                 <View style={s.staffNote}>
                   <Feather name="shield" size={12} color="#6366F1" />
-                  <Text style={s.staffNoteTxt}>Your User ID is assigned by the Super Admin.</Text>
+                  <Text style={s.staffNoteTxt}>
+                    {staffMode === 'secretkey' ? 'Secret Key is provided by the Super Admin.' : 'Your User ID is assigned by the Super Admin.'}
+                  </Text>
                 </View>
               </>
             )}
@@ -466,6 +506,11 @@ const s = StyleSheet.create({
 
   staffNote: { flexDirection: 'row', alignItems: 'center', gap: 7, backgroundColor: 'rgba(99,102,241,0.07)', borderRadius: 10, padding: 10, borderWidth: 1, borderColor: 'rgba(99,102,241,0.13)' },
   staffNoteTxt: { color: '#818CF8', fontSize: 11, fontFamily: 'Inter_400Regular', flex: 1 },
+  staffModeRow: { flexDirection: 'row', gap: 8 },
+  staffModeBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 9, borderRadius: 12, borderWidth: 1.5, borderColor: 'rgba(99,102,241,0.35)', backgroundColor: 'rgba(99,102,241,0.07)' },
+  staffModeBtnActive: { backgroundColor: '#6366F1', borderColor: '#6366F1' },
+  staffModeTxt: { color: '#6366F1', fontSize: 13, fontFamily: 'Inter_600SemiBold' },
+  staffModeTxtActive: { color: '#fff' },
 
   quickLinks: { gap: 10, marginBottom: 14 },
   qlBtn: { borderRadius: 14, overflow: 'hidden' },
