@@ -39,7 +39,7 @@ const ROLE_GRAD: Record<string, readonly [string, string]> = {
 
 /* ─── component ──────────────────────────────────────────────── */
 export default function AdminUsers() {
-  const { users, addUser, updateUser, deleteUser, updateUserId, updateUserFull, secretKeys } = useAppData();
+  const { users, addUser, updateUser, deleteUser, updateUserId, updateUserFull, secretKeys, assignSecretKeyToUser } = useAppData();
   const { user: currentUser } = useAuth();
   const { showAlert } = useAlert();
   const isSuperAdmin = !!(currentUser as any)?.isSuperAdmin;
@@ -222,8 +222,15 @@ export default function AdminUsers() {
         createdAt: new Date().toISOString().split('T')[0],
       };
       await addUser(newUser);
+      let secretKeyMsg = '';
+      if (newRole === 'safaikarmi' || newRole === 'official') {
+        try {
+          const sk = await assignSecretKeyToUser(uid, newName.trim(), newRole);
+          secretKeyMsg = `\nSecret Key: ${sk.code}`;
+        } catch {}
+      }
       setCreateOpen(false);
-      showAlert('User Created', `${newUser.name} (${uid}) has been added.`, undefined, 'success');
+      showAlert('User Created', `${newUser.name} (${uid}) has been added.${secretKeyMsg}`, undefined, 'success');
     } finally { setCreating(false); }
   }
 

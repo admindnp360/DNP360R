@@ -264,10 +264,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const SECRET_KEY_RE = /^(SK|OF)-[A-Z0-9]{4}-[A-Z0-9]{4}$/;
     if (SECRET_KEY_RE.test(uid)) {
       try {
-        const keySnap = await getDocs(query(collection(db, 'secretKeys'), where('code', '==', uid), where('isActive', '==', true)));
+        const keySnap = await getDocs(query(collection(db, 'secretKeys'), where('code', '==', uid)));
         if (!keySnap.empty) {
           const keyData = keySnap.docs[0].data();
-          if (keyData.usedBy) {
+          if (keyData.isActive && keyData.usedBy) {
             return loginWithUserId(keyData.usedBy);
           }
         }
