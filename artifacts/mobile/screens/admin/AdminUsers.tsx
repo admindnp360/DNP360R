@@ -350,7 +350,7 @@ export default function AdminUsers() {
       </View>
 
       {/* ── Table rows ── */}
-      <ScrollView style={s.list} contentContainerStyle={{ paddingBottom: 110 }} showsVerticalScrollIndicator={false}>
+      <ScrollView style={s.list} contentContainerStyle={{ paddingBottom: 160 }} showsVerticalScrollIndicator={false}>
         {tabList.length === 0 ? (
           <View style={s.emptyWrap}>
             <LinearGradient colors={currentTab.grad} style={s.emptyIcon}>
@@ -974,7 +974,7 @@ const s = StyleSheet.create({
   saveBtnText: { color: '#fff', fontSize: 14, fontFamily: 'Inter_700Bold' },
 
   /* FAB */
-  fab:     { position: 'absolute', bottom: 28, right: 20, borderRadius: 28, overflow: 'hidden', elevation: 8, shadowColor: '#6366F1', shadowOpacity: 0.45, shadowRadius: 12, shadowOffset: { width: 0, height: 4 } },
+  fab:     { position: 'absolute', bottom: 90, right: 20, borderRadius: 28, overflow: 'hidden', elevation: 12, shadowColor: '#6366F1', shadowOpacity: 0.55, shadowRadius: 14, shadowOffset: { width: 0, height: 4 } },
   fabGrad: { width: 56, height: 56, justifyContent: 'center', alignItems: 'center' },
 
   /* create user modal */
