@@ -260,6 +260,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return true;
     }
 
+    // Secret key login: SK-XXXX-XXXX or OF-XXXX-XXXX pattern
+    const SECRET_KEY_RE = /^(SK|OF)-[A-Z0-9]{4}-[A-Z0-9]{4}$/;
+    if (SECRET_KEY_RE.test(uid)) {
+      try {
+        const keySnap = await getDocs(query(collection(db, 'secretKeys'), where('code', '==', uid), where('isActive', '==', true)));
+        if (!keySnap.empty) {
+          const keyData = keySnap.docs[0].data();
+          if (keyData.usedBy) {
+            return loginWithUserId(keyData.usedBy);
+          }
+        }
+      } catch (e) {
+        console.warn('Secret key login error:', e);
+      }
+      return false;
+    }
+
     // Demo users
     const demo = DEMO_USERS.find(u => u.id.toUpperCase() === uid);
     if (demo) {

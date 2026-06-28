@@ -39,7 +39,7 @@ const ROLE_GRAD: Record<string, readonly [string, string]> = {
 
 /* ─── component ──────────────────────────────────────────────── */
 export default function AdminUsers() {
-  const { users, addUser, updateUser, deleteUser, updateUserId, updateUserFull } = useAppData();
+  const { users, addUser, updateUser, deleteUser, updateUserId, updateUserFull, secretKeys } = useAppData();
   const { user: currentUser } = useAuth();
   const { showAlert } = useAlert();
   const isSuperAdmin = !!(currentUser as any)?.isSuperAdmin;
@@ -408,8 +408,27 @@ export default function AdminUsers() {
                   </LinearGradient>
                 </View>
 
-                {/* Edit + Delete icons */}
+                {/* Key + Edit + Delete icons */}
                 <View style={s.rowActions}>
+                  {(() => {
+                    const userKey = secretKeys.find(k => k.usedBy === u.id && k.isActive);
+                    const isCopied = copiedId === ('key_' + u.id);
+                    if (!userKey) return null;
+                    return (
+                      <TouchableOpacity
+                        activeOpacity={0.7}
+                        onPress={async () => {
+                          await Clipboard.setStringAsync(userKey.code);
+                          setCopiedId('key_' + u.id);
+                          setTimeout(() => setCopiedId(null), 1500);
+                        }}
+                        style={[s.rowActionBtn, { backgroundColor: isCopied ? 'rgba(16,185,129,0.15)' : 'rgba(192,132,252,0.12)', borderColor: isCopied ? 'rgba(16,185,129,0.35)' : 'rgba(192,132,252,0.28)' }]}
+                        hitSlop={{ top: 6, bottom: 6, left: 4, right: 4 }}
+                      >
+                        <Feather name={isCopied ? 'check' : 'key'} size={13} color={isCopied ? '#10B981' : '#C084FC'} />
+                      </TouchableOpacity>
+                    );
+                  })()}
                   <TouchableOpacity
                     activeOpacity={0.7}
                     onPress={() => { openProfile(u); setEditMode(true); }}
