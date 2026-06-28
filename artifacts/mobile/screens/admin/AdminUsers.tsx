@@ -346,8 +346,9 @@ export default function AdminUsers() {
       <View style={s.tableHead}>
         <Text style={s.thNo}>#</Text>
         <Text style={s.thName}>User</Text>
-        <Text style={s.thId}>ID</Text>
+        <Text style={s.thRole}>Role</Text>
         {activeTab !== 'citizen' && <Text style={s.thCode}>Key</Text>}
+        <Text style={s.thActs}> </Text>
       </View>
 
       {/* ── Table rows ── */}
@@ -366,13 +367,13 @@ export default function AdminUsers() {
             const isEven = idx % 2 === 0;
             const roleGrad = ROLE_GRAD[u.role];
             return (
-              <TouchableOpacity
-                key={u.id} activeOpacity={0.7}
-                onPress={() => openProfile(u)}
+              <View
+                key={u.id}
                 style={[s.tableRow, { backgroundColor: isEven ? 'transparent' : 'rgba(255,255,255,0.025)', opacity: u.isActive ? 1 : 0.5 }]}
               >
                 <Text style={s.tdNo}>{idx + 1}</Text>
 
+                {/* Name + user ID below */}
                 <View style={s.tdNameCell}>
                   {u.avatar ? (
                     <Image source={{ uri: u.avatar }} style={s.rowAvatar} />
@@ -388,13 +389,21 @@ export default function AdminUsers() {
                       <Text style={[s.statusLabel, { color: u.isActive ? '#10B981' : '#EF4444' }]}>
                         {u.isActive ? 'Active' : 'Frozen'}
                       </Text>
-                      {u.employeeId ? <Text style={s.empIdLabel}>· {u.employeeId}</Text> : null}
+                      <Text style={s.empIdLabel}>· {u.id}</Text>
                     </View>
                   </View>
                 </View>
 
-                <Text style={s.tdId} numberOfLines={1}>{u.id}</Text>
+                {/* Role pill */}
+                <View style={s.tdRoleCell}>
+                  <LinearGradient colors={roleGrad} style={s.rolePill}>
+                    <Text style={s.rolePillText} numberOfLines={1}>
+                      {u.role === 'safaikarmi' ? 'SK' : u.role === 'official' ? 'Offcl' : u.role === 'citizen' ? 'Ctzn' : 'Admn'}
+                    </Text>
+                  </LinearGradient>
+                </View>
 
+                {/* Key pill */}
                 {activeTab !== 'citizen' && (
                   <View style={s.tdCodeCell}>
                     {linkedKey ? (
@@ -430,8 +439,26 @@ export default function AdminUsers() {
                   </View>
                 )}
 
-                <Feather name="chevron-right" size={13} color={MUTED} />
-              </TouchableOpacity>
+                {/* Edit + Delete icons */}
+                <View style={s.rowActions}>
+                  <TouchableOpacity
+                    activeOpacity={0.7}
+                    onPress={() => { openProfile(u); setEditMode(true); }}
+                    style={s.rowActionBtn}
+                    hitSlop={{ top: 6, bottom: 6, left: 4, right: 4 }}
+                  >
+                    <Feather name="edit-2" size={13} color="#818CF8" />
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    activeOpacity={0.7}
+                    onPress={() => handleDelete(u)}
+                    style={[s.rowActionBtn, { backgroundColor: 'rgba(239,68,68,0.12)', borderColor: 'rgba(239,68,68,0.25)' }]}
+                    hitSlop={{ top: 6, bottom: 6, left: 4, right: 4 }}
+                  >
+                    <Feather name="trash-2" size={13} color="#F87171" />
+                  </TouchableOpacity>
+                </View>
+              </View>
             );
           })
         )}
@@ -862,24 +889,29 @@ const s = StyleSheet.create({
   tableHead: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 7, borderBottomWidth: 1, borderBottomColor: GLASS_BD, backgroundColor: 'rgba(99,102,241,0.08)' },
   thNo:   { width: 30, fontSize: 9, fontFamily: 'Inter_700Bold', color: '#818CF8', textTransform: 'uppercase', letterSpacing: 0.4 },
   thName: { flex: 1,   fontSize: 9, fontFamily: 'Inter_700Bold', color: '#818CF8', textTransform: 'uppercase', letterSpacing: 0.4 },
-  thId:   { width: 68, fontSize: 9, fontFamily: 'Inter_700Bold', color: '#818CF8', textTransform: 'uppercase', letterSpacing: 0.4 },
-  thCode: { width: 80, fontSize: 9, fontFamily: 'Inter_700Bold', color: '#818CF8', textTransform: 'uppercase', letterSpacing: 0.4 },
+  thRole: { width: 46, fontSize: 9, fontFamily: 'Inter_700Bold', color: '#818CF8', textTransform: 'uppercase', letterSpacing: 0.4, marginRight: 4, textAlign: 'center' },
+  thCode: { width: 76, fontSize: 9, fontFamily: 'Inter_700Bold', color: '#818CF8', textTransform: 'uppercase', letterSpacing: 0.4, marginRight: 4 },
+  thActs: { width: 57, fontSize: 9, fontFamily: 'Inter_700Bold', color: '#818CF8', textTransform: 'uppercase', letterSpacing: 0.4, textAlign: 'center' },
 
-  tableRow:    { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 10, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: GLASS_BD },
-  tdNo:        { width: 30, fontSize: 11, fontFamily: 'Inter_500Medium', color: MUTED },
-  tdNameCell:  { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8, paddingRight: 6 },
-  rowAvatar:     { width: 30, height: 30, borderRadius: 15 },
-  rowAvatarGrad: { width: 30, height: 30, borderRadius: 15, justifyContent: 'center', alignItems: 'center' },
-  rowAvatarLetter: { color: '#fff', fontSize: 12, fontFamily: 'Inter_700Bold' },
-  tdName:    { fontSize: 12, fontFamily: 'Inter_600SemiBold', color: TEXT },
+  tableRow:    { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 7, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: GLASS_BD },
+  tdNo:        { width: 26, fontSize: 10, fontFamily: 'Inter_500Medium', color: MUTED },
+  tdNameCell:  { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 7, paddingRight: 4 },
+  rowAvatar:     { width: 28, height: 28, borderRadius: 14 },
+  rowAvatarGrad: { width: 28, height: 28, borderRadius: 14, justifyContent: 'center', alignItems: 'center' },
+  rowAvatarLetter: { color: '#fff', fontSize: 11, fontFamily: 'Inter_700Bold' },
+  tdName:    { fontSize: 11, fontFamily: 'Inter_600SemiBold', color: TEXT },
   statusRow: { flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 1 },
-  statusDot: { width: 5, height: 5, borderRadius: 3 },
-  statusLabel: { fontSize: 9, fontFamily: 'Inter_600SemiBold' },
-  empIdLabel:  { fontSize: 9, fontFamily: 'Inter_400Regular', color: MUTED, marginLeft: 2 },
-  tdId:        { width: 68, fontSize: 10, fontFamily: 'Inter_500Medium', color: MUTED },
-  tdCodeCell:  { width: 88, alignItems: 'flex-start', marginRight: 6 },
-  codePill:    { borderRadius: 6, paddingHorizontal: 6, paddingVertical: 3, maxWidth: 86 },
-  codeText:    { fontSize: 9, fontFamily: 'Inter_700Bold', letterSpacing: 0.5 },
+  statusDot: { width: 4, height: 4, borderRadius: 2 },
+  statusLabel: { fontSize: 8, fontFamily: 'Inter_600SemiBold' },
+  empIdLabel:  { fontSize: 8, fontFamily: 'Inter_400Regular', color: MUTED, marginLeft: 1 },
+  tdRoleCell:  { width: 46, alignItems: 'center', marginRight: 4 },
+  rolePill:    { borderRadius: 6, paddingHorizontal: 5, paddingVertical: 2 },
+  rolePillText:{ fontSize: 8, fontFamily: 'Inter_700Bold', color: '#fff', letterSpacing: 0.3 },
+  tdCodeCell:  { width: 76, alignItems: 'flex-start', marginRight: 4 },
+  codePill:    { borderRadius: 6, paddingHorizontal: 5, paddingVertical: 2, maxWidth: 74 },
+  codeText:    { fontSize: 8, fontFamily: 'Inter_700Bold', letterSpacing: 0.4 },
+  rowActions:  { flexDirection: 'row', gap: 5, alignItems: 'center' },
+  rowActionBtn:{ width: 26, height: 26, borderRadius: 8, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(129,140,248,0.12)', borderWidth: 1, borderColor: 'rgba(129,140,248,0.25)' },
 
   /* empty */
   emptyWrap:  { margin: 24, borderRadius: 18, borderWidth: 1, borderColor: GLASS_BD, padding: 36, alignItems: 'center', gap: 12, backgroundColor: GLASS },
