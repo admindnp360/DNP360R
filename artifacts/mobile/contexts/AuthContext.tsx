@@ -108,7 +108,7 @@ async function saveUserToFirestore(uid: string, data: User): Promise<void> {
     await setDoc(doc(db, 'users', uid), {
       ...JSON.parse(JSON.stringify(rest)),
       _updatedAt: serverTimestamp(),
-    });
+    }, { merge: true });
   } catch (e) { console.warn('Firestore user write failed:', e); }
 }
 
@@ -168,18 +168,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       try {
         await signInWithEmailAndPassword(firebaseAuth, SUPER_ADMIN.email, SUPER_ADMIN.password);
       } catch {
-        // Fall back to anonymous auth — gives us a valid token for Firestore writes
-        try { await signInAnonymously(firebaseAuth); } catch { /* offline */ }
+        // Only create a new anonymous session if there is no existing auth session.
+        // Calling signInAnonymously when already signed in reuses the same UID;
+        // calling it on a fresh session would create a new UID → duplicate user doc.
+        if (!firebaseAuth.currentUser) {
+          try { await signInAnonymously(firebaseAuth); } catch { /* offline */ }
+        }
       }
-      // Save user doc under the ACTUAL Firebase Auth UID so Firestore rules
-      // can verify callerRole() == 'admin' regardless of auth method used.
-      if (firebaseAuth.currentUser) {
-        try {
-          await saveUserToFirestore(firebaseAuth.currentUser.uid, { ...userData as User, role: 'admin' });
-        } catch { /* offline — will retry on next login */ }
-      }
-      // Also keep the legacy 'SUPERADMIN' doc for backwards compat
-      try { await saveUserToFirestore('SUPERADMIN', userData as User); } catch {}
+      // Save user doc under the fixed 'SUPERADMIN' doc ID — never under an
+      // anonymous UID, which changes each session and creates duplicate rows.
+      try { await saveUserToFirestore('SUPERADMIN', { ...userData as User, role: 'admin' }); } catch {}
       setUser(userData);
       await AsyncStorage.setItem('dnp360_user', JSON.stringify(userData));
       return true;
