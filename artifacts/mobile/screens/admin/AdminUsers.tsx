@@ -39,7 +39,7 @@ const ROLE_GRAD: Record<string, readonly [string, string]> = {
 
 /* ─── component ──────────────────────────────────────────────── */
 export default function AdminUsers() {
-  const { users, updateUser, deleteUser, secretKeys, updateSecretKeyCode, assignSecretKeyToUser, updateUserId, updateUserFull } = useAppData();
+  const { users, updateUser, deleteUser, updateUserId, updateUserFull } = useAppData();
   const { user: currentUser } = useAuth();
   const { showAlert } = useAlert();
   const isSuperAdmin = !!(currentUser as any)?.isSuperAdmin;
@@ -49,23 +49,18 @@ export default function AdminUsers() {
   const [search, setSearch]             = useState('');
   const [activeTab, setActiveTab]       = useState<RoleTab>('all');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'frozen'>('all');
-  const [keyFilter, setKeyFilter]       = useState<'all' | 'hasKey' | 'noKey'>('all');
 
-  const [profileUser, setProfileUser]         = useState<User | null>(null);
-  const [editMode, setEditMode]               = useState(false);
-  const [editName, setEditName]               = useState('');
-  const [editEmail, setEditEmail]             = useState('');
-  const [editMobile, setEditMobile]           = useState('');
-  const [editAddress, setEditAddress]         = useState('');
-  const [editEmpId, setEditEmpId]             = useState('');
-  const [editUserId, setEditUserId]           = useState('');
-  const [editAvatar, setEditAvatar]           = useState('');
-  const [editKeyCode, setEditKeyCode]         = useState('');
-  const [showKey, setShowKey]                 = useState(false);
-  const [saving, setSaving]                   = useState(false);
-  const [assigningKey, setAssigningKey]       = useState(false);
-  const [newlyAssignedKey, setNewlyAssignedKey] = useState<{ code: string; role: string } | null>(null);
-  const [copiedId, setCopiedId]               = useState<string | null>(null);
+  const [profileUser, setProfileUser] = useState<User | null>(null);
+  const [editMode, setEditMode]       = useState(false);
+  const [editName, setEditName]       = useState('');
+  const [editEmail, setEditEmail]     = useState('');
+  const [editMobile, setEditMobile]   = useState('');
+  const [editAddress, setEditAddress] = useState('');
+  const [editEmpId, setEditEmpId]     = useState('');
+  const [editUserId, setEditUserId]   = useState('');
+  const [editAvatar, setEditAvatar]   = useState('');
+  const [saving, setSaving]           = useState(false);
+  const [copiedId, setCopiedId]       = useState<string | null>(null);
 
   /* stats */
   const countSafaikarmi = users.filter(u => u.role === 'safaikarmi').length;
@@ -90,11 +85,6 @@ export default function AdminUsers() {
       if (statusFilter === 'active') return u.isActive === true;
       if (statusFilter === 'frozen') return u.isActive === false;
       return true;
-    })
-    .filter(u => {
-      if (keyFilter === 'all') return true;
-      const hasKey = secretKeys.some(k => k.usedBy === u.id);
-      return keyFilter === 'hasKey' ? hasKey : !hasKey;
     });
 
   const totalBeforeFilter = users.filter(u =>
@@ -102,14 +92,9 @@ export default function AdminUsers() {
       ? u.role === 'safaikarmi' || u.role === 'official' || u.role === 'admin'
       : u.role === activeTab
   ).length;
-  const filtersActive = search.trim() !== '' || statusFilter !== 'all' || keyFilter !== 'all';
-
-  function getUserKey(userId: string) {
-    return secretKeys.find(k => k.usedBy === userId) ?? null;
-  }
+  const filtersActive = search.trim() !== '' || statusFilter !== 'all';
 
   function openProfile(u: User) {
-    const key = getUserKey(u.id);
     setProfileUser(u);
     setEditName(u.name);
     setEditEmail(u.email);
@@ -118,16 +103,12 @@ export default function AdminUsers() {
     setEditEmpId(u.employeeId ?? '');
     setEditUserId(u.id);
     setEditAvatar(u.avatar ?? '');
-    setEditKeyCode(key?.code ?? '');
-    setShowKey(false);
     setEditMode(false);
-    setNewlyAssignedKey(null);
   }
 
   function closeProfile() {
     setProfileUser(null);
     setEditMode(false);
-    setNewlyAssignedKey(null);
   }
 
   async function pickPhoto() {
@@ -160,11 +141,6 @@ export default function AdminUsers() {
         mobile: editMobile.trim() || undefined, address: editAddress.trim() || undefined,
         employeeId: editEmpId.trim() || undefined, avatar: editAvatar || undefined,
       });
-      if (isSuperAdmin && profileUser.role !== 'citizen') {
-        const key = getUserKey(profileUser.id) ?? getUserKey(effectiveId);
-        if (key && editKeyCode.trim() && editKeyCode.trim().toUpperCase() !== key.code)
-          await updateSecretKeyCode(key.id, editKeyCode.trim().toUpperCase());
-      }
       setProfileUser(prev => prev ? {
         ...prev, id: effectiveId, name: editName.trim(), email: editEmail.trim(),
         mobile: editMobile.trim() || undefined, address: editAddress.trim() || undefined,
@@ -173,16 +149,6 @@ export default function AdminUsers() {
       setEditMode(false);
       showAlert('Saved', 'Profile updated successfully.', undefined, 'success');
     } finally { setSaving(false); }
-  }
-
-  async function handleAssignKey(u: User) {
-    if (!isSuperAdmin) return;
-    setAssigningKey(true);
-    try {
-      const key = await assignSecretKeyToUser(u.id, u.name, u.role as any);
-      setNewlyAssignedKey({ code: key.code, role: u.role });
-      showAlert('Key Assigned', `New secret key created and linked to ${u.name}.`, undefined, 'success');
-    } finally { setAssigningKey(false); }
   }
 
   function handleFreeze(u: User) {
@@ -271,34 +237,12 @@ export default function AdminUsers() {
             })}
           </View>
 
-          {/* Key chips */}
-          {activeTab !== 'citizen' && (
-            <View style={s.filterGroup}>
-              <Feather name="key" size={9} color={MUTED} />
-              {(['all', 'hasKey', 'noKey'] as const).map(opt => {
-                const active = keyFilter === opt;
-                const chipColor = opt === 'hasKey' ? '#818CF8' : opt === 'noKey' ? '#FBBF24' : currentTab.grad[0];
-                return (
-                  <TouchableOpacity
-                    key={opt} activeOpacity={0.75}
-                    onPress={() => setKeyFilter(opt)}
-                    style={[s.filterChip, active ? { backgroundColor: chipColor + 'CC', borderColor: chipColor } : { backgroundColor: GLASS, borderColor: GLASS_BD }]}
-                  >
-                    <Text style={[s.filterChipText, { color: active ? '#fff' : MUTED }]}>
-                      {opt === 'all' ? 'Any' : opt === 'hasKey' ? 'Has Key' : 'No Key'}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-          )}
-
           {filtersActive && (
             <View style={s.filterResultRow}>
               <Text style={[s.filterCount, { color: MUTED }]}>{tabList.length}/{totalBeforeFilter}</Text>
               <TouchableOpacity
                 activeOpacity={0.7}
-                onPress={() => { setSearch(''); setStatusFilter('all'); setKeyFilter('all'); }}
+                onPress={() => { setSearch(''); setStatusFilter('all'); }}
                 style={[s.clearAllBtn, { borderColor: GLASS_BD }]}
               >
                 <Feather name="x" size={9} color={MUTED} />
@@ -319,7 +263,7 @@ export default function AdminUsers() {
           return (
             <TouchableOpacity
               key={tab.key} style={s.tabItem}
-              onPress={() => { setActiveTab(tab.key); setStatusFilter('all'); setKeyFilter('all'); setSearch(''); }}
+              onPress={() => { setActiveTab(tab.key); setStatusFilter('all'); setSearch(''); }}
               activeOpacity={0.75}
             >
               {active ? (
@@ -347,7 +291,6 @@ export default function AdminUsers() {
         <Text style={s.thNo}>#</Text>
         <Text style={s.thName}>User</Text>
         <Text style={s.thRole}>Role</Text>
-        {activeTab !== 'citizen' && <Text style={s.thCode}>Key</Text>}
         <Text style={s.thActs}> </Text>
       </View>
 
@@ -363,7 +306,6 @@ export default function AdminUsers() {
           </View>
         ) : (
           tabList.map((u, idx) => {
-            const linkedKey = getUserKey(u.id);
             const isEven = idx % 2 === 0;
             const roleGrad = ROLE_GRAD[u.role];
             return (
@@ -389,7 +331,11 @@ export default function AdminUsers() {
                       <Text style={[s.statusLabel, { color: u.isActive ? '#10B981' : '#EF4444' }]}>
                         {u.isActive ? 'Active' : 'Frozen'}
                       </Text>
-                      <Text style={s.empIdLabel}>· {u.id}</Text>
+                      <TouchableOpacity onPress={async () => { await Clipboard.setStringAsync(u.id); setCopiedId(u.id); setTimeout(() => setCopiedId(null), 1400); }}>
+                        <Text style={[s.empIdLabel, copiedId === u.id && { color: '#10B981' }]}>
+                          · {copiedId === u.id ? '✓ Copied' : u.id}
+                        </Text>
+                      </TouchableOpacity>
                     </View>
                   </View>
                 </View>
@@ -402,42 +348,6 @@ export default function AdminUsers() {
                     </Text>
                   </LinearGradient>
                 </View>
-
-                {/* Key pill */}
-                {activeTab !== 'citizen' && (
-                  <View style={s.tdCodeCell}>
-                    {linkedKey ? (
-                      <TouchableOpacity
-                        activeOpacity={0.75}
-                        onPress={async () => {
-                          await Clipboard.setStringAsync(linkedKey.code);
-                          setCopiedId(u.id);
-                          setTimeout(() => setCopiedId(null), 1400);
-                        }}
-                      >
-                        <View style={[
-                          s.codePill,
-                          copiedId === u.id
-                            ? { backgroundColor: '#10B98125', borderWidth: 1, borderColor: '#10B98155' }
-                            : { backgroundColor: currentTab.grad[0] + '18', borderWidth: 1, borderColor: currentTab.grad[0] + '30' },
-                        ]}>
-                          {copiedId === u.id ? (
-                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
-                              <Feather name="check" size={9} color="#10B981" />
-                              <Text style={[s.codeText, { color: '#10B981' }]}>Copied</Text>
-                            </View>
-                          ) : (
-                            <Text style={[s.codeText, { color: currentTab.grad[0] }]} numberOfLines={1}>{linkedKey.code}</Text>
-                          )}
-                        </View>
-                      </TouchableOpacity>
-                    ) : (
-                      <View style={[s.codePill, { backgroundColor: 'rgba(251,191,36,0.1)', borderWidth: 1, borderColor: 'rgba(251,191,36,0.25)' }]}>
-                        <Text style={[s.codeText, { color: '#FBBF24' }]}>No Key</Text>
-                      </View>
-                    )}
-                  </View>
-                )}
 
                 {/* Edit + Delete icons */}
                 <View style={s.rowActions}>
@@ -468,9 +378,7 @@ export default function AdminUsers() {
       <Modal visible={!!profileUser} animationType="slide" presentationStyle="pageSheet">
         {profileUser && (() => {
           const grad = ROLE_GRAD[profileUser.role];
-          const linkedKey = getUserKey(profileUser.id);
           const isProtected = !!(profileUser as any).cannotBeDeleted;
-          const showKeySection = isSuperAdmin && profileUser.role !== 'citizen';
 
           return (
             <SafeAreaView style={{ flex: 1, backgroundColor: BG }}>
@@ -572,65 +480,6 @@ export default function AdminUsers() {
                         </>
                       )}
 
-                      {showKeySection && (
-                        <>
-                          <SectionHeading icon="key" label="Secret Key" color="#A78BFA" />
-                          {linkedKey ? (
-                            <>
-                              <View style={[s.keyInfoBox, { backgroundColor: '#7C3AED0E', borderColor: '#7C3AED22' }]}>
-                                <Feather name="info" size={12} color="#A78BFA" />
-                                <Text style={s.keyInfoText}>
-                                  Current: <Text style={s.keyInfoCode}>{linkedKey.code}</Text>
-                                  {'  ·  '}
-                                  <Text style={{ color: linkedKey.isActive ? '#10B981' : '#EF4444' }}>
-                                    {linkedKey.isActive ? 'Active' : 'Revoked'}
-                                  </Text>
-                                </Text>
-                              </View>
-                              <View style={[s.editRow, { borderColor: '#7C3AED30' }]}>
-                                <Feather name="key" size={15} color="#A78BFA" />
-                                <TextInput
-                                  style={[s.editInput, { fontFamily: 'Inter_700Bold', letterSpacing: 1.5 }]}
-                                  value={editKeyCode}
-                                  onChangeText={v => setEditKeyCode(v.replace(/[^A-Z0-9a-z]/g, '').toUpperCase())}
-                                  autoCapitalize="characters" autoCorrect={false}
-                                  secureTextEntry={!showKey}
-                                  placeholder="New secret code…" placeholderTextColor={MUTED}
-                                />
-                                <Pressable onPress={() => setShowKey(p => !p)}>
-                                  <Feather name={showKey ? 'eye-off' : 'eye'} size={15} color={MUTED} />
-                                </Pressable>
-                              </View>
-                              <View style={s.keyWarnBox}>
-                                <Feather name="alert-triangle" size={11} color="#D97706" />
-                                <Text style={s.keyWarnText}>Changing the code requires the staff member to use the new code on next login.</Text>
-                              </View>
-                            </>
-                          ) : (
-                            <View style={{ gap: 10 }}>
-                              <View style={[s.keyInfoBox, { backgroundColor: '#FBBF2410', borderColor: '#FBBF2422' }]}>
-                                <Feather name="alert-circle" size={12} color="#FBBF24" />
-                                <Text style={[s.keyInfoText, { color: '#D97706' }]}>No secret key linked. Assign one to enable staff registration.</Text>
-                              </View>
-                              {profileUser.role !== 'citizen' && (
-                                <TouchableOpacity onPress={() => handleAssignKey(profileUser)} disabled={assigningKey} activeOpacity={0.85} style={assigningKey ? { opacity: 0.6 } : {}}>
-                                  <LinearGradient colors={['#7C3AED', '#6366F1']} style={s.assignKeyBtn}>
-                                    <Feather name={assigningKey ? 'loader' : 'key'} size={15} color="#fff" />
-                                    <Text style={s.assignKeyBtnText}>{assigningKey ? 'Assigning…' : 'Assign New Secret Key'}</Text>
-                                  </LinearGradient>
-                                </TouchableOpacity>
-                              )}
-                              {newlyAssignedKey && (
-                                <View style={[s.newKeyReveal, { backgroundColor: '#7C3AED15', borderColor: '#7C3AED30' }]}>
-                                  <Feather name="check-circle" size={14} color="#A78BFA" />
-                                  <Text style={[s.newKeyRevealTxt, { color: '#A78BFA' }]} numberOfLines={1}>{newlyAssignedKey.code}</Text>
-                                  <Text style={s.newKeyRevealHint}>Tap to copy</Text>
-                                </View>
-                              )}
-                            </View>
-                          )}
-                        </>
-                      )}
 
                       <TouchableOpacity onPress={handleSave} disabled={saving} activeOpacity={0.85} style={saving ? { opacity: 0.6, marginTop: 4 } : { marginTop: 4 }}>
                         <LinearGradient colors={grad} style={s.saveBtn}>
@@ -649,49 +498,6 @@ export default function AdminUsers() {
                       {profileUser.address && <InfoRow icon="map-pin" label="Address"      value={profileUser.address}  accentColor={grad[0]} />}
                       {profileUser.createdAt && <InfoRow icon="calendar" label="Joined"    value={profileUser.createdAt} accentColor={grad[0]} />}
 
-                      {showKeySection && (
-                        <>
-                          <SectionHeading icon="key" label="Secret Key" color="#A78BFA" />
-                          {linkedKey ? (
-                            <View style={[s.keyCard, { backgroundColor: '#7C3AED0A', borderColor: '#7C3AED22' }]}>
-                              <LinearGradient colors={['#7C3AED', '#6366F1']} style={s.keyIconBox}>
-                                <Feather name="key" size={14} color="#fff" />
-                              </LinearGradient>
-                              <View style={{ flex: 1 }}>
-                                <Text style={s.keyCardCode} numberOfLines={1}>{linkedKey.code}</Text>
-                                <Text style={s.keyCardMeta}>{linkedKey.role === 'safaikarmi' ? 'Safai Karmi' : 'Official'}  ·  {linkedKey.createdAt}</Text>
-                              </View>
-                              <View style={[s.keyStatusPill, { backgroundColor: linkedKey.isActive ? '#10B98120' : '#EF444420' }]}>
-                                <View style={[s.keyStatusDot, { backgroundColor: linkedKey.isActive ? '#10B981' : '#EF4444' }]} />
-                                <Text style={[s.keyStatusText, { color: linkedKey.isActive ? '#10B981' : '#EF4444' }]}>
-                                  {linkedKey.isActive ? 'Active' : 'Revoked'}
-                                </Text>
-                              </View>
-                            </View>
-                          ) : (
-                            <View style={{ gap: 10 }}>
-                              <View style={[s.keyInfoBox, { backgroundColor: '#FBBF2410', borderColor: '#FBBF2422' }]}>
-                                <Feather name="alert-circle" size={12} color="#FBBF24" />
-                                <Text style={[s.keyInfoText, { color: '#D97706' }]}>No secret key linked. Assign one below.</Text>
-                              </View>
-                              {profileUser.role !== 'citizen' && (
-                                <TouchableOpacity onPress={() => handleAssignKey(profileUser)} disabled={assigningKey} activeOpacity={0.85} style={assigningKey ? { opacity: 0.6 } : {}}>
-                                  <LinearGradient colors={['#7C3AED', '#6366F1']} style={s.assignKeyBtn}>
-                                    <Feather name={assigningKey ? 'loader' : 'key'} size={15} color="#fff" />
-                                    <Text style={s.assignKeyBtnText}>{assigningKey ? 'Assigning…' : 'Assign New Secret Key'}</Text>
-                                  </LinearGradient>
-                                </TouchableOpacity>
-                              )}
-                              {newlyAssignedKey && (
-                                <View style={[s.newKeyReveal, { backgroundColor: '#7C3AED15', borderColor: '#7C3AED30' }]}>
-                                  <Feather name="check-circle" size={14} color="#A78BFA" />
-                                  <Text style={[s.newKeyRevealTxt, { color: '#A78BFA' }]} numberOfLines={1}>{newlyAssignedKey.code}</Text>
-                                </View>
-                              )}
-                            </View>
-                          )}
-                        </>
-                      )}
 
                       {!isProtected && (
                         <>
@@ -851,39 +657,39 @@ const s = StyleSheet.create({
   syncDot:  { width: 6, height: 6, borderRadius: 3, backgroundColor: '#10B981' },
   syncText: { fontSize: 10, fontFamily: 'Inter_700Bold', color: '#10B981', letterSpacing: 0.3 },
 
-  /* search */
-  searchWrap: { paddingHorizontal: 12, paddingTop: 10, paddingBottom: 8, gap: 8, borderBottomWidth: 1, borderBottomColor: GLASS_BD },
-  searchBox:  { flexDirection: 'row', alignItems: 'center', gap: 10, borderRadius: 12, borderWidth: 1, borderColor: GLASS_BD, backgroundColor: GLASS, paddingHorizontal: 12, paddingVertical: 9 },
-  searchInput:{ flex: 1, fontSize: 13, fontFamily: 'Inter_400Regular', color: TEXT, padding: 0 },
+  /* search — 30% compact */
+  searchWrap: { paddingHorizontal: 9, paddingTop: 7, paddingBottom: 6, gap: 6, borderBottomWidth: 1, borderBottomColor: GLASS_BD },
+  searchBox:  { flexDirection: 'row', alignItems: 'center', gap: 8, borderRadius: 10, borderWidth: 1, borderColor: GLASS_BD, backgroundColor: GLASS, paddingHorizontal: 9, paddingVertical: 6 },
+  searchInput:{ flex: 1, fontSize: 11, fontFamily: 'Inter_400Regular', color: TEXT, padding: 0 },
 
-  /* filters */
-  filterRow:      { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 6 },
-  filterGroup:    { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  filterChip:     { flexDirection: 'row', alignItems: 'center', gap: 3, borderRadius: 99, borderWidth: 1, paddingHorizontal: 9, paddingVertical: 4 },
-  filterChipText: { fontSize: 10, fontFamily: 'Inter_600SemiBold' },
-  filterDot:      { width: 5, height: 5, borderRadius: 3 },
+  /* filters — 30% compact */
+  filterRow:      { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 4 },
+  filterGroup:    { flexDirection: 'row', alignItems: 'center', gap: 3 },
+  filterChip:     { flexDirection: 'row', alignItems: 'center', gap: 3, borderRadius: 99, borderWidth: 1, paddingHorizontal: 6, paddingVertical: 3 },
+  filterChipText: { fontSize: 9, fontFamily: 'Inter_600SemiBold' },
+  filterDot:      { width: 4, height: 4, borderRadius: 2 },
   filterResultRow:{ flexDirection: 'row', alignItems: 'center', gap: 4, marginLeft: 'auto' },
-  filterCount:    { fontSize: 10, fontFamily: 'Inter_600SemiBold' },
-  clearAllBtn:    { flexDirection: 'row', alignItems: 'center', gap: 3, borderRadius: 99, borderWidth: 1, paddingHorizontal: 7, paddingVertical: 3 },
-  clearAllText:   { fontSize: 9, fontFamily: 'Inter_600SemiBold' },
+  filterCount:    { fontSize: 9, fontFamily: 'Inter_600SemiBold' },
+  clearAllBtn:    { flexDirection: 'row', alignItems: 'center', gap: 3, borderRadius: 99, borderWidth: 1, paddingHorizontal: 6, paddingVertical: 2 },
+  clearAllText:   { fontSize: 8, fontFamily: 'Inter_600SemiBold' },
 
-  /* tabs */
-  tabRow:  { flexDirection: 'row', gap: 5, paddingHorizontal: 12, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: GLASS_BD, backgroundColor: 'rgba(255,255,255,0.02)' },
+  /* tabs — 30% compact */
+  tabRow:  { flexDirection: 'row', gap: 4, paddingHorizontal: 9, paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: GLASS_BD, backgroundColor: 'rgba(255,255,255,0.02)' },
   tabItem: { flex: 1 },
   tabPillActive: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    gap: 4, borderRadius: 99, paddingVertical: 7, paddingHorizontal: 4,
+    gap: 3, borderRadius: 99, paddingVertical: 5, paddingHorizontal: 3,
   },
-  tabLabelActive:  { color: '#fff', fontSize: 9, fontFamily: 'Inter_700Bold' },
-  tabCountBubble:  { backgroundColor: 'rgba(255,255,255,0.28)', borderRadius: 99, paddingHorizontal: 4, paddingVertical: 1 },
-  tabCountText:    { color: '#fff', fontSize: 8, fontFamily: 'Inter_700Bold' },
+  tabLabelActive:  { color: '#fff', fontSize: 8, fontFamily: 'Inter_700Bold' },
+  tabCountBubble:  { backgroundColor: 'rgba(255,255,255,0.28)', borderRadius: 99, paddingHorizontal: 3, paddingVertical: 1 },
+  tabCountText:    { color: '#fff', fontSize: 7, fontFamily: 'Inter_700Bold' },
   tabPillInactive: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    gap: 4, borderRadius: 99, paddingVertical: 7, paddingHorizontal: 4,
+    gap: 3, borderRadius: 99, paddingVertical: 5, paddingHorizontal: 3,
     borderWidth: 1, borderColor: GLASS_BD, backgroundColor: GLASS,
   },
-  tabLabelInactive: { fontSize: 9, fontFamily: 'Inter_500Medium', color: MUTED },
-  tabCountInactive: { fontSize: 8, fontFamily: 'Inter_600SemiBold', color: MUTED },
+  tabLabelInactive: { fontSize: 8, fontFamily: 'Inter_500Medium', color: MUTED },
+  tabCountInactive: { fontSize: 7, fontFamily: 'Inter_600SemiBold', color: MUTED },
 
   /* table */
   tableHead: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 7, borderBottomWidth: 1, borderBottomColor: GLASS_BD, backgroundColor: 'rgba(99,102,241,0.08)' },

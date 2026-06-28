@@ -4,7 +4,6 @@ import { router } from 'expo-router';
 import React, { useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  Clipboard,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -19,15 +18,6 @@ import { useAlert } from '@/contexts/AlertContext';
 import { useAuth } from '@/contexts/AuthContext';
 
 const IS_WEB = Platform.OS === 'web';
-
-type RoleKey = 'OFFICIAL' | 'SAFAI KARMI';
-
-const ROLES: { key: RoleKey; prefix: string; grad: readonly [string, string]; icon: string; label: string }[] = [
-  { key: 'OFFICIAL',    prefix: 'OF-', grad: ['#0EA5E9', '#2563EB'], icon: 'briefcase', label: 'Official' },
-  { key: 'SAFAI KARMI', prefix: 'SK-', grad: ['#10B981', '#059669'], icon: 'trash-2',  label: 'Safai Karmi' },
-];
-
-const CODE_LEN = 12; // OF-XXXX-XXXX or SK-XXXX-XXXX
 
 function DNPLogo() {
   return (
@@ -82,36 +72,28 @@ function DNPLogo() {
 }
 
 export default function LoginScreen() {
-  const { login, loginWithCode, loginWithGoogle } = useAuth();
+  const { login, loginWithUserId, loginWithGoogle } = useAuth();
   const { showAlert } = useAlert();
   const [tab, setTab] = useState<'citizen' | 'staff'>('citizen');
   const [subTab, setSubTab] = useState<'email' | 'mobile'>('email');
   const [email, setEmail] = useState('');
   const [mobile, setMobile] = useState('');
   const [password, setPassword] = useState('');
-  const [secretCode, setSecretCode] = useState('');
-  const [selectedRole, setSelectedRole] = useState<RoleKey | null>(null);
+  const [staffUserId, setStaffUserId] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [showSecret, setShowSecret] = useState(false);
-  const [copied, setCopied] = useState(false);
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const codeRef = useRef<TextInput>(null);
 
-  function handleRoleSelect(role: typeof ROLES[0]) {
-    setSelectedRole(role.key);
-    setSecretCode(role.prefix);
-    setTimeout(() => codeRef.current?.focus(), 100);
-  }
-
-  function handleCodeChange(v: string) {
-    if (!selectedRole) return;
-    const prefix = ROLES.find(r => r.key === selectedRole)!.prefix;
-    const upper = v.toUpperCase();
-    if (!upper.startsWith(prefix)) { setSecretCode(prefix); return; }
-    const alphanum = upper.slice(prefix.length).replace(/[^A-Z0-9]/g, '').slice(0, 8);
-    const body = alphanum.length > 4 ? alphanum.slice(0, 4) + '-' + alphanum.slice(4) : alphanum;
-    setSecretCode(prefix + body);
+  async function handleStaffLogin() {
+    const uid = staffUserId.trim().toUpperCase();
+    if (!uid) { showAlert('Missing ID', 'Please enter your User ID.', undefined, 'warning'); return; }
+    setLoading(true);
+    try {
+      const ok = await loginWithUserId(uid);
+      if (!ok) showAlert('Not Found', 'User ID not recognised. Check with your administrator.', undefined, 'error');
+      else router.replace('/(tabs)');
+    } finally { setLoading(false); }
   }
 
   async function handleSignIn() {
@@ -139,30 +121,6 @@ export default function LoginScreen() {
     } catch {
       showAlert('Error', 'Google Sign-In is unavailable. Please use Email login.', undefined, 'error');
     } finally { setGoogleLoading(false); }
-  }
-
-  async function handleSecretCode() {
-    if (!secretCode.trim()) {
-      showAlert('Missing Code', 'Please enter your secret code.', undefined, 'warning');
-      return;
-    }
-    setLoading(true);
-    try {
-      const ok = await loginWithCode(secretCode.trim());
-      if (!ok) showAlert('Invalid Code', 'Secret code not recognised or inactive.', undefined, 'error');
-      else router.replace('/(tabs)');
-    } finally { setLoading(false); }
-  }
-
-  function handleCopy() {
-    if (!secretCode.trim()) return;
-    if (IS_WEB) {
-      navigator.clipboard?.writeText(secretCode.trim()).catch(() => {});
-    } else {
-      Clipboard.setString(secretCode.trim());
-    }
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
   }
 
   return (
@@ -309,100 +267,55 @@ export default function LoginScreen() {
               </>
             ) : (
               <>
-                <Text style={s.cardTitle}>Staff Authentication</Text>
-                <Text style={s.cardSub}>Select your role and enter your secret key</Text>
+                <Text style={s.cardTitle}>Staff Login</Text>
+                <Text style={s.cardSub}>Enter your User ID to sign in</Text>
 
-                {/* 2-card role row */}
-                <View style={s.roleRow}>
-                  {ROLES.map(r => {
-                    const active = selectedRole === r.key;
-                    return (
-                      <Pressable key={r.key} style={s.roleCardWrap} onPress={() => handleRoleSelect(r)}>
-                        {active
-                          ? <LinearGradient colors={r.grad} style={s.roleCardActive}>
-                              <Feather name={r.icon as any} size={20} color="#fff" />
-                              <Text style={s.roleCardTxtActive}>{r.label}</Text>
-                            </LinearGradient>
-                          : <View style={s.roleCardInactive}>
-                              <Feather name={r.icon as any} size={20} color="#475569" />
-                              <Text style={s.roleCardTxt}>{r.label}</Text>
-                            </View>}
-                      </Pressable>
-                    );
-                  })}
+                <View style={s.inputBox}>
+                  <Feather name="hash" size={16} color="#8B5CF6" style={s.inputIcon} />
+                  <TextInput
+                    ref={codeRef}
+                    style={[s.input, { flex: 1, fontFamily: 'Inter_700Bold', letterSpacing: 2 }]}
+                    placeholder="e.g. OF1234A or SK1234A"
+                    placeholderTextColor="#475569"
+                    autoCapitalize="characters"
+                    autoCorrect={false}
+                    value={staffUserId}
+                    onChangeText={v => setStaffUserId(v.replace(/[^A-Za-z0-9]/g, '').toUpperCase())}
+                    onSubmitEditing={handleStaffLogin}
+                    returnKeyType="done"
+                  />
                 </View>
 
-                {/* Locked prefix + code input */}
-                {selectedRole ? (
-                  <View style={[s.inputBox, { borderColor: ROLES.find(r => r.key === selectedRole)!.grad[0] }]}>
-                    <Feather name="key" size={16} color="#8B5CF6" style={s.inputIcon} />
-                    {/* Locked prefix badge */}
-                    <View style={[s.prefixBadge, { backgroundColor: ROLES.find(r => r.key === selectedRole)!.grad[0] + '22' }]}>
-                      <Text style={[s.prefixBadgeTxt, { color: ROLES.find(r => r.key === selectedRole)!.grad[0] }]}>
-                        {ROLES.find(r => r.key === selectedRole)!.prefix}
-                      </Text>
-                    </View>
-                    <TextInput
-                      ref={codeRef}
-                      style={[s.input, { flex: 1, fontFamily: 'Inter_700Bold', letterSpacing: 2 }]}
-                      placeholder="XXXX-XXXX"
-                      placeholderTextColor="#475569"
-                      autoCapitalize="characters"
-                      autoCorrect={false}
-                      secureTextEntry={!showSecret}
-                      value={secretCode.slice(ROLES.find(r => r.key === selectedRole)!.prefix.length)}
-                      onChangeText={v => handleCodeChange(ROLES.find(r => r.key === selectedRole)!.prefix + v)}
-                      onSubmitEditing={handleSecretCode}
-                      returnKeyType="done"
-                      maxLength={9}
-                    />
-                    <Pressable onPress={() => setShowSecret(p => !p)} style={s.eyeBtn}>
-                      <Feather name={showSecret ? 'eye-off' : 'eye'} size={16} color="#8B5CF6" />
-                    </Pressable>
-                  </View>
-                ) : (
-                  <View style={s.inputBox}>
-                    <Feather name="key" size={16} color="#374151" style={s.inputIcon} />
-                    <Text style={[s.input, { color: '#475569', paddingVertical: 14 }]}>Select a role above first</Text>
-                  </View>
-                )}
+                <View style={s.prefixHint}>
+                  <Feather name="info" size={10} color="#6366F1" />
+                  <Text style={s.prefixHintLabel}>Format: </Text>
+                  <Text style={s.prefixHintCode}>OF1234A</Text>
+                  <Text style={s.prefixHintLabel}> (Official) · </Text>
+                  <Text style={s.prefixHintCode}>SK1234A</Text>
+                  <Text style={s.prefixHintLabel}> (Safai Karmi)</Text>
+                </View>
 
-                {selectedRole && (
-                  <View style={s.prefixHint}>
-                    <Feather name="lock" size={10} color="#6366F1" />
-                    <Text style={s.prefixHintLabel}>Prefix </Text>
-                    <Text style={s.prefixHintCode}>{ROLES.find(r => r.key === selectedRole)!.prefix}</Text>
-                    <Text style={s.prefixHintLabel}> locked · A-Z, 0-9 only · auto uppercase</Text>
-                  </View>
-                )}
-
-                {(() => {
-                  const codeComplete = secretCode.length === CODE_LEN;
-                  const activeRole = ROLES.find(r => r.key === selectedRole);
-                  return (
-                    <TouchableOpacity
-                      onPress={handleSecretCode}
-                      disabled={loading || !codeComplete}
-                      activeOpacity={0.88}
-                      style={[s.btnWrap, (loading || !codeComplete) && { opacity: 0.4 }]}
-                    >
-                      <LinearGradient
-                        colors={activeRole ? activeRole.grad : ['#374151', '#1F2937']}
-                        start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
-                        style={s.btn}
-                      >
-                        {loading
-                          ? <ActivityIndicator color="#fff" size="small" />
-                          : <Feather name="shield" size={16} color="#fff" />}
-                        <Text style={s.btnTxt}>{loading ? 'Verifying…' : 'Authenticate'}</Text>
-                      </LinearGradient>
-                    </TouchableOpacity>
-                  );
-                })()}
+                <TouchableOpacity
+                  onPress={handleStaffLogin}
+                  disabled={loading || staffUserId.trim().length < 4}
+                  activeOpacity={0.88}
+                  style={[s.btnWrap, (loading || staffUserId.trim().length < 4) && { opacity: 0.4 }]}
+                >
+                  <LinearGradient
+                    colors={['#7C3AED', '#6366F1']}
+                    start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+                    style={s.btn}
+                  >
+                    {loading
+                      ? <ActivityIndicator color="#fff" size="small" />
+                      : <Feather name="log-in" size={16} color="#fff" />}
+                    <Text style={s.btnTxt}>{loading ? 'Signing in…' : 'Sign In'}</Text>
+                  </LinearGradient>
+                </TouchableOpacity>
 
                 <View style={s.staffNote}>
-                  <Feather name="info" size={12} color="#6366F1" />
-                  <Text style={s.staffNoteTxt}>First-time login creates your account automatically.</Text>
+                  <Feather name="shield" size={12} color="#6366F1" />
+                  <Text style={s.staffNoteTxt}>Your User ID is assigned by the Super Admin.</Text>
                 </View>
               </>
             )}

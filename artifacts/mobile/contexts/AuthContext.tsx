@@ -29,13 +29,13 @@ interface AuthContextType {
   user: User | null;
   isLoading: boolean;
   login: (identifier: string, password: string, method?: 'email' | 'mobile') => Promise<boolean>;
-  loginWithCode: (secretCode: string) => Promise<boolean>;
+  loginWithUserId: (userId: string) => Promise<boolean>;
   loginWithGoogle: () => Promise<boolean>;
   register: (name: string, email: string, mobile: string, password: string, address?: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
   updateProfile: (updates: Partial<User>) => Promise<void>;
   resetUserPassword: (email: string, newPassword: string) => Promise<boolean>;
-  updateSecretKey: (userId: string, newCode: string) => Promise<boolean>;
+  updateSecretKey?: (userId: string, newCode: string) => Promise<boolean>;
   changePassword: (currentPwd: string, newPwd: string) => Promise<{ success: boolean; error?: string }>;
 }
 
@@ -67,10 +67,21 @@ const SECRET_CODES: Record<string, { role: UserRole; userId: string }> = {
 };
 
 function genUserId(role: string): string {
-  const prefix = role === 'citizen' ? 'CT' : role === 'safaikarmi' ? 'SK' : role === 'official' ? 'OF' : 'AD';
+  const prefix = role === 'citizen' ? 'CITI' : role === 'safaikarmi' ? 'SK' : role === 'official' ? 'OF' : 'AD';
   const digits = String(Math.floor(1000 + Math.random() * 9000));
   const letter = String.fromCharCode(65 + Math.floor(Math.random() * 26));
   return `${prefix}${digits}${letter}`;
+}
+
+function isValidUserId(id: string, role: string): boolean {
+  if (role === 'admin' && id === 'SUPERADMIN') return true;
+  const patterns: Record<string, RegExp> = {
+    official:   /^OF\d{4}[A-Z]$/,
+    safaikarmi: /^SK\d{4}[A-Z]$/,
+    citizen:    /^CITI\d{4}[A-Z]$/,
+    admin:      /^(AD\d{4}[A-Z]|SUPERADMIN)$/,
+  };
+  return (patterns[role] ?? /^.+$/).test(id.toUpperCase());
 }
 
 const ROLE_NAMES: Record<string, string> = {
@@ -234,86 +245,53 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return true;
   }
 
-  async function loginWithCode(secretCode: string): Promise<boolean> {
-    const code = secretCode.toUpperCase().trim();
+  async function loginWithUserId(userId: string): Promise<boolean> {
+    const uid = userId.toUpperCase().trim();
 
-    if (code === SUPER_ADMIN.secretCode) {
+    // Super admin by userId
+    if (uid === 'SUPERADMIN') {
       const { password: _, secretCode: __, ...userData } = SUPER_ADMIN;
+      try { await signInWithEmailAndPassword(firebaseAuth, SUPER_ADMIN.email, SUPER_ADMIN.password); }
+      catch { try { await signInAnonymously(firebaseAuth); } catch {} }
+      if (firebaseAuth.currentUser) {
+        try { await saveUserToFirestore(firebaseAuth.currentUser.uid, { ...userData as User, role: 'admin' }); } catch {}
+      }
       setUser(userData);
       await AsyncStorage.setItem('dnp360_user', JSON.stringify(userData));
       return true;
     }
 
-    const hardcoded = SECRET_CODES[code];
-    if (hardcoded) {
-      const found = DEMO_USERS.find(u => u.id === hardcoded.userId);
-      if (found) {
-        const { password: _, ...userData } = found;
-        setUser(userData);
-        await AsyncStorage.setItem('dnp360_user', JSON.stringify(userData));
-        return true;
-      }
+    // Demo users
+    const demo = DEMO_USERS.find(u => u.id.toUpperCase() === uid);
+    if (demo) {
+      const { password: _, ...userData } = demo;
+      try { await signInAnonymously(firebaseAuth); } catch {}
+      setUser(userData);
+      await AsyncStorage.setItem('dnp360_user', JSON.stringify(userData));
+      return true;
     }
 
+    // Firestore lookup by 'id' field
     try {
-      const keysSnap = await getDocs(collection(db, 'secretKeys'));
-      if (!keysSnap.empty) {
-        const keys = keysSnap.docs.map(d => ({ id: d.id, ...d.data() })) as Array<{
-          id: string; code: string; role: string; isActive: boolean; usedBy?: string;
-        }>;
-        const matched = keys.find(k => k.code.toUpperCase() === code && k.isActive);
-
-        if (matched) {
-          if (matched.usedBy) {
-            const profile = await getUserFromFirestore(matched.usedBy);
-            if (profile) {
-              const profileEmail = profile.email ?? `${matched.usedBy.toLowerCase()}.dnp360@gmail.com`;
-              try { await signInWithEmailAndPassword(firebaseAuth, profileEmail, code); } catch {}
-              setUser(profile);
-              await AsyncStorage.setItem('dnp360_user', JSON.stringify(profile));
-              return true;
-            }
-          } else {
-            const newUserId = genUserId(matched.role);
-            const userEmail = `${newUserId.toLowerCase()}.dnp360@gmail.com`;
-            let newUid: string;
-            try {
-              const cred = await createUserWithEmailAndPassword(firebaseAuth, userEmail, code);
-              newUid = cred.user.uid;
-            } catch (e: any) {
-              if (e?.code === 'auth/email-already-in-use') {
-                try {
-                  const cred = await signInWithEmailAndPassword(firebaseAuth, userEmail, code);
-                  newUid = cred.user.uid;
-                } catch { return false; }
-              } else { return false; }
-            }
-
-            const newUser: User = {
-              id: newUserId,
-              name: ROLE_NAMES[matched.role] ?? matched.role,
-              email: userEmail,
-              role: matched.role as UserRole,
-              isActive: true,
-              createdAt: today(),
-            };
-
-            await saveUserToFirestore(newUid!, newUser);
-            try {
-              await updateDoc(doc(db, 'secretKeys', matched.id), {
-                usedBy: newUid!,
-                _updatedAt: serverTimestamp(),
-              });
-            } catch {}
-
-            setUser(newUser);
-            await AsyncStorage.setItem('dnp360_user', JSON.stringify(newUser));
-            return true;
-          }
-        }
+      const snap = await getDocs(query(collection(db, 'users'), where('id', '==', uid)));
+      if (!snap.empty) {
+        const docSnap = snap.docs[0];
+        const profile = { id: uid, ...docSnap.data() } as User;
+        try { await signInAnonymously(firebaseAuth); } catch {}
+        setUser(profile);
+        await AsyncStorage.setItem('dnp360_user', JSON.stringify(profile));
+        return true;
+      }
+      // Also try doc keyed by userId itself (legacy SUPERADMIN doc)
+      const direct = await getUserFromFirestore(uid);
+      if (direct) {
+        try { await signInAnonymously(firebaseAuth); } catch {}
+        setUser(direct);
+        await AsyncStorage.setItem('dnp360_user', JSON.stringify(direct));
+        return true;
       }
     } catch (e) {
-      console.warn('loginWithCode error:', e);
+      console.warn('loginWithUserId error:', e);
     }
 
     return false;
@@ -451,7 +429,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, loginWithCode, loginWithGoogle, register, logout, updateProfile, resetUserPassword, updateSecretKey, changePassword }}>
+    <AuthContext.Provider value={{ user, isLoading, login, loginWithUserId, loginWithGoogle, register, logout, updateProfile, resetUserPassword, updateSecretKey, changePassword }}>
       {children}
     </AuthContext.Provider>
   );
