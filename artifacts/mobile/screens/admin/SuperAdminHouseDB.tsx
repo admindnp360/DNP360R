@@ -87,6 +87,44 @@ export default function SuperAdminHouseDB() {
   const [selectionMode, setSelectionMode]       = useState(false);
   const [selectedHouseIds, setSelectedHouseIds] = useState<string[]>([]);
 
+  // ── Ward selection ─────────────────────────────────────────────────
+  const [wardSelMode, setWardSelMode]       = useState(false);
+  const [selectedWardIds, setSelectedWardIds] = useState<string[]>([]);
+  function exitWardSel() { setWardSelMode(false); setSelectedWardIds([]); }
+  function toggleWardSel(id: string) { setSelectedWardIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]); }
+  async function handleBulkDeleteWards() {
+    const withHouses = selectedWardIds.filter(id => houses.some(h => h.wardId === id));
+    if (withHouses.length > 0) {
+      showAlert('Cannot Delete', `${withHouses.length} ward(s) still have houses. Remove all houses first.`, undefined, 'warning'); return;
+    }
+    showAlert('Delete Wards?', `Permanently delete ${selectedWardIds.length} ward(s)?`, [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Delete All', style: 'destructive', onPress: async () => {
+          setSaving(true);
+          try { await Promise.all(selectedWardIds.map(id => deleteWard(id))); exitWardSel(); showAlert('Deleted', 'Wards removed.', undefined, 'success'); }
+          finally { setSaving(false); }
+        },
+      },
+    ], 'error');
+  }
+
+  // ── Group selection ────────────────────────────────────────────────
+  const [groupSelMode, setGroupSelMode]       = useState(false);
+  const [selectedGroupIds, setSelectedGroupIds] = useState<string[]>([]);
+  function exitGroupSel() { setGroupSelMode(false); setSelectedGroupIds([]); }
+  function toggleGroupSel(id: string) { setSelectedGroupIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]); }
+  async function handleBulkDeleteGroups() {
+    showAlert('Delete Groups?', `Delete ${selectedGroupIds.length} group(s)? Houses become ungrouped.`, [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Delete All', style: 'destructive', onPress: async () => {
+          setSaving(true);
+          try { await Promise.all(selectedGroupIds.map(id => deleteGroup(id))); exitGroupSel(); showAlert('Deleted', 'Groups removed.', undefined, 'success'); }
+          finally { setSaving(false); }
+        },
+      },
+    ], 'error');
+  }
+
   // ── Bulk delete ────────────────────────────────────────────────────
   async function handleDeleteSelected() {
     if (selectedHouseIds.length === 0) return;
@@ -142,11 +180,11 @@ export default function SuperAdminHouseDB() {
   }, [houses, globalSearch]);
 
   // ── DB Tab – navigation helpers ───────────────────────────────────
-  function goToGroups(ward: Ward) { setSelectedWard(ward); setView('groups'); setSearch(''); setGlobalSearch(''); }
-  function goToHouses(group: Group | null) { setSelectedGroup(group); setView('houses'); setSearch(''); setExpandedHouseId(null); }
+  function goToGroups(ward: Ward) { setSelectedWard(ward); setView('groups'); setSearch(''); setGlobalSearch(''); exitWardSel(); exitGroupSel(); }
+  function goToHouses(group: Group | null) { setSelectedGroup(group); setView('houses'); setSearch(''); setExpandedHouseId(null); exitGroupSel(); }
   function goBack() {
     if (view === 'houses') { setView('groups'); setExpandedHouseId(null); setSearch(''); exitSelectionMode(); }
-    else if (view === 'groups') { setView('wards'); setSelectedWard(null); setSearch(''); }
+    else if (view === 'groups') { setView('wards'); setSelectedWard(null); setSearch(''); exitGroupSel(); }
   }
 
   function exitSelectionMode() { setSelectionMode(false); setSelectedHouseIds([]); }
@@ -485,21 +523,41 @@ export default function SuperAdminHouseDB() {
 
       {/* ═══════════════════ COMMUNITIES VIEW ═══════════════════════ */}
       {view === 'wards' && (
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
-          {globalSearch.trim().length >= 2 ? (
-            <View>
-              <View style={s.waSecHdr}>
-                <Text style={s.waSecTxt}>{globalResults.length} result{globalResults.length !== 1 ? 's' : ''}</Text>
-              </View>
-              {globalResults.length === 0 ? (
-                <View style={s.waEmpty}>
-                  <Feather name="search" size={30} color={MUTED2} />
-                  <Text style={[s.waEmptyT, { color: TEXT }]}>No houses found</Text>
-                  <Text style={[s.waEmptyS, { color: MUTED }]}>Try a different search term</Text>
+        <View style={{ flex: 1 }}>
+          {/* Ward selection bar */}
+          {wardSelMode && (
+            <View style={s.selBar}>
+              <TouchableOpacity onPress={exitWardSel} style={s.selBarCancel}>
+                <Feather name="x" size={14} color={MUTED} />
+              </TouchableOpacity>
+              <Text style={[s.selBarCount, { color: TEXT }]}>{selectedWardIds.length} selected</Text>
+              <TouchableOpacity
+                onPress={() => selectedWardIds.length === wards.length ? setSelectedWardIds([]) : setSelectedWardIds(wards.map(w => w.id))}
+                style={[s.selAction, { backgroundColor: 'rgba(99,102,241,0.12)', borderColor: 'rgba(99,102,241,0.28)' }]}
+              >
+                <Feather name={selectedWardIds.length === wards.length ? 'check-square' : 'square'} size={12} color="#818CF8" />
+                <Text style={[s.selActionText, { color: '#818CF8' }]}>{selectedWardIds.length === wards.length ? 'Deselect All' : 'Select All'}</Text>
+              </TouchableOpacity>
+              <View style={{ flex: 1 }} />
+              <TouchableOpacity style={[s.selAction, { backgroundColor: 'rgba(239,68,68,0.12)', borderColor: 'rgba(239,68,68,0.28)' }]} onPress={handleBulkDeleteWards} disabled={selectedWardIds.length === 0 || saving}>
+                <Feather name="trash-2" size={12} color="#EF4444" />
+                <Text style={[s.selActionText, { color: '#EF4444' }]}>Delete</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
+            {globalSearch.trim().length >= 2 ? (
+              <View>
+                <View style={s.waSecHdr}>
+                  <Text style={s.waSecTxt}>{globalResults.length} result{globalResults.length !== 1 ? 's' : ''}</Text>
                 </View>
-              ) : globalResults.map(h => {
-                const ward = wards.find(w => w.id === h.wardId);
-                return (
+                {globalResults.length === 0 ? (
+                  <View style={s.waEmpty}>
+                    <Feather name="search" size={30} color={MUTED2} />
+                    <Text style={[s.waEmptyT, { color: TEXT }]}>No houses found</Text>
+                    <Text style={[s.waEmptyS, { color: MUTED }]}>Try a different search term</Text>
+                  </View>
+                ) : globalResults.map(h => (
                   <TouchableOpacity key={h.id} style={s.waListRow} onPress={() => setDetailHouse(h)} activeOpacity={0.7}>
                     <LinearGradient colors={['#4F46E5','#7C3AED']} style={s.waListAvatar}>
                       <Feather name="home" size={13} color="#fff" />
@@ -513,124 +571,178 @@ export default function SuperAdminHouseDB() {
                     <Feather name="chevron-right" size={14} color={MUTED2} />
                     <View style={s.waSep} />
                   </TouchableOpacity>
-                );
-              })}
-            </View>
-          ) : (
-            <View>
-              <View style={s.waSecHdr}>
-                <Text style={s.waSecTxt}>{wards.length} Ward{wards.length !== 1 ? 's' : ''}</Text>
+                ))}
               </View>
-              {wards.length === 0 ? (
-                <View style={s.waEmpty}>
-                  <Feather name="map" size={30} color={MUTED2} />
-                  <Text style={[s.waEmptyT, { color: TEXT }]}>No wards yet</Text>
-                  <Text style={[s.waEmptyS, { color: MUTED }]}>Tap + to add the first ward</Text>
+            ) : (
+              <View>
+                <View style={s.waSecHdr}>
+                  <Text style={s.waSecTxt}>{wards.length} Ward{wards.length !== 1 ? 's' : ''}</Text>
+                  {!wardSelMode && <Text style={[s.waSecTxt, { fontFamily: 'Inter_400Regular', color: MUTED, textTransform: 'none' }]}>Long-press to select</Text>}
                 </View>
-              ) : [...wards].sort((a, b) => (a.wardNumber ?? 0) - (b.wardNumber ?? 0)).map((ward, idx) => {
-                const grad = WARD_GRADS[idx % WARD_GRADS.length];
-                const wHouses = houses.filter(h => h.wardId === ward.id).length;
-                const wWorkers = (ward.assignedWorkers ?? []).length;
-                return (
-                  <View key={ward.id}>
-                    <TouchableOpacity style={s.waCommRow} onPress={() => goToGroups(ward)} activeOpacity={0.7}>
-                      <LinearGradient colors={grad} style={s.waCommAvatar}>
-                        <Text style={s.waCommAvatarTxt}>W{ward.wardNumber}</Text>
-                      </LinearGradient>
-                      <View style={{ flex: 1 }}>
-                        <Text style={[s.waRowName, { color: TEXT }]} numberOfLines={1}>{ward.name}</Text>
-                        <Text style={[s.waRowSub, { color: MUTED }]} numberOfLines={1}>{ward.area}</Text>
-                        <View style={{ flexDirection: 'row', gap: 8, marginTop: 3 }}>
-                          <View style={s.waMiniStat}>
-                            <Feather name="home" size={8} color="#818CF8" />
-                            <Text style={[s.waMiniStatTxt, { color: '#818CF8' }]}>{wHouses}</Text>
-                          </View>
-                          <View style={s.waMiniStat}>
-                            <Feather name="users" size={8} color="#34D399" />
-                            <Text style={[s.waMiniStatTxt, { color: '#34D399' }]}>{wWorkers} workers</Text>
-                          </View>
-                        </View>
-                      </View>
-                      <View style={{ alignItems: 'flex-end', gap: 6 }}>
-                        <Feather name="chevron-right" size={14} color={MUTED2} />
-                        <View style={{ flexDirection: 'row', gap: 5 }}>
-                          <TouchableOpacity onPress={() => openWorkerModal(ward)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} style={s.waMiniBtn}>
-                            <Feather name="user-plus" size={10} color="#818CF8" />
-                          </TouchableOpacity>
-                          <TouchableOpacity onPress={() => openEditWard(ward)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} style={s.waMiniBtn}>
-                            <Feather name="edit-2" size={10} color="#34D399" />
-                          </TouchableOpacity>
-                          <TouchableOpacity onPress={() => handleDeleteWard(ward)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} style={[s.waMiniBtn, { backgroundColor: 'rgba(239,68,68,0.14)', borderColor: 'rgba(239,68,68,0.28)' }]}>
-                            <Feather name="trash-2" size={10} color="#EF4444" />
-                          </TouchableOpacity>
-                        </View>
-                      </View>
-                    </TouchableOpacity>
-                    <View style={s.waSep} />
+                {wards.length === 0 ? (
+                  <View style={s.waEmpty}>
+                    <Feather name="map" size={30} color={MUTED2} />
+                    <Text style={[s.waEmptyT, { color: TEXT }]}>No wards yet</Text>
+                    <Text style={[s.waEmptyS, { color: MUTED }]}>Tap + to add the first ward</Text>
                   </View>
-                );
-              })}
-            </View>
-          )}
-        </ScrollView>
+                ) : [...wards].sort((a, b) => Number(a.wardNumber ?? 0) - Number(b.wardNumber ?? 0)).map((ward, idx) => {
+                  const grad = WARD_GRADS[idx % WARD_GRADS.length];
+                  const wHouses = houses.filter(h => h.wardId === ward.id).length;
+                  const wWorkers = (ward.assignedWorkers ?? []).length;
+                  const isSelW = selectedWardIds.includes(ward.id);
+                  return (
+                    <View key={ward.id}>
+                      <TouchableOpacity
+                        style={[s.waCommRow, isSelW && { backgroundColor: 'rgba(99,102,241,0.07)' }]}
+                        onPress={() => wardSelMode ? toggleWardSel(ward.id) : goToGroups(ward)}
+                        onLongPress={() => { if (!wardSelMode) setWardSelMode(true); toggleWardSel(ward.id); }}
+                        activeOpacity={0.7}
+                      >
+                        {wardSelMode ? (
+                          <View style={[s.checkbox, { borderColor: isSelW ? '#6366F1' : GLASS_BD, backgroundColor: isSelW ? '#6366F1' : 'transparent' }]}>
+                            {isSelW && <Feather name="check" size={10} color="#fff" />}
+                          </View>
+                        ) : (
+                          <LinearGradient colors={grad} style={s.waCommAvatar}>
+                            <Text style={s.waCommAvatarTxt}>W{ward.wardNumber}</Text>
+                          </LinearGradient>
+                        )}
+                        <View style={{ flex: 1 }}>
+                          <Text style={[s.waRowName, { color: TEXT }]} numberOfLines={1}>{ward.name}</Text>
+                          <Text style={[s.waRowSub, { color: MUTED }]} numberOfLines={1}>{ward.area}</Text>
+                          <View style={{ flexDirection: 'row', gap: 8, marginTop: 3 }}>
+                            <View style={s.waMiniStat}>
+                              <Feather name="home" size={8} color="#818CF8" />
+                              <Text style={[s.waMiniStatTxt, { color: '#818CF8' }]}>{wHouses}</Text>
+                            </View>
+                            <View style={s.waMiniStat}>
+                              <Feather name="users" size={8} color="#34D399" />
+                              <Text style={[s.waMiniStatTxt, { color: '#34D399' }]}>{wWorkers} workers</Text>
+                            </View>
+                          </View>
+                        </View>
+                        {!wardSelMode && (
+                          <View style={{ alignItems: 'flex-end', gap: 6 }}>
+                            <Feather name="chevron-right" size={14} color={MUTED2} />
+                            <View style={{ flexDirection: 'row', gap: 5 }}>
+                              <TouchableOpacity onPress={() => openWorkerModal(ward)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} style={s.waMiniBtn}>
+                                <Feather name="user-plus" size={10} color="#818CF8" />
+                              </TouchableOpacity>
+                              <TouchableOpacity onPress={() => openEditWard(ward)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} style={s.waMiniBtn}>
+                                <Feather name="edit-2" size={10} color="#34D399" />
+                              </TouchableOpacity>
+                              <TouchableOpacity onPress={() => handleDeleteWard(ward)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} style={[s.waMiniBtn, { backgroundColor: 'rgba(239,68,68,0.14)', borderColor: 'rgba(239,68,68,0.28)' }]}>
+                                <Feather name="trash-2" size={10} color="#EF4444" />
+                              </TouchableOpacity>
+                            </View>
+                          </View>
+                        )}
+                      </TouchableOpacity>
+                      <View style={s.waSep} />
+                    </View>
+                  );
+                })}
+              </View>
+            )}
+          </ScrollView>
+        </View>
       )}
 
       {/* ═══════════════════════ GROUPS VIEW ═══════════════════════ */}
       {view === 'groups' && selectedWard && (
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
-          <View style={s.waSecHdr}>
-            <Text style={s.waSecTxt}>{groups.length + 1} group{groups.length + 1 !== 1 ? 's' : ''}</Text>
-          </View>
-          <TouchableOpacity style={s.waCommRow} onPress={() => goToHouses(null)} activeOpacity={0.7}>
-            <LinearGradient colors={['#4F46E5','#7C3AED']} style={s.waCommAvatar}>
-              <Feather name="grid" size={14} color="#fff" />
-            </LinearGradient>
-            <View style={{ flex: 1 }}>
-              <Text style={[s.waRowName, { color: TEXT }]}>All Houses</Text>
-              <Text style={[s.waRowSub, { color: MUTED }]}>{houses.filter(h => h.wardId === selectedWard.id).length} houses in ward</Text>
-            </View>
-            <Feather name="chevron-right" size={14} color={MUTED2} />
-          </TouchableOpacity>
-          <View style={s.waSep} />
-          {groups.map((g, idx) => {
-            const color = g.color || GROUP_COLORS[idx % GROUP_COLORS.length];
-            const count = houses.filter(h => h.groupId === g.id).length;
-            return (
-              <View key={g.id}>
-                <TouchableOpacity style={s.waCommRow} onPress={() => goToHouses(g)} activeOpacity={0.7}>
-                  <View style={[s.waCommAvatar, { backgroundColor: color }]}>
-                    <Feather name="layers" size={14} color="#fff" />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={[s.waRowName, { color: TEXT }]} numberOfLines={1}>{g.name}</Text>
-                    <Text style={[s.waRowSub, { color: MUTED }]} numberOfLines={1}>{g.description || `${count} houses`}</Text>
-                  </View>
-                  <View style={{ alignItems: 'flex-end', gap: 6 }}>
-                    <View style={[s.waCountBubble, { backgroundColor: color + '22', borderColor: color + '40' }]}>
-                      <Text style={[s.waCountBubbleTxt, { color }]}>{count}</Text>
-                    </View>
-                    <View style={{ flexDirection: 'row', gap: 5 }}>
-                      <TouchableOpacity onPress={() => openEditGroup(g)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} style={s.waMiniBtn}>
-                        <Feather name="edit-2" size={10} color="#34D399" />
-                      </TouchableOpacity>
-                      <TouchableOpacity onPress={() => handleDeleteGroup(g)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} style={[s.waMiniBtn, { backgroundColor: 'rgba(239,68,68,0.14)', borderColor: 'rgba(239,68,68,0.28)' }]}>
-                        <Feather name="trash-2" size={10} color="#EF4444" />
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                </TouchableOpacity>
-                <View style={s.waSep} />
-              </View>
-            );
-          })}
-          {groups.length === 0 && (
-            <View style={s.waEmpty}>
-              <Feather name="layers" size={30} color={MUTED2} />
-              <Text style={[s.waEmptyT, { color: TEXT }]}>No groups yet</Text>
-              <Text style={[s.waEmptyS, { color: MUTED }]}>Tap + to add a group</Text>
+        <View style={{ flex: 1 }}>
+          {/* Group selection bar */}
+          {groupSelMode && (
+            <View style={s.selBar}>
+              <TouchableOpacity onPress={exitGroupSel} style={s.selBarCancel}>
+                <Feather name="x" size={14} color={MUTED} />
+              </TouchableOpacity>
+              <Text style={[s.selBarCount, { color: TEXT }]}>{selectedGroupIds.length} selected</Text>
+              <TouchableOpacity
+                onPress={() => selectedGroupIds.length === groups.length ? setSelectedGroupIds([]) : setSelectedGroupIds(groups.map(g => g.id))}
+                style={[s.selAction, { backgroundColor: 'rgba(16,185,129,0.12)', borderColor: 'rgba(16,185,129,0.28)' }]}
+              >
+                <Feather name={selectedGroupIds.length === groups.length ? 'check-square' : 'square'} size={12} color="#34D399" />
+                <Text style={[s.selActionText, { color: '#34D399' }]}>{selectedGroupIds.length === groups.length ? 'Deselect All' : 'Select All'}</Text>
+              </TouchableOpacity>
+              <View style={{ flex: 1 }} />
+              <TouchableOpacity style={[s.selAction, { backgroundColor: 'rgba(239,68,68,0.12)', borderColor: 'rgba(239,68,68,0.28)' }]} onPress={handleBulkDeleteGroups} disabled={selectedGroupIds.length === 0 || saving}>
+                <Feather name="trash-2" size={12} color="#EF4444" />
+                <Text style={[s.selActionText, { color: '#EF4444' }]}>Delete</Text>
+              </TouchableOpacity>
             </View>
           )}
-        </ScrollView>
+          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
+            <View style={s.waSecHdr}>
+              <Text style={s.waSecTxt}>{groups.length + 1} group{groups.length + 1 !== 1 ? 's' : ''}</Text>
+              {!groupSelMode && <Text style={[s.waSecTxt, { fontFamily: 'Inter_400Regular', color: MUTED, textTransform: 'none' }]}>Long-press to select</Text>}
+            </View>
+            {/* "All Houses" row — not selectable */}
+            <TouchableOpacity style={s.waCommRow} onPress={() => !groupSelMode && goToHouses(null)} activeOpacity={0.7}>
+              <LinearGradient colors={['#4F46E5','#7C3AED']} style={s.waCommAvatar}>
+                <Feather name="grid" size={14} color="#fff" />
+              </LinearGradient>
+              <View style={{ flex: 1 }}>
+                <Text style={[s.waRowName, { color: TEXT }]}>All Houses</Text>
+                <Text style={[s.waRowSub, { color: MUTED }]}>{houses.filter(h => h.wardId === selectedWard.id).length} houses in ward</Text>
+              </View>
+              {!groupSelMode && <Feather name="chevron-right" size={14} color={MUTED2} />}
+            </TouchableOpacity>
+            <View style={s.waSep} />
+            {groups.map((g, idx) => {
+              const color = g.color || GROUP_COLORS[idx % GROUP_COLORS.length];
+              const count = houses.filter(h => h.groupId === g.id).length;
+              const isSelG = selectedGroupIds.includes(g.id);
+              return (
+                <View key={g.id}>
+                  <TouchableOpacity
+                    style={[s.waCommRow, isSelG && { backgroundColor: 'rgba(99,102,241,0.07)' }]}
+                    onPress={() => groupSelMode ? toggleGroupSel(g.id) : goToHouses(g)}
+                    onLongPress={() => { if (!groupSelMode) setGroupSelMode(true); toggleGroupSel(g.id); }}
+                    activeOpacity={0.7}
+                  >
+                    {groupSelMode ? (
+                      <View style={[s.checkbox, { borderColor: isSelG ? '#6366F1' : GLASS_BD, backgroundColor: isSelG ? '#6366F1' : 'transparent' }]}>
+                        {isSelG && <Feather name="check" size={10} color="#fff" />}
+                      </View>
+                    ) : (
+                      <View style={[s.waCommAvatar, { backgroundColor: color }]}>
+                        <Feather name="layers" size={14} color="#fff" />
+                      </View>
+                    )}
+                    <View style={{ flex: 1 }}>
+                      <Text style={[s.waRowName, { color: TEXT }]} numberOfLines={1}>{g.name}</Text>
+                      <Text style={[s.waRowSub, { color: MUTED }]} numberOfLines={1}>{g.description || `${count} houses`}</Text>
+                    </View>
+                    {!groupSelMode && (
+                      <View style={{ alignItems: 'flex-end', gap: 6 }}>
+                        <View style={[s.waCountBubble, { backgroundColor: color + '22', borderColor: color + '40' }]}>
+                          <Text style={[s.waCountBubbleTxt, { color }]}>{count}</Text>
+                        </View>
+                        <View style={{ flexDirection: 'row', gap: 5 }}>
+                          <TouchableOpacity onPress={() => openEditGroup(g)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} style={s.waMiniBtn}>
+                            <Feather name="edit-2" size={10} color="#34D399" />
+                          </TouchableOpacity>
+                          <TouchableOpacity onPress={() => handleDeleteGroup(g)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} style={[s.waMiniBtn, { backgroundColor: 'rgba(239,68,68,0.14)', borderColor: 'rgba(239,68,68,0.28)' }]}>
+                            <Feather name="trash-2" size={10} color="#EF4444" />
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                  <View style={s.waSep} />
+                </View>
+              );
+            })}
+            {groups.length === 0 && (
+              <View style={s.waEmpty}>
+                <Feather name="layers" size={30} color={MUTED2} />
+                <Text style={[s.waEmptyT, { color: TEXT }]}>No groups yet</Text>
+                <Text style={[s.waEmptyS, { color: MUTED }]}>Tap + to add a group</Text>
+              </View>
+            )}
+          </ScrollView>
+        </View>
       )}
 
       {/* ════════════════════════ HOUSES VIEW ════════════════════════ */}

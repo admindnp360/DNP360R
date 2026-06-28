@@ -374,7 +374,7 @@ export default function AdminUsers() {
           return (
             <TouchableOpacity
               key={tab.key} style={s.tabItem}
-              onPress={() => { setActiveTab(tab.key); setStatusFilter('all'); setSearch(''); }}
+              onPress={() => { setActiveTab(tab.key); setStatusFilter('all'); setSearch(''); exitSel(); }}
               activeOpacity={0.75}
             >
               {active ? (
