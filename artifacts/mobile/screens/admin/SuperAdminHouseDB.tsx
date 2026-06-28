@@ -161,6 +161,7 @@ export default function SuperAdminHouseDB() {
 
   // ── House detail modal ────────────────────────────────────────────
   const [detailHouse, setDetailHouse] = useState<House | null>(null);
+  const [activePanel, setActivePanel] = useState<'garbage' | 'complaints' | 'service' | null>(null);
 
   // ── House CRUD ────────────────────────────────────────────────────
   const houseList = useMemo(() => {
@@ -659,7 +660,21 @@ export default function SuperAdminHouseDB() {
           <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
             <View style={s.waSecHdr}>
               <Text style={s.waSecTxt}>{houseList.length} house{houseList.length !== 1 ? 's' : ''}</Text>
-              {!selectionMode && <Text style={[s.waSecTxt, { fontFamily: 'Inter_400Regular', color: MUTED, textTransform: 'none' }]}>Long-press to select</Text>}
+              {selectionMode ? (
+                <TouchableOpacity
+                  onPress={() => selectedHouseIds.length === houseList.length
+                    ? setSelectedHouseIds([])
+                    : setSelectedHouseIds(houseList.map(h => h.id))}
+                  style={{ flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10, backgroundColor: 'rgba(99,102,241,0.12)', borderWidth: 1, borderColor: 'rgba(99,102,241,0.28)' }}
+                >
+                  <Feather name={selectedHouseIds.length === houseList.length ? 'check-square' : 'square'} size={12} color="#818CF8" />
+                  <Text style={{ color: '#818CF8', fontSize: 11, fontFamily: 'Inter_600SemiBold' }}>
+                    {selectedHouseIds.length === houseList.length ? 'Deselect All' : 'Select All'}
+                  </Text>
+                </TouchableOpacity>
+              ) : (
+                <Text style={[s.waSecTxt, { fontFamily: 'Inter_400Regular', color: MUTED, textTransform: 'none' }]}>Long-press to select</Text>
+              )}
             </View>
             {houseList.map((h, idx) => {
               const isSelected = selectedHouseIds.includes(h.id);
@@ -1040,107 +1055,217 @@ export default function SuperAdminHouseDB() {
       </Modal>
 
       {/* ── House Detail Modal ────────────────────────────────────────── */}
-      <Modal visible={!!detailHouse} animationType="slide" presentationStyle="pageSheet">
-        <SafeAreaView style={{ flex: 1, backgroundColor: BG }}>
-          <LinearGradient colors={['#4F46E5','#7C3AED']} style={s.modalHdr}>
-            <View style={{ flex: 1 }}>
-              <Text style={s.modalTitle} numberOfLines={1}>{detailHouse?.ownerName}</Text>
-              <Text style={s.modalSub}>{detailHouse?.registrationNumber}</Text>
-            </View>
-            <Pressable onPress={() => setDetailHouse(null)} style={s.closeBtn}>
-              <Feather name="x" size={19} color="#fff" />
-            </Pressable>
-          </LinearGradient>
-          <ScrollView contentContainerStyle={{ padding: 20, gap: 14 }}>
-            {/* ── 5-button action bar ─────────────────────────────────── */}
-            <View style={{
-              flexDirection: 'row', gap: 6,
-              backgroundColor: 'rgba(255,255,255,0.04)',
-              borderRadius: 18, borderWidth: 1,
-              borderColor: 'rgba(255,255,255,0.10)',
-              padding: 6,
-            }}>
-              {/* Edit */}
-              <TouchableOpacity
-                style={{ flex: 2, borderRadius: 13, overflow: 'hidden' }}
-                onPress={() => { if (detailHouse) { setDetailHouse(null); openEditHouse(detailHouse); } }}
-                activeOpacity={0.85}
-              >
-                <LinearGradient colors={['#2563EB','#1D4ED8']} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 13 }}>
-                  <Feather name="edit-2" size={14} color="#fff" />
-                  <Text style={{ color: '#fff', fontSize: 13, fontFamily: 'Inter_700Bold' }}>Edit</Text>
-                </LinearGradient>
-              </TouchableOpacity>
-
-              {/* Delete */}
-              <TouchableOpacity
-                style={{ flex: 2, borderRadius: 13, overflow: 'hidden' }}
-                onPress={() => { if (detailHouse) { setDetailHouse(null); handleDeleteHouse(detailHouse); } }}
-                activeOpacity={0.85}
-              >
-                <LinearGradient colors={['#DC2626','#B91C1C']} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 13 }}>
-                  <Feather name="trash-2" size={14} color="#fff" />
-                  <Text style={{ color: '#fff', fontSize: 13, fontFamily: 'Inter_700Bold' }}>Delete</Text>
-                </LinearGradient>
-              </TouchableOpacity>
-
-              {/* Garbage */}
-              <TouchableOpacity
-                style={{ flex: 1, borderRadius: 13, backgroundColor: 'rgba(16,185,129,0.12)', borderWidth: 1, borderColor: 'rgba(16,185,129,0.28)', alignItems: 'center', justifyContent: 'center', paddingVertical: 8, gap: 3 }}
-                activeOpacity={0.75}
-                onPress={() => showAlert('Coming Soon', 'Garbage Collection Details — feature coming soon.', undefined, 'success')}
-              >
-                <Feather name="trash-2" size={14} color="#10B981" />
-                <Text style={{ color: '#10B981', fontSize: 8, fontFamily: 'Inter_600SemiBold', textAlign: 'center', lineHeight: 10 }}>{'Garbage'}</Text>
-              </TouchableOpacity>
-
-              {/* Complaints */}
-              <TouchableOpacity
-                style={{ flex: 1, borderRadius: 13, backgroundColor: 'rgba(249,115,22,0.12)', borderWidth: 1, borderColor: 'rgba(249,115,22,0.28)', alignItems: 'center', justifyContent: 'center', paddingVertical: 8, gap: 3 }}
-                activeOpacity={0.75}
-                onPress={() => showAlert('Coming Soon', 'Complaints from this House — feature coming soon.', undefined, 'success')}
-              >
-                <Feather name="alert-circle" size={14} color="#F97316" />
-                <Text style={{ color: '#F97316', fontSize: 8, fontFamily: 'Inter_600SemiBold', textAlign: 'center', lineHeight: 10 }}>{'Complaint'}</Text>
-              </TouchableOpacity>
-
-              {/* Service */}
-              <TouchableOpacity
-                style={{ flex: 1, borderRadius: 13, backgroundColor: 'rgba(139,92,246,0.12)', borderWidth: 1, borderColor: 'rgba(139,92,246,0.28)', alignItems: 'center', justifyContent: 'center', paddingVertical: 8, gap: 3 }}
-                activeOpacity={0.75}
-                onPress={() => showAlert('Coming Soon', 'Service Requests from this House — feature coming soon.', undefined, 'success')}
-              >
-                <Feather name="tool" size={14} color="#8B5CF6" />
-                <Text style={{ color: '#8B5CF6', fontSize: 8, fontFamily: 'Inter_600SemiBold', textAlign: 'center', lineHeight: 10 }}>{'Service'}</Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* Details card */}
-            <View style={[s.detailCard]}>
-              {detailHouse && [
-                { icon: 'hash',       label: 'Registration No',  value: detailHouse.registrationNumber },
-                { icon: 'user',       label: 'Owner Name',       value: detailHouse.ownerName },
-                { icon: 'users',      label: 'Father / Husband', value: detailHouse.fatherOrHusband || '—' },
-                { icon: 'phone',      label: 'Mobile',           value: detailHouse.mobile || '—' },
-                { icon: 'map-pin',    label: 'Ward',             value: `Ward ${detailHouse.wardNumber}` },
-                { icon: 'layers',     label: 'Group',            value: detailHouse.groupName || 'Ungrouped' },
-                { icon: 'home',       label: 'Address',          value: detailHouse.address },
-                { icon: 'tag',        label: 'Property Type',    value: detailHouse.propertyType || 'Residential' },
-                { icon: 'activity',   label: 'Status',           value: detailHouse.status || 'Active' },
-                { icon: 'calendar',   label: 'Created On',       value: detailHouse.createdAt || '—' },
-              ].map((row, i, arr) => (
-                <View key={row.label} style={[s.detailRow, i === arr.length - 1 && { borderBottomWidth: 0, paddingBottom: 0 }]}>
-                  <View style={s.detailLabelWrap}>
-                    <View style={s.detailIconBox}>
-                      <Feather name={row.icon as any} size={12} color="#818CF8" />
+      <Modal visible={!!detailHouse} animationType="slide" presentationStyle="pageSheet"
+        onDismiss={() => setActivePanel(null)}>
+        <SafeAreaView style={{ flex: 1, backgroundColor: '#070C1A' }}>
+          {detailHouse && (
+            <>
+              {/* ── Hero header ── */}
+              <LinearGradient colors={['#1E1B4B','#0F172A']} style={{ paddingHorizontal: 20, paddingTop: 20, paddingBottom: 18 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 14 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 }}>
+                    <LinearGradient colors={['#6366F1','#8B5CF6']} style={{ width: 46, height: 46, borderRadius: 14, justifyContent: 'center', alignItems: 'center' }}>
+                      <Feather name="home" size={20} color="#fff" />
+                    </LinearGradient>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ color: '#C4B5FD', fontSize: 11, fontFamily: 'Inter_600SemiBold', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 2 }}>
+                        {detailHouse.registrationNumber}
+                      </Text>
+                      <Text style={{ color: '#F0F4FF', fontSize: 17, fontFamily: 'Inter_700Bold' }} numberOfLines={1}>
+                        {detailHouse.ownerName}
+                      </Text>
+                      {detailHouse.fatherOrHusband ? (
+                        <Text style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11, fontFamily: 'Inter_400Regular', marginTop: 2 }}>
+                          S/o D/o W/o {detailHouse.fatherOrHusband}
+                        </Text>
+                      ) : null}
                     </View>
-                    <Text style={[s.detailLabel, { color: MUTED }]}>{row.label}</Text>
                   </View>
-                  <Text style={[s.detailValue, { color: TEXT }]}>{row.value}</Text>
+                  <Pressable onPress={() => { setDetailHouse(null); setActivePanel(null); }}
+                    style={{ width: 32, height: 32, borderRadius: 10, backgroundColor: 'rgba(255,255,255,0.12)', justifyContent: 'center', alignItems: 'center' }}>
+                    <Feather name="x" size={16} color="#fff" />
+                  </Pressable>
                 </View>
-              ))}
-            </View>
-          </ScrollView>
+                {/* Status + type badges */}
+                <View style={{ flexDirection: 'row', gap: 8 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20, backgroundColor: detailHouse.isActive ? 'rgba(16,185,129,0.18)' : 'rgba(239,68,68,0.18)', borderWidth: 1, borderColor: detailHouse.isActive ? 'rgba(16,185,129,0.35)' : 'rgba(239,68,68,0.35)' }}>
+                    <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: detailHouse.isActive ? '#10B981' : '#EF4444' }} />
+                    <Text style={{ color: detailHouse.isActive ? '#10B981' : '#EF4444', fontSize: 11, fontFamily: 'Inter_600SemiBold' }}>
+                      {detailHouse.status || 'Active'}
+                    </Text>
+                  </View>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20, backgroundColor: 'rgba(99,102,241,0.15)', borderWidth: 1, borderColor: 'rgba(99,102,241,0.30)' }}>
+                    <Feather name="tag" size={10} color="#818CF8" />
+                    <Text style={{ color: '#818CF8', fontSize: 11, fontFamily: 'Inter_600SemiBold' }}>{detailHouse.propertyType || 'Residential'}</Text>
+                  </View>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20, backgroundColor: 'rgba(14,165,233,0.15)', borderWidth: 1, borderColor: 'rgba(14,165,233,0.30)' }}>
+                    <Feather name="map-pin" size={10} color="#38BDF8" />
+                    <Text style={{ color: '#38BDF8', fontSize: 11, fontFamily: 'Inter_600SemiBold' }}>Ward {detailHouse.wardNumber}</Text>
+                  </View>
+                </View>
+              </LinearGradient>
+
+              <ScrollView contentContainerStyle={{ padding: 16, gap: 12, paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
+
+                {/* ── 5-button action bar ── */}
+                <View style={{ flexDirection: 'row', gap: 6, backgroundColor: 'rgba(255,255,255,0.04)', borderRadius: 16, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', padding: 5 }}>
+                  <TouchableOpacity style={{ flex: 2, borderRadius: 12, overflow: 'hidden' }}
+                    onPress={() => { setDetailHouse(null); setActivePanel(null); openEditHouse(detailHouse); }} activeOpacity={0.85}>
+                    <LinearGradient colors={['#2563EB','#1D4ED8']} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 12 }}>
+                      <Feather name="edit-2" size={13} color="#fff" />
+                      <Text style={{ color: '#fff', fontSize: 12, fontFamily: 'Inter_700Bold' }}>Edit</Text>
+                    </LinearGradient>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={{ flex: 2, borderRadius: 12, overflow: 'hidden' }}
+                    onPress={() => { setDetailHouse(null); setActivePanel(null); handleDeleteHouse(detailHouse); }} activeOpacity={0.85}>
+                    <LinearGradient colors={['#DC2626','#B91C1C']} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 12 }}>
+                      <Feather name="trash-2" size={13} color="#fff" />
+                      <Text style={{ color: '#fff', fontSize: 12, fontFamily: 'Inter_700Bold' }}>Delete</Text>
+                    </LinearGradient>
+                  </TouchableOpacity>
+                  {([
+                    { key: 'garbage' as const, icon: 'trash-2' as const,      label: 'Garbage', color: '#10B981', bg: 'rgba(16,185,129,0.12)',  bd: 'rgba(16,185,129,0.28)' },
+                    { key: 'complaints' as const, icon: 'alert-circle' as const, label: 'Complaint', color: '#F97316', bg: 'rgba(249,115,22,0.12)', bd: 'rgba(249,115,22,0.28)' },
+                    { key: 'service' as const, icon: 'tool' as const,          label: 'Service',  color: '#8B5CF6', bg: 'rgba(139,92,246,0.12)', bd: 'rgba(139,92,246,0.28)' },
+                  ] as const).map(btn => {
+                    const active = activePanel === btn.key;
+                    return (
+                      <TouchableOpacity key={btn.key}
+                        style={{ flex: 1, borderRadius: 12, backgroundColor: active ? btn.color + '25' : btn.bg, borderWidth: 1, borderColor: active ? btn.color + '60' : btn.bd, alignItems: 'center', justifyContent: 'center', paddingVertical: 7, gap: 2 }}
+                        activeOpacity={0.75}
+                        onPress={() => setActivePanel(active ? null : btn.key)}>
+                        <Feather name={btn.icon} size={13} color={btn.color} />
+                        <Text style={{ color: btn.color, fontSize: 7.5, fontFamily: 'Inter_600SemiBold', textAlign: 'center' }}>{btn.label}</Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+
+                {/* ── Inline panel for secondary buttons ── */}
+                {activePanel === 'garbage' && (
+                  <View style={{ backgroundColor: 'rgba(16,185,129,0.07)', borderRadius: 14, borderWidth: 1, borderColor: 'rgba(16,185,129,0.22)', overflow: 'hidden' }}>
+                    <LinearGradient colors={['rgba(16,185,129,0.18)','rgba(16,185,129,0.06)']} style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 14, paddingVertical: 11, borderBottomWidth: 1, borderBottomColor: 'rgba(16,185,129,0.15)' }}>
+                      <Feather name="trash-2" size={14} color="#10B981" />
+                      <Text style={{ color: '#10B981', fontSize: 13, fontFamily: 'Inter_700Bold', flex: 1 }}>Garbage Collection</Text>
+                      <View style={{ paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8, backgroundColor: 'rgba(255,255,255,0.08)' }}>
+                        <Text style={{ color: 'rgba(255,255,255,0.4)', fontSize: 10, fontFamily: 'Inter_600SemiBold' }}>No data</Text>
+                      </View>
+                    </LinearGradient>
+                    <View style={{ padding: 16, alignItems: 'center', gap: 8 }}>
+                      <View style={{ width: 44, height: 44, borderRadius: 12, backgroundColor: 'rgba(16,185,129,0.12)', justifyContent: 'center', alignItems: 'center' }}>
+                        <Feather name="inbox" size={20} color="rgba(16,185,129,0.5)" />
+                      </View>
+                      <Text style={{ color: 'rgba(255,255,255,0.35)', fontSize: 12, fontFamily: 'Inter_400Regular', textAlign: 'center' }}>
+                        No garbage collection records found{'\n'}for {detailHouse.registrationNumber}
+                      </Text>
+                    </View>
+                  </View>
+                )}
+
+                {activePanel === 'complaints' && (
+                  <View style={{ backgroundColor: 'rgba(249,115,22,0.07)', borderRadius: 14, borderWidth: 1, borderColor: 'rgba(249,115,22,0.22)', overflow: 'hidden' }}>
+                    <LinearGradient colors={['rgba(249,115,22,0.18)','rgba(249,115,22,0.06)']} style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 14, paddingVertical: 11, borderBottomWidth: 1, borderBottomColor: 'rgba(249,115,22,0.15)' }}>
+                      <Feather name="alert-circle" size={14} color="#F97316" />
+                      <Text style={{ color: '#F97316', fontSize: 13, fontFamily: 'Inter_700Bold', flex: 1 }}>Complaints</Text>
+                      <View style={{ paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8, backgroundColor: 'rgba(255,255,255,0.08)' }}>
+                        <Text style={{ color: 'rgba(255,255,255,0.4)', fontSize: 10, fontFamily: 'Inter_600SemiBold' }}>No data</Text>
+                      </View>
+                    </LinearGradient>
+                    <View style={{ padding: 16, alignItems: 'center', gap: 8 }}>
+                      <View style={{ width: 44, height: 44, borderRadius: 12, backgroundColor: 'rgba(249,115,22,0.12)', justifyContent: 'center', alignItems: 'center' }}>
+                        <Feather name="inbox" size={20} color="rgba(249,115,22,0.5)" />
+                      </View>
+                      <Text style={{ color: 'rgba(255,255,255,0.35)', fontSize: 12, fontFamily: 'Inter_400Regular', textAlign: 'center' }}>
+                        No complaints registered{'\n'}from {detailHouse.registrationNumber}
+                      </Text>
+                    </View>
+                  </View>
+                )}
+
+                {activePanel === 'service' && (
+                  <View style={{ backgroundColor: 'rgba(139,92,246,0.07)', borderRadius: 14, borderWidth: 1, borderColor: 'rgba(139,92,246,0.22)', overflow: 'hidden' }}>
+                    <LinearGradient colors={['rgba(139,92,246,0.18)','rgba(139,92,246,0.06)']} style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 14, paddingVertical: 11, borderBottomWidth: 1, borderBottomColor: 'rgba(139,92,246,0.15)' }}>
+                      <Feather name="tool" size={14} color="#8B5CF6" />
+                      <Text style={{ color: '#8B5CF6', fontSize: 13, fontFamily: 'Inter_700Bold', flex: 1 }}>Service Requests</Text>
+                      <View style={{ paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8, backgroundColor: 'rgba(255,255,255,0.08)' }}>
+                        <Text style={{ color: 'rgba(255,255,255,0.4)', fontSize: 10, fontFamily: 'Inter_600SemiBold' }}>No data</Text>
+                      </View>
+                    </LinearGradient>
+                    <View style={{ padding: 16, alignItems: 'center', gap: 8 }}>
+                      <View style={{ width: 44, height: 44, borderRadius: 12, backgroundColor: 'rgba(139,92,246,0.12)', justifyContent: 'center', alignItems: 'center' }}>
+                        <Feather name="inbox" size={20} color="rgba(139,92,246,0.5)" />
+                      </View>
+                      <Text style={{ color: 'rgba(255,255,255,0.35)', fontSize: 12, fontFamily: 'Inter_400Regular', textAlign: 'center' }}>
+                        No service requests found{'\n'}for {detailHouse.registrationNumber}
+                      </Text>
+                    </View>
+                  </View>
+                )}
+
+                {/* ── House info card ── */}
+                <View style={{ backgroundColor: 'rgba(255,255,255,0.04)', borderRadius: 16, borderWidth: 1, borderColor: 'rgba(255,255,255,0.09)', overflow: 'hidden' }}>
+                  {/* Section: Identity */}
+                  <View style={{ paddingHorizontal: 14, paddingTop: 12, paddingBottom: 4 }}>
+                    <Text style={{ color: '#818CF8', fontSize: 9, fontFamily: 'Inter_700Bold', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 8 }}>Identity</Text>
+                    {[
+                      { icon: 'hash' as const,  label: 'Reg. No',      value: detailHouse.registrationNumber, color: '#C4B5FD' },
+                      { icon: 'user' as const,  label: 'Owner',        value: detailHouse.ownerName,          color: TEXT },
+                      { icon: 'users' as const, label: 'Father/Husb.', value: detailHouse.fatherOrHusband || '—', color: TEXT },
+                      { icon: 'phone' as const, label: 'Mobile',       value: detailHouse.mobile || '—',      color: '#34D399' },
+                    ].map((row, i, arr) => (
+                      <View key={row.label} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 9, borderBottomWidth: i < arr.length - 1 ? 1 : 0, borderBottomColor: 'rgba(255,255,255,0.05)' }}>
+                        <View style={{ width: 28, height: 28, borderRadius: 8, backgroundColor: 'rgba(99,102,241,0.12)', justifyContent: 'center', alignItems: 'center', marginRight: 10 }}>
+                          <Feather name={row.icon} size={12} color="#818CF8" />
+                        </View>
+                        <Text style={{ color: 'rgba(255,255,255,0.42)', fontSize: 11, fontFamily: 'Inter_500Medium', flex: 1 }}>{row.label}</Text>
+                        <Text style={{ color: row.color, fontSize: 12, fontFamily: 'Inter_600SemiBold', maxWidth: '55%', textAlign: 'right' }} numberOfLines={1}>{row.value}</Text>
+                      </View>
+                    ))}
+                  </View>
+
+                  <View style={{ height: 1, backgroundColor: 'rgba(99,102,241,0.15)', marginHorizontal: 14 }} />
+
+                  {/* Section: Location */}
+                  <View style={{ paddingHorizontal: 14, paddingTop: 12, paddingBottom: 4 }}>
+                    <Text style={{ color: '#38BDF8', fontSize: 9, fontFamily: 'Inter_700Bold', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 8 }}>Location</Text>
+                    {[
+                      { icon: 'map-pin' as const, label: 'Ward',    value: `Ward ${detailHouse.wardNumber}` },
+                      { icon: 'layers' as const,  label: 'Group',   value: detailHouse.groupName || 'Ungrouped' },
+                      { icon: 'home' as const,    label: 'Address', value: detailHouse.address },
+                    ].map((row, i, arr) => (
+                      <View key={row.label} style={{ flexDirection: 'row', alignItems: 'flex-start', paddingVertical: 9, borderBottomWidth: i < arr.length - 1 ? 1 : 0, borderBottomColor: 'rgba(255,255,255,0.05)' }}>
+                        <View style={{ width: 28, height: 28, borderRadius: 8, backgroundColor: 'rgba(14,165,233,0.10)', justifyContent: 'center', alignItems: 'center', marginRight: 10, marginTop: 1 }}>
+                          <Feather name={row.icon} size={12} color="#38BDF8" />
+                        </View>
+                        <Text style={{ color: 'rgba(255,255,255,0.42)', fontSize: 11, fontFamily: 'Inter_500Medium', flex: 1 }}>{row.label}</Text>
+                        <Text style={{ color: TEXT, fontSize: 12, fontFamily: 'Inter_600SemiBold', maxWidth: '55%', textAlign: 'right' }}>{row.value}</Text>
+                      </View>
+                    ))}
+                  </View>
+
+                  <View style={{ height: 1, backgroundColor: 'rgba(14,165,233,0.15)', marginHorizontal: 14 }} />
+
+                  {/* Section: Meta */}
+                  <View style={{ paddingHorizontal: 14, paddingTop: 12, paddingBottom: 12 }}>
+                    <Text style={{ color: '#F59E0B', fontSize: 9, fontFamily: 'Inter_700Bold', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 8 }}>Property Info</Text>
+                    {[
+                      { icon: 'tag' as const,      label: 'Property Type', value: detailHouse.propertyType || 'Residential' },
+                      { icon: 'calendar' as const, label: 'Added On',      value: detailHouse.createdAt || '—' },
+                    ].map((row, i, arr) => (
+                      <View key={row.label} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 9, borderBottomWidth: i < arr.length - 1 ? 1 : 0, borderBottomColor: 'rgba(255,255,255,0.05)' }}>
+                        <View style={{ width: 28, height: 28, borderRadius: 8, backgroundColor: 'rgba(245,158,11,0.10)', justifyContent: 'center', alignItems: 'center', marginRight: 10 }}>
+                          <Feather name={row.icon} size={12} color="#F59E0B" />
+                        </View>
+                        <Text style={{ color: 'rgba(255,255,255,0.42)', fontSize: 11, fontFamily: 'Inter_500Medium', flex: 1 }}>{row.label}</Text>
+                        <Text style={{ color: TEXT, fontSize: 12, fontFamily: 'Inter_600SemiBold', maxWidth: '55%', textAlign: 'right' }}>{row.value}</Text>
+                      </View>
+                    ))}
+                  </View>
+                </View>
+
+              </ScrollView>
+            </>
+          )}
         </SafeAreaView>
       </Modal>
 

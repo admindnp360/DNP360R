@@ -50,6 +50,36 @@ export default function AdminUsers() {
   const [activeTab, setActiveTab]       = useState<RoleTab>('all');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'frozen'>('all');
 
+  // ── Bulk selection ─────────────────────────────────────────────
+  const [selMode, setSelMode]           = useState(false);
+  const [selIds, setSelIds]             = useState<string[]>([]);
+  const [bulkSaving, setBulkSaving]     = useState(false);
+
+  function exitSel() { setSelMode(false); setSelIds([]); }
+  function toggleSel(id: string) { setSelIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]); }
+
+  async function handleBulkDelete() {
+    if (!selIds.length) return;
+    showAlert('Delete Users?', `Permanently delete ${selIds.length} user(s)?`, [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Delete All', style: 'destructive', onPress: async () => {
+          setBulkSaving(true);
+          try { await Promise.all(selIds.map(id => deleteUser(id))); exitSel(); showAlert('Deleted', `${selIds.length} user(s) removed.`, undefined, 'success'); }
+          finally { setBulkSaving(false); }
+        },
+      },
+    ], 'error');
+  }
+
+  async function handleBulkFreeze() {
+    if (!selIds.length) return;
+    setBulkSaving(true);
+    try {
+      await Promise.all(selIds.map(id => updateUser(id, { isActive: false })));
+      exitSel(); showAlert('Frozen', `${selIds.length} user(s) frozen.`, undefined, 'success');
+    } finally { setBulkSaving(false); }
+  }
+
   const [profileUser, setProfileUser] = useState<User | null>(null);
   const [editMode, setEditMode]       = useState(false);
   const [editName, setEditName]       = useState('');
@@ -367,6 +397,40 @@ export default function AdminUsers() {
         })}
       </View>
 
+      {/* ── Bulk selection bar ── */}
+      {selMode && (
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12, paddingVertical: 8, backgroundColor: 'rgba(99,102,241,0.08)', borderBottomWidth: 1, borderBottomColor: 'rgba(99,102,241,0.15)' }}>
+          <TouchableOpacity onPress={exitSel} style={{ width: 28, height: 28, borderRadius: 8, backgroundColor: 'rgba(255,255,255,0.07)', justifyContent: 'center', alignItems: 'center' }}>
+            <Feather name="x" size={14} color={MUTED} />
+          </TouchableOpacity>
+          <Text style={{ fontSize: 13, fontFamily: 'Inter_700Bold', color: TEXT }}>{selIds.length} selected</Text>
+          <TouchableOpacity
+            onPress={() => selIds.length === tabList.length ? setSelIds([]) : setSelIds(tabList.map(u => u.id))}
+            style={{ flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 9, paddingVertical: 4, borderRadius: 9, backgroundColor: 'rgba(99,102,241,0.12)', borderWidth: 1, borderColor: 'rgba(99,102,241,0.28)' }}
+          >
+            <Feather name={selIds.length === tabList.length ? 'check-square' : 'square'} size={11} color="#818CF8" />
+            <Text style={{ color: '#818CF8', fontSize: 11, fontFamily: 'Inter_600SemiBold' }}>{selIds.length === tabList.length ? 'Deselect All' : 'Select All'}</Text>
+          </TouchableOpacity>
+          <View style={{ flex: 1 }} />
+          <TouchableOpacity
+            onPress={handleBulkFreeze}
+            disabled={selIds.length === 0 || bulkSaving}
+            style={{ flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 9, paddingVertical: 5, borderRadius: 9, backgroundColor: 'rgba(251,191,36,0.12)', borderWidth: 1, borderColor: 'rgba(251,191,36,0.28)' }}
+          >
+            <Feather name="lock" size={11} color="#FBBF24" />
+            <Text style={{ color: '#FBBF24', fontSize: 11, fontFamily: 'Inter_600SemiBold' }}>Freeze</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={handleBulkDelete}
+            disabled={selIds.length === 0 || bulkSaving}
+            style={{ flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 9, paddingVertical: 5, borderRadius: 9, backgroundColor: 'rgba(239,68,68,0.12)', borderWidth: 1, borderColor: 'rgba(239,68,68,0.28)' }}
+          >
+            <Feather name="trash-2" size={11} color="#EF4444" />
+            <Text style={{ color: '#EF4444', fontSize: 11, fontFamily: 'Inter_600SemiBold' }}>Delete</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
       {/* ── Table header ── */}
       <View style={s.tableHead}>
         <Text style={s.thNo}>#</Text>
@@ -389,12 +453,22 @@ export default function AdminUsers() {
           tabList.map((u, idx) => {
             const isEven = idx % 2 === 0;
             const roleGrad = ROLE_GRAD[u.role];
+            const isSelected = selIds.includes(u.id);
             return (
-              <View
+              <TouchableOpacity
                 key={u.id}
-                style={[s.tableRow, { backgroundColor: isEven ? 'transparent' : 'rgba(255,255,255,0.025)', opacity: u.isActive ? 1 : 0.5 }]}
+                style={[s.tableRow, { backgroundColor: isSelected ? 'rgba(99,102,241,0.07)' : isEven ? 'transparent' : 'rgba(255,255,255,0.025)', opacity: u.isActive ? 1 : 0.5 }]}
+                onPress={() => selMode ? toggleSel(u.id) : openProfile(u)}
+                onLongPress={() => { if (!selMode) { setSelMode(true); } toggleSel(u.id); }}
+                activeOpacity={0.7}
               >
-                <Text style={s.tdNo}>{idx + 1}</Text>
+                {selMode ? (
+                  <View style={{ width: 20, height: 20, borderRadius: 6, borderWidth: 1.5, borderColor: isSelected ? '#6366F1' : GLASS_BD, backgroundColor: isSelected ? '#6366F1' : 'transparent', justifyContent: 'center', alignItems: 'center', marginRight: 2 }}>
+                    {isSelected && <Feather name="check" size={10} color="#fff" />}
+                  </View>
+                ) : (
+                  <Text style={s.tdNo}>{idx + 1}</Text>
+                )}
 
                 {/* Name + user ID below */}
                 <View style={s.tdNameCell}>
@@ -435,7 +509,7 @@ export default function AdminUsers() {
                 </View>
 
                 {/* Key + Edit + Delete icons */}
-                <View style={s.rowActions}>
+                {!selMode && <View style={s.rowActions}>
                   {(() => {
                     const userKey = secretKeys.find(k => k.usedBy === u.id && k.isActive);
                     const isCopied = copiedId === ('key_' + u.id);
@@ -471,8 +545,8 @@ export default function AdminUsers() {
                   >
                     <Feather name="trash-2" size={13} color="#F87171" />
                   </TouchableOpacity>
-                </View>
-              </View>
+                </View>}
+              </TouchableOpacity>
             );
           })
         )}
