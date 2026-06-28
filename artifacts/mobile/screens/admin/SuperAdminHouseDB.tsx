@@ -493,11 +493,83 @@ export default function SuperAdminHouseDB() {
          ═══════════════════════════════════════════════════════════════ */}
       {segment === 'db' && (
         <>
-          {/* Breadcrumb */}
+          {/* ── Permanent Info Bar ─────────────────────────────────── */}
+          <View style={s.infoBar}>
+            <View style={s.infoBarStat}>
+              <LinearGradient colors={['#4F46E530','#7C3AED20']} style={s.infoBarIcon}>
+                <Feather name="home" size={13} color="#818CF8" />
+              </LinearGradient>
+              <View>
+                <Text style={s.infoBarNum}>{totalHouses}</Text>
+                <Text style={s.infoBarLbl}>Total</Text>
+              </View>
+            </View>
+            <View style={s.infoBarDivider} />
+            <View style={s.infoBarStat}>
+              <LinearGradient colors={['#10B98130','#05966920']} style={s.infoBarIcon}>
+                <Feather name="check-circle" size={13} color="#34D399" />
+              </LinearGradient>
+              <View>
+                <Text style={[s.infoBarNum, { color: '#34D399' }]}>{activeHouses}</Text>
+                <Text style={s.infoBarLbl}>Active</Text>
+              </View>
+            </View>
+            <View style={s.infoBarDivider} />
+            <View style={s.infoBarStat}>
+              <LinearGradient colors={['#0EA5E930','#0284C720']} style={s.infoBarIcon}>
+                <Feather name="map-pin" size={13} color="#22D3EE" />
+              </LinearGradient>
+              <View>
+                <Text style={[s.infoBarNum, { color: '#22D3EE' }]}>{wards.length}</Text>
+                <Text style={s.infoBarLbl}>Wards</Text>
+              </View>
+            </View>
+            <View style={s.infoBarDivider} />
+            <View style={s.infoBarStat}>
+              <LinearGradient colors={['#F9731630','#EA580C20']} style={s.infoBarIcon}>
+                <Feather name="alert-circle" size={13} color="#FB923C" />
+              </LinearGradient>
+              <View>
+                <Text style={[s.infoBarNum, { color: '#FB923C' }]}>{ungroupedHouses}</Text>
+                <Text style={s.infoBarLbl}>Ungrouped</Text>
+              </View>
+            </View>
+            <Animated.View style={[s.infoBarSync, { opacity: syncPulse }]}>
+              <View style={[s.infoBarSyncDot, { backgroundColor: syncColor }]} />
+            </Animated.View>
+          </View>
+
+          {/* ── Permanent Global Search Bar ────────────────────────── */}
+          {view === 'wards' && (
+            <View style={s.dbSearchWrap}>
+              <View style={s.dbSearchBox}>
+                <Feather name="search" size={15} color={MUTED} />
+                <TextInput
+                  style={[s.dbSearchInput, { color: TEXT }]}
+                  placeholder="Search all houses — name, reg no, mobile…"
+                  placeholderTextColor={MUTED}
+                  value={globalSearch}
+                  onChangeText={setGlobalSearch}
+                />
+                {globalSearch.length > 0 && (
+                  <TouchableOpacity onPress={() => setGlobalSearch('')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                    <Feather name="x-circle" size={15} color={MUTED} />
+                  </TouchableOpacity>
+                )}
+              </View>
+              <TouchableOpacity style={s.addWardBtn} onPress={() => setShowAddWardModal(true)} activeOpacity={0.8}>
+                <LinearGradient colors={['#4F46E5','#7C3AED']} style={s.addWardBtnGrad}>
+                  <Feather name="plus" size={17} color="#fff" />
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {/* ── Breadcrumb (groups / houses) ───────────────────────── */}
           {view !== 'wards' && (
             <View style={s.breadcrumb}>
-              <TouchableOpacity onPress={() => { setView('wards'); setSelectedWard(null); setSelectedGroup(null); }}>
-                <Text style={[s.breadLink, { color: '#6366F1' }]}>All Wards</Text>
+              <TouchableOpacity onPress={() => { setView('wards'); setSelectedWard(null); setSelectedGroup(null); setGlobalSearch(''); }}>
+                <Text style={[s.breadLink, { color: '#818CF8' }]}>Wards</Text>
               </TouchableOpacity>
               {selectedWard && (
                 <>
@@ -506,7 +578,7 @@ export default function SuperAdminHouseDB() {
                     <Text style={[s.breadCur, { color: TEXT }]}>Ward {selectedWard.wardNumber}</Text>
                   ) : (
                     <TouchableOpacity onPress={() => { setView('groups'); setSelectedGroup(null); }}>
-                      <Text style={[s.breadLink, { color: '#6366F1' }]}>Ward {selectedWard.wardNumber}</Text>
+                      <Text style={[s.breadLink, { color: '#818CF8' }]}>Ward {selectedWard.wardNumber}</Text>
                     </TouchableOpacity>
                   )}
                 </>
@@ -519,41 +591,28 @@ export default function SuperAdminHouseDB() {
               )}
               <View style={{ flex: 1 }} />
               <TouchableOpacity style={s.backBtn} onPress={goBack}>
-                <Feather name="arrow-left" size={11} color="#6366F1" />
-                <Text style={[s.backBtnText, { color: '#6366F1' }]}>Back</Text>
+                <Feather name="arrow-left" size={11} color="#818CF8" />
+                <Text style={[s.backBtnText, { color: '#818CF8' }]}>Back</Text>
               </TouchableOpacity>
             </View>
           )}
 
           {/* ── WARDS VIEW ──────────────────────────────────────────── */}
           {view === 'wards' && (
-            <ScrollView contentContainerStyle={{ padding: 14, gap: 10, paddingBottom: 180 }}>
-              {/* Global Search Bar */}
-              <View style={[s.searchBox, { marginBottom: 2 }]}>
-                <Feather name="search" size={15} color={MUTED} />
-                <TextInput
-                  style={[s.searchInput, { color: TEXT, flex: 1 }]}
-                  placeholder="Search all houses — reg no, owner, mobile…"
-                  placeholderTextColor={MUTED}
-                  value={globalSearch}
-                  onChangeText={setGlobalSearch}
-                />
-                {globalSearch.length > 0 && (
-                  <TouchableOpacity onPress={() => setGlobalSearch('')}>
-                    <Feather name="x" size={14} color={MUTED} />
-                  </TouchableOpacity>
-                )}
-              </View>
+            <ScrollView contentContainerStyle={{ padding: 14, gap: 10, paddingBottom: 180 }} showsVerticalScrollIndicator={false}>
 
               {/* Global search results */}
-              {globalSearch.trim().length >= 2 && (
-                <View style={{ gap: 6 }}>
-                  <Text style={[s.sectionLabel, { color: MUTED, fontSize: 11 }]}>
-                    {globalResults.length} result{globalResults.length !== 1 ? 's' : ''} found
-                  </Text>
+              {globalSearch.trim().length >= 2 ? (
+                <View style={{ gap: 8 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <Text style={s.sectionLabel}>Search Results</Text>
+                    <Text style={[s.sectionLabel, { color: MUTED, fontFamily: 'Inter_500Medium' }]}>{globalResults.length} found</Text>
+                  </View>
                   {globalResults.length === 0 ? (
-                    <View style={[s.emptyCard, { paddingVertical: 20 }]}>
-                      <Feather name="search" size={22} color={MUTED} />
+                    <View style={s.emptyCard}>
+                      <LinearGradient colors={['#6366F120','#7C3AED10']} style={s.emptyIcon}>
+                        <Feather name="search" size={28} color="#818CF8" />
+                      </LinearGradient>
                       <Text style={[s.emptyTitle, { color: TEXT }]}>No Houses Found</Text>
                       <Text style={[s.emptySub, { color: MUTED }]}>Try a different search term</Text>
                     </View>
@@ -561,140 +620,95 @@ export default function SuperAdminHouseDB() {
                     globalResults.map(h => {
                       const ward = wards.find(w => w.id === h.wardId);
                       return (
-                        <View key={h.id} style={[s.globalResultCard]}>
-                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 }}>
-                            <View style={s.globalResultDot} />
-                            <View style={{ flex: 1 }}>
-                              <Text style={[s.regText, { color: '#818CF8' }]}>{h.registrationNumber}</Text>
-                              <Text style={[s.ownerText, { color: TEXT }]} numberOfLines={1}>{h.ownerName}</Text>
-                              <Text style={[s.wardArea, { color: MUTED, fontSize: 10 }]} numberOfLines={1}>
-                                Ward {h.wardNumber}{ward ? ` · ${ward.name}` : ''}{h.groupName ? ` · ${h.groupName}` : ''}
-                              </Text>
-                            </View>
+                        <TouchableOpacity key={h.id} style={s.searchResultCard} onPress={() => setDetailHouse(h)} activeOpacity={0.85}>
+                          <LinearGradient colors={['#4F46E512','#7C3AED08']} style={StyleSheet.absoluteFill} />
+                          <View style={s.searchResultLeft}>
+                            <Text style={[s.regText, { color: '#818CF8', fontSize: 13 }]}>{h.registrationNumber}</Text>
+                            <Text style={[s.ownerText, { color: TEXT }]} numberOfLines={1}>{h.ownerName}</Text>
+                            <Text style={[s.wardArea, { color: MUTED, fontSize: 10 }]} numberOfLines={1}>
+                              Ward {h.wardNumber}{ward ? ` · ${ward.name}` : ''}{h.groupName ? ` · ${h.groupName}` : ''}
+                            </Text>
                           </View>
-                          <TouchableOpacity
-                            style={[s.iconBtn, { backgroundColor: '#6366F118', borderColor: '#6366F130' }]}
-                            onPress={() => {
-                              if (ward) { goToGroups(ward); }
-                            }}
-                          >
-                            <Feather name="arrow-right" size={12} color="#6366F1" />
-                          </TouchableOpacity>
-                        </View>
+                          <Feather name="chevron-right" size={14} color={MUTED} />
+                        </TouchableOpacity>
                       );
                     })
                   )}
                 </View>
-              )}
-
-              {/* Compact sticky info bar — shown when not searching */}
-              {globalSearch.trim().length < 2 && (
-                <View style={s.infoBar}>
-                  {/* Stats pills */}
-                  <View style={s.infoBarStats}>
-                    <View style={s.infoBarPill}>
-                      <Feather name="home" size={10} color="#818CF8" />
-                      <Text style={s.infoBarNum}>{totalHouses}</Text>
-                      <Text style={s.infoBarLbl}>Houses</Text>
-                    </View>
-                    <View style={[s.infoBarDivider]} />
-                    <View style={s.infoBarPill}>
-                      <Feather name="check-circle" size={10} color="#34D399" />
-                      <Text style={[s.infoBarNum, { color: '#34D399' }]}>{activeHouses}</Text>
-                      <Text style={s.infoBarLbl}>Active</Text>
-                    </View>
-                    <View style={[s.infoBarDivider]} />
-                    <View style={s.infoBarPill}>
-                      <Feather name="map-pin" size={10} color="#22D3EE" />
-                      <Text style={[s.infoBarNum, { color: '#22D3EE' }]}>{wards.length}</Text>
-                      <Text style={s.infoBarLbl}>Wards</Text>
-                    </View>
-                  </View>
-                  {/* Sync status */}
-                  <Animated.View style={[s.infoBarSync, { opacity: syncPulse }]}>
-                    <View style={[s.infoBarSyncDot, { backgroundColor: syncColor }]} />
-                    <Text style={[s.infoBarSyncTxt, { color: syncColor }]}>
-                      {syncStatus === 'synced' ? 'Synced' : syncStatus === 'pending' ? 'Syncing…' : 'Error'}
-                    </Text>
-                  </Animated.View>
-                </View>
-              )}
-
-              {/* Action row — shown when not searching */}
-              {globalSearch.trim().length < 2 && (
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-                  <Text style={s.sectionLabel}>All Wards</Text>
-                  <View style={{ flexDirection: 'row', gap: 8 }}>
+              ) : (
+                <>
+                  {/* Action chips row */}
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Text style={s.sectionLabel}>All Wards · {wards.length}</Text>
                     <TouchableOpacity style={[s.actionChip, { borderColor: '#10B98145', backgroundColor: '#10B98112' }]} onPress={() => setShowAddGroupModal(true)} activeOpacity={0.8}>
                       <Feather name="layers" size={12} color="#10B981" />
                       <Text style={[s.actionChipText, { color: '#10B981' }]}>Add Group</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity style={[s.actionChip, { borderColor: '#6366F145', backgroundColor: '#6366F112' }]} onPress={() => setShowAddWardModal(true)} activeOpacity={0.8}>
-                      <Feather name="map-pin" size={12} color="#6366F1" />
-                      <Text style={[s.actionChipText, { color: '#6366F1' }]}>Add Ward</Text>
-                    </TouchableOpacity>
                   </View>
-                </View>
-              )}
 
-              {globalSearch.trim().length < 2 && wards.map((ward, idx) => {
-                const grad = WARD_GRADS[idx % WARD_GRADS.length];
-                const wHouses = houses.filter(h => h.wardId === ward.id).length;
-                const wWorkers = ward.assignedWorkers ?? [];
-                return (
-                  <View key={ward.id} style={s.wardCard}>
-                    <LinearGradient colors={[grad[0]+'18', grad[1]+'0A']} style={StyleSheet.absoluteFill} />
-                    <TouchableOpacity onPress={() => goToGroups(ward)} activeOpacity={0.85} style={s.wardRow}>
-                      <LinearGradient colors={grad} style={s.wardBadge}>
-                        <Text style={s.wardBadgeText}>W{ward.wardNumber}</Text>
+                  {/* Ward cards */}
+                  {wards.map((ward, idx) => {
+                    const grad = WARD_GRADS[idx % WARD_GRADS.length];
+                    const wHouses = houses.filter(h => h.wardId === ward.id).length;
+                    const wWorkers = ward.assignedWorkers ?? [];
+                    return (
+                      <View key={ward.id} style={s.wardCard}>
+                        <LinearGradient colors={[grad[0]+'22', grad[1]+'0D']} style={StyleSheet.absoluteFill} />
+                        {/* Left accent bar */}
+                        <LinearGradient colors={grad} style={s.wardAccentBar} />
+                        <TouchableOpacity onPress={() => goToGroups(ward)} activeOpacity={0.85} style={s.wardRow}>
+                          <LinearGradient colors={grad} style={s.wardBadge}>
+                            <Text style={s.wardBadgeText}>W{ward.wardNumber}</Text>
+                          </LinearGradient>
+                          <View style={{ flex: 1, gap: 3 }}>
+                            <Text style={[s.wardName, { color: TEXT }]} numberOfLines={1}>{ward.name}</Text>
+                            <Text style={[s.wardArea, { color: MUTED }]} numberOfLines={1}>{ward.area}</Text>
+                            <View style={{ flexDirection: 'row', gap: 8, marginTop: 2 }}>
+                              <View style={s.metaPill}>
+                                <Feather name="home" size={9} color="#818CF8" />
+                                <Text style={[s.metaText, { color: '#818CF8' }]}>{wHouses} houses</Text>
+                              </View>
+                              <View style={s.metaPill}>
+                                <Feather name="users" size={9} color="#34D399" />
+                                <Text style={[s.metaText, { color: '#34D399' }]}>{wWorkers.length} workers</Text>
+                              </View>
+                            </View>
+                          </View>
+                          <Feather name="chevron-right" size={16} color={MUTED} />
+                        </TouchableOpacity>
+                        <View style={s.wardActionsCol}>
+                          <TouchableOpacity style={[s.iconBtn, { backgroundColor: '#6366F118', borderColor: '#6366F130' }]} onPress={() => openWorkerModal(ward)}>
+                            <Feather name="user-plus" size={12} color="#818CF8" />
+                          </TouchableOpacity>
+                          <TouchableOpacity style={[s.iconBtn, { backgroundColor: '#10B98118', borderColor: '#10B98130' }]} onPress={() => openEditWard(ward)}>
+                            <Feather name="edit-2" size={12} color="#10B981" />
+                          </TouchableOpacity>
+                          <TouchableOpacity style={[s.iconBtn, { backgroundColor: '#EF444418', borderColor: '#EF444430' }]} onPress={() => handleDeleteWard(ward)}>
+                            <Feather name="trash-2" size={12} color="#EF4444" />
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                    );
+                  })}
+
+                  {wards.length === 0 && (
+                    <View style={s.emptyCard}>
+                      <LinearGradient colors={['#4F46E530','#7C3AED20']} style={s.emptyIcon}>
+                        <Feather name="map" size={28} color="#7C3AED" />
                       </LinearGradient>
-                      <View style={{ flex: 1, gap: 2 }}>
-                        <Text style={[s.wardName, { color: TEXT }]} numberOfLines={1}>{ward.name}</Text>
-                        <Text style={[s.wardArea, { color: MUTED }]} numberOfLines={1}>{ward.area}</Text>
-                      </View>
-                      <View style={s.wardMetaRow}>
-                        <View style={s.metaPill}>
-                          <Feather name="home" size={9} color={MUTED} />
-                          <Text style={[s.metaText, { color: MUTED }]}>{wHouses}</Text>
-                        </View>
-                        <View style={s.metaPill}>
-                          <Feather name="users" size={9} color={MUTED} />
-                          <Text style={[s.metaText, { color: MUTED }]}>{wWorkers.length}</Text>
-                        </View>
-                      </View>
-                    </TouchableOpacity>
-                    <View style={s.wardActions}>
-                      <TouchableOpacity style={[s.iconBtn, { backgroundColor: '#6366F118', borderColor: '#6366F130' }]} onPress={() => openWorkerModal(ward)}>
-                        <Feather name="user-plus" size={12} color="#6366F1" />
-                      </TouchableOpacity>
-                      <TouchableOpacity style={[s.iconBtn, { backgroundColor: '#10B98118', borderColor: '#10B98130' }]} onPress={() => openEditWard(ward)}>
-                        <Feather name="edit-2" size={12} color="#10B981" />
-                      </TouchableOpacity>
-                      <TouchableOpacity style={[s.iconBtn, { backgroundColor: '#EF444418', borderColor: '#EF444430' }]} onPress={() => handleDeleteWard(ward)}>
-                        <Feather name="trash-2" size={12} color="#EF4444" />
-                      </TouchableOpacity>
-                      <Feather name="chevron-right" size={13} color={MUTED} />
+                      <Text style={[s.emptyTitle, { color: TEXT }]}>No Wards Yet</Text>
+                      <Text style={[s.emptySub, { color: MUTED }]}>Tap + to add the first ward</Text>
                     </View>
-                  </View>
-                );
-              })}
-
-              {globalSearch.trim().length < 2 && wards.length === 0 && (
-                <View style={s.emptyCard}>
-                  <LinearGradient colors={['#4F46E530','#7C3AED20']} style={s.emptyIcon}>
-                    <Feather name="map" size={28} color="#7C3AED" />
-                  </LinearGradient>
-                  <Text style={[s.emptyTitle, { color: TEXT }]}>No Wards Yet</Text>
-                  <Text style={[s.emptySub, { color: MUTED }]}>Tap "Add Ward" to get started</Text>
-                </View>
+                  )}
+                </>
               )}
             </ScrollView>
           )}
 
           {/* ── GROUPS VIEW ─────────────────────────────────────────── */}
           {view === 'groups' && selectedWard && (
-            <ScrollView contentContainerStyle={{ padding: 14, gap: 10, paddingBottom: 180 }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+            <ScrollView contentContainerStyle={{ padding: 14, gap: 10, paddingBottom: 180 }} showsVerticalScrollIndicator={false}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
                 <Text style={s.sectionLabel}>Groups · {groups.length}</Text>
                 <View style={[s.crossBadge]}>
                   <Feather name="shuffle" size={9} color="#F97316" />
@@ -704,37 +718,44 @@ export default function SuperAdminHouseDB() {
 
               {/* All Houses card */}
               <TouchableOpacity style={s.allHousesCard} onPress={() => goToHouses(null)} activeOpacity={0.85}>
-                <LinearGradient colors={['#4F46E520','#7C3AED12']} style={StyleSheet.absoluteFill} />
+                <LinearGradient colors={['#4F46E522','#7C3AED14']} style={StyleSheet.absoluteFill} />
                 <LinearGradient colors={['#4F46E5','#7C3AED']} style={s.groupIconBox}>
-                  <Feather name="grid" size={14} color="#fff" />
+                  <Feather name="grid" size={15} color="#fff" />
                 </LinearGradient>
-                <View style={{ flex: 1, gap: 2 }}>
+                <View style={{ flex: 1, gap: 3 }}>
                   <Text style={[s.groupName, { color: TEXT }]}>All Houses · Ward {selectedWard.wardNumber}</Text>
-                  <Text style={[s.groupDesc, { color: MUTED }]}>{houses.filter(h => h.wardId === selectedWard.id).length} houses</Text>
+                  <Text style={[s.groupDesc, { color: MUTED }]}>{houses.filter(h => h.wardId === selectedWard.id).length} houses total</Text>
                 </View>
                 <TouchableOpacity style={s.addHouseChip} onPress={() => setShowAddHouseModal(true)}>
                   <Feather name="plus" size={10} color="#6366F1" />
-                  <Text style={[s.addHouseChipText]}>Add</Text>
+                  <Text style={s.addHouseChipText}>Add</Text>
                 </TouchableOpacity>
-                <Feather name="chevron-right" size={13} color={MUTED} />
+                <Feather name="chevron-right" size={14} color={MUTED} />
               </TouchableOpacity>
 
               {groups.map((g, idx) => {
                 const color = g.color || GROUP_COLORS[idx % GROUP_COLORS.length];
                 const count = houses.filter(h => h.groupId === g.id).length;
                 return (
-                  <View key={g.id} style={[s.groupCard, { borderColor: color + '35' }]}>
+                  <View key={g.id} style={[s.groupCard, { borderColor: color + '30' }]}>
                     <LinearGradient colors={[color + '18', color + '08']} style={StyleSheet.absoluteFill} />
+                    <View style={[s.groupAccentBar, { backgroundColor: color }]} />
                     <TouchableOpacity style={s.groupCardMain} onPress={() => goToHouses(g)} activeOpacity={0.85}>
-                      <View style={[s.groupDot, { backgroundColor: color }]} />
-                      <View style={{ flex: 1, gap: 2 }}>
-                        <Text style={[s.groupName, { color: TEXT }]} numberOfLines={1}>{g.name}</Text>
-                        {g.description ? <Text style={[s.groupDesc, { color: MUTED }]} numberOfLines={1}>{g.description}</Text> : null}
+                      <View style={[s.groupIconBox, { backgroundColor: color + '20' }]}>
+                        <Feather name="layers" size={15} color={color} />
                       </View>
-                      <View style={[s.countBadge, { backgroundColor: color + '22', borderColor: color + '35' }]}>
+                      <View style={{ flex: 1, gap: 3 }}>
+                        <Text style={[s.groupName, { color: TEXT }]} numberOfLines={1}>{g.name}</Text>
+                        {g.description
+                          ? <Text style={[s.groupDesc, { color: MUTED }]} numberOfLines={1}>{g.description}</Text>
+                          : <Text style={[s.groupDesc, { color: MUTED }]}>{count} houses</Text>
+                        }
+                      </View>
+                      <View style={[s.countBadge, { backgroundColor: color + '20', borderColor: color + '35' }]}>
                         <Feather name="home" size={9} color={color} />
                         <Text style={[s.countBadgeText, { color }]}>{count}</Text>
                       </View>
+                      <Feather name="chevron-right" size={14} color={MUTED} />
                     </TouchableOpacity>
                     <View style={s.wardActions}>
                       <TouchableOpacity style={[s.iconBtn, { backgroundColor: '#10B98118', borderColor: '#10B98130' }]} onPress={() => openEditGroup(g)}>
@@ -743,7 +764,6 @@ export default function SuperAdminHouseDB() {
                       <TouchableOpacity style={[s.iconBtn, { backgroundColor: '#EF444418', borderColor: '#EF444430' }]} onPress={() => handleDeleteGroup(g)}>
                         <Feather name="trash-2" size={12} color="#EF4444" />
                       </TouchableOpacity>
-                      <Feather name="chevron-right" size={13} color={MUTED} />
                     </View>
                   </View>
                 );
@@ -760,7 +780,7 @@ export default function SuperAdminHouseDB() {
               )}
 
               <TouchableOpacity onPress={() => setShowAddGroupModal(true)} activeOpacity={0.85} style={s.addGroupBtn}>
-                <LinearGradient colors={['#4F46E5','#7C3AED']} style={s.addGroupBtnGrad}>
+                <LinearGradient colors={['#10B981','#059669']} style={s.addGroupBtnGrad}>
                   <Feather name="plus" size={15} color="#fff" />
                   <Text style={s.addGroupBtnText}>Add New Group</Text>
                 </LinearGradient>
@@ -773,18 +793,18 @@ export default function SuperAdminHouseDB() {
             <View style={{ flex: 1 }}>
               {/* Search + Export row */}
               <View style={s.searchRow}>
-                <View style={[s.searchBox, { flex: 1 }]}>
+                <View style={[s.dbSearchBox, { flex: 1 }]}>
                   <Feather name="search" size={15} color={MUTED} />
                   <TextInput
-                    style={[s.searchInput, { color: TEXT }]}
+                    style={[s.dbSearchInput, { color: TEXT }]}
                     placeholder="Search reg no, owner, address…"
                     placeholderTextColor={MUTED}
                     value={search}
                     onChangeText={setSearch}
                   />
                   {search.length > 0 && (
-                    <TouchableOpacity onPress={() => setSearch('')}>
-                      <Feather name="x" size={14} color={MUTED} />
+                    <TouchableOpacity onPress={() => setSearch('')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                      <Feather name="x-circle" size={15} color={MUTED} />
                     </TouchableOpacity>
                   )}
                 </View>
@@ -794,18 +814,9 @@ export default function SuperAdminHouseDB() {
                   disabled={exporting}
                 >
                   <LinearGradient colors={['#4F46E5','#7C3AED']} style={s.exportBtnGrad}>
-                    {exporting ? <ActivityIndicator size={13} color="#fff" /> : <Feather name="download-cloud" size={15} color="#fff" />}
+                    {exporting ? <ActivityIndicator size={13} color="#fff" /> : <Feather name="download-cloud" size={16} color="#fff" />}
                   </LinearGradient>
                 </TouchableOpacity>
-              </View>
-
-              {/* Column headers */}
-              <View style={s.colHeader}>
-                <Text style={[s.colCell, { width: 38, color: MUTED }]}>S.No</Text>
-                <View style={s.colDivider} />
-                <Text style={[s.colCell, { flex: 1, color: MUTED }]}>Registration No</Text>
-                <View style={s.colDivider} />
-                <Text style={[s.colCell, { flex: 1.3, color: MUTED }]}>Owner Name</Text>
               </View>
 
               {/* Selection bar */}
@@ -821,47 +832,70 @@ export default function SuperAdminHouseDB() {
                     <Text style={[s.selActionText, { color: '#F97316' }]}>Ungroup</Text>
                   </TouchableOpacity>
                   <TouchableOpacity style={[s.selAction, { backgroundColor: '#6366F118', borderColor: '#6366F135' }]} onPress={openMoveModal} disabled={selectedHouseIds.length === 0}>
-                    <Feather name="move" size={13} color="#6366F1" />
-                    <Text style={[s.selActionText, { color: '#6366F1' }]}>Move</Text>
+                    <Feather name="move" size={13} color="#818CF8" />
+                    <Text style={[s.selActionText, { color: '#818CF8' }]}>Move</Text>
                   </TouchableOpacity>
                 </View>
               )}
 
-              <ScrollView contentContainerStyle={{ paddingBottom: 180 }}>
+              {/* House count row */}
+              {!selectionMode && (
+                <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 8 }}>
+                  <Text style={[s.sectionLabel, { flex: 1 }]}>
+                    {selectedGroup ? selectedGroup.name : `All Houses`} · {houseList.length}
+                  </Text>
+                  <Text style={[s.sectionLabel, { color: MUTED, fontFamily: 'Inter_400Regular', fontSize: 11 }]}>
+                    Long-press to select
+                  </Text>
+                </View>
+              )}
+
+              <ScrollView contentContainerStyle={{ paddingHorizontal: 14, paddingBottom: 180, gap: 8 }} showsVerticalScrollIndicator={false}>
                 {houseList.map((h, idx) => {
                   const isSelected = selectedHouseIds.includes(h.id);
+                  const grpColor = groups.find(g => g.id === h.groupId)?.color ?? '#6366F1';
                   return (
                     <TouchableOpacity
                       key={h.id}
-                      style={[s.houseRow, isSelected && { backgroundColor: '#6366F115' }]}
+                      style={[s.houseCard, isSelected && { borderColor: '#6366F150', backgroundColor: '#6366F10E' }]}
                       onPress={() => selectionMode ? toggleHouseSelection(h.id) : setDetailHouse(h)}
                       onLongPress={() => { if (!selectionMode) { setSelectionMode(true); setExpandedHouseId(null); } toggleHouseSelection(h.id); }}
-                      activeOpacity={0.8}
+                      activeOpacity={0.82}
                     >
-                      {selectionMode
-                        ? <View style={[s.checkbox, { borderColor: isSelected ? '#6366F1' : GLASS_BD, backgroundColor: isSelected ? '#6366F1' : 'transparent' }]}>
+                      {isSelected && <LinearGradient colors={['#4F46E510','#7C3AED08']} style={StyleSheet.absoluteFill} />}
+                      <View style={s.houseCardLeft}>
+                        {selectionMode ? (
+                          <View style={[s.checkbox, { borderColor: isSelected ? '#6366F1' : GLASS_BD, backgroundColor: isSelected ? '#6366F1' : 'transparent' }]}>
                             {isSelected && <Feather name="check" size={10} color="#fff" />}
                           </View>
-                        : <Text style={[s.houseIdx, { width: 38 }]}>{idx + 1}</Text>
-                      }
-                      <View style={s.colDivider} />
-                      <View style={[s.houseCellFlex, { flex: 1 }]}>
-                        <View style={[s.regDot, { backgroundColor: '#6366F1' }]} />
-                        <Text style={[s.regText, { color: '#818CF8' }]}>{h.registrationNumber}</Text>
+                        ) : (
+                          <View style={s.houseNumBox}>
+                            <Text style={s.houseNumText}>{idx + 1}</Text>
+                          </View>
+                        )}
                       </View>
-                      <View style={s.colDivider} />
-                      <View style={[s.houseCellFlex, { flex: 1.3 }]}>
-                        <Text style={[s.ownerText, { color: TEXT }]} numberOfLines={1}>{h.ownerName}</Text>
-                        {!selectionMode && <Feather name="chevron-right" size={13} color={MUTED} />}
+                      <View style={{ flex: 1, gap: 3 }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                          <Text style={[s.regText, { color: '#818CF8', fontSize: 12 }]}>{h.registrationNumber}</Text>
+                          {h.groupId && (
+                            <View style={[s.groupSmallChip, { backgroundColor: grpColor + '20', borderColor: grpColor + '40' }]}>
+                              <View style={{ width: 5, height: 5, borderRadius: 3, backgroundColor: grpColor }} />
+                              <Text style={[s.grpSmallChipText, { color: grpColor }]}>{h.groupName}</Text>
+                            </View>
+                          )}
+                        </View>
+                        <Text style={[s.ownerText, { color: TEXT, fontSize: 14 }]} numberOfLines={1}>{h.ownerName}</Text>
+                        <Text style={[s.wardArea, { color: MUTED, fontSize: 11 }]} numberOfLines={1}>{h.address}</Text>
                       </View>
+                      <Feather name="chevron-right" size={14} color={MUTED} />
                     </TouchableOpacity>
                   );
                 })}
 
                 {houseList.length === 0 && (
-                  <View style={[s.emptyCard, { margin: 16 }]}>
+                  <View style={[s.emptyCard, { marginTop: 8 }]}>
                     <LinearGradient colors={['#6366F120','#7C3AED10']} style={s.emptyIcon}>
-                      <Feather name="home" size={28} color="#6366F1" />
+                      <Feather name="home" size={28} color="#818CF8" />
                     </LinearGradient>
                     <Text style={[s.emptyTitle, { color: TEXT }]}>No Houses Found</Text>
                     <Text style={[s.emptySub, { color: MUTED }]}>Add a house using the + button</Text>
@@ -1590,15 +1624,15 @@ const s = StyleSheet.create({
   statNum: { color: '#fff', fontSize: 18, fontFamily: 'Inter_700Bold' },
   statLbl: { color: 'rgba(255,255,255,0.7)', fontSize: 10, fontFamily: 'Inter_500Medium' },
 
-  // Compact info bar
-  infoBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: 'rgba(99,102,241,0.08)', borderRadius: 12, borderWidth: 1, borderColor: 'rgba(99,102,241,0.18)', paddingHorizontal: 12, paddingVertical: 7, marginBottom: 8 },
-  infoBarStats: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  infoBarPill: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  infoBarNum: { fontSize: 13, fontFamily: 'Inter_700Bold', color: '#818CF8' },
-  infoBarLbl: { fontSize: 10, fontFamily: 'Inter_500Medium', color: MUTED },
-  infoBarDivider: { width: 1, height: 14, backgroundColor: 'rgba(255,255,255,0.10)' },
-  infoBarSync: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  infoBarSyncDot: { width: 6, height: 6, borderRadius: 3 },
+  // Info bar (always visible at top of DB segment)
+  infoBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: 'rgba(15,20,50,0.95)', borderBottomWidth: 1, borderBottomColor: 'rgba(99,102,241,0.18)', paddingHorizontal: 14, paddingVertical: 10 },
+  infoBarStat: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  infoBarIcon: { width: 30, height: 30, borderRadius: 9, justifyContent: 'center', alignItems: 'center' },
+  infoBarNum: { fontSize: 14, fontFamily: 'Inter_700Bold', color: '#818CF8' },
+  infoBarLbl: { fontSize: 9, fontFamily: 'Inter_500Medium', color: MUTED, marginTop: 1 },
+  infoBarDivider: { width: 1, height: 28, backgroundColor: 'rgba(255,255,255,0.09)' },
+  infoBarSync: { alignItems: 'center', justifyContent: 'center' },
+  infoBarSyncDot: { width: 8, height: 8, borderRadius: 4 },
   infoBarSyncTxt: { fontSize: 10, fontFamily: 'Inter_600SemiBold' },
 
   // Segment bar
@@ -1621,23 +1655,37 @@ const s = StyleSheet.create({
   actionChip: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 10, borderWidth: 1 },
   actionChipText: { fontSize: 11, fontFamily: 'Inter_600SemiBold' },
 
+  // DB search bar
+  dbSearchWrap: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 14, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.07)' },
+  dbSearchBox: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: GLASS, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10, borderWidth: 1, borderColor: GLASS_BD },
+  dbSearchInput: { flex: 1, fontSize: 13, fontFamily: 'Inter_400Regular', padding: 0 },
+  addWardBtn: { },
+  addWardBtnGrad: { width: 42, height: 42, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
+
+  // Search result cards
+  searchResultCard: { borderRadius: 14, borderWidth: 1, borderColor: 'rgba(99,102,241,0.25)', overflow: 'hidden', flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 13, gap: 10 },
+  searchResultLeft: { flex: 1, gap: 2 },
+
   // Ward cards
-  wardCard: { borderRadius: 16, borderWidth: 1, borderColor: 'rgba(255,255,255,0.10)', overflow: 'hidden', flexDirection: 'row', alignItems: 'center', paddingRight: 10, paddingVertical: 12 },
-  wardRow: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12, paddingLeft: 14 },
-  wardBadge: { width: 42, height: 42, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
-  wardBadgeText: { color: '#fff', fontSize: 12, fontFamily: 'Inter_700Bold' },
-  wardName: { fontSize: 14, fontFamily: 'Inter_700Bold' },
+  wardCard: { borderRadius: 18, borderWidth: 1, borderColor: 'rgba(255,255,255,0.10)', overflow: 'hidden', flexDirection: 'row', alignItems: 'center' },
+  wardAccentBar: { width: 4, alignSelf: 'stretch' },
+  wardRow: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12, paddingLeft: 14, paddingVertical: 16, paddingRight: 6 },
+  wardBadge: { width: 46, height: 46, borderRadius: 14, justifyContent: 'center', alignItems: 'center' },
+  wardBadgeText: { color: '#fff', fontSize: 13, fontFamily: 'Inter_700Bold' },
+  wardName: { fontSize: 15, fontFamily: 'Inter_700Bold' },
   wardArea: { fontSize: 11, fontFamily: 'Inter_400Regular' },
   wardMetaRow: { flexDirection: 'row', gap: 6 },
   wardActions: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingLeft: 6 },
-  metaPill: { flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: 8, paddingHorizontal: 6, paddingVertical: 3 },
+  wardActionsCol: { flexDirection: 'column', alignItems: 'center', gap: 5, paddingRight: 10, paddingVertical: 10 },
+  metaPill: { flexDirection: 'row', alignItems: 'center', gap: 4, borderRadius: 8, paddingHorizontal: 7, paddingVertical: 3, backgroundColor: 'rgba(255,255,255,0.06)' },
   metaText: { fontSize: 10, fontFamily: 'Inter_600SemiBold' },
   iconBtn: { width: 28, height: 28, borderRadius: 8, justifyContent: 'center', alignItems: 'center', borderWidth: 1 },
 
   // Group views
   allHousesCard: { borderRadius: 16, borderWidth: 1, borderColor: '#6366F135', overflow: 'hidden', flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 14, paddingVertical: 14 },
-  groupCard: { borderRadius: 16, borderWidth: 1, overflow: 'hidden', flexDirection: 'row', alignItems: 'center', paddingRight: 12, paddingVertical: 12 },
-  groupCardMain: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12, paddingLeft: 14 },
+  groupCard: { borderRadius: 16, borderWidth: 1, overflow: 'hidden', flexDirection: 'row', alignItems: 'center' },
+  groupAccentBar: { width: 4, alignSelf: 'stretch' },
+  groupCardMain: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12, paddingLeft: 12, paddingVertical: 14, paddingRight: 6 },
   groupIconBox: { width: 40, height: 40, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
   groupDot: { width: 12, height: 12, borderRadius: 6 },
   groupName: { fontSize: 14, fontFamily: 'Inter_700Bold' },
@@ -1653,7 +1701,7 @@ const s = StyleSheet.create({
   addGroupBtnText: { color: '#fff', fontSize: 14, fontFamily: 'Inter_700Bold' },
 
   // Houses view
-  searchRow: { flexDirection: 'row', gap: 10, padding: 12, backgroundColor: 'rgba(255,255,255,0.03)', borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.07)' },
+  searchRow: { flexDirection: 'row', gap: 10, paddingHorizontal: 14, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.07)' },
   searchBox: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: GLASS, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10, borderWidth: 1, borderColor: GLASS_BD },
   searchInput: { flex: 1, fontSize: 13, fontFamily: 'Inter_400Regular', padding: 0 },
   exportBtn: { },
@@ -1666,6 +1714,10 @@ const s = StyleSheet.create({
   selBarCount: { fontSize: 13, fontFamily: 'Inter_700Bold' },
   selAction: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 10, borderWidth: 1 },
   selActionText: { fontSize: 12, fontFamily: 'Inter_600SemiBold' },
+  houseCard: { borderRadius: 16, borderWidth: 1, borderColor: GLASS_BD, overflow: 'hidden', flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 14, paddingVertical: 14, backgroundColor: GLASS },
+  houseCardLeft: { },
+  houseNumBox: { width: 28, height: 28, borderRadius: 9, backgroundColor: 'rgba(99,102,241,0.15)', justifyContent: 'center', alignItems: 'center' },
+  houseNumText: { fontSize: 11, fontFamily: 'Inter_700Bold', color: '#818CF8' },
   houseRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 13, paddingHorizontal: 12, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.06)' },
   houseIdx: { fontSize: 12, fontFamily: 'Inter_500Medium', color: MUTED, textAlign: 'center' },
   houseCellFlex: { flexDirection: 'row', alignItems: 'center', gap: 6 },
