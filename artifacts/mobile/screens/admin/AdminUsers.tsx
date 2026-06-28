@@ -39,7 +39,7 @@ const ROLE_GRAD: Record<string, readonly [string, string]> = {
 
 /* ─── component ──────────────────────────────────────────────── */
 export default function AdminUsers() {
-  const { users, addUser, updateUser, deleteUser, updateUserId, updateUserFull, secretKeys, assignSecretKeyToUser } = useAppData();
+  const { users, addUser, updateUser, deleteUser, updateUserId, updateUserFull, secretKeys, assignSecretKeyToUser, deleteSecretKey } = useAppData();
   const { user: currentUser } = useAuth();
   const { showAlert } = useAlert();
   const isSuperAdmin = !!(currentUser as any)?.isSuperAdmin;
@@ -232,6 +232,25 @@ export default function AdminUsers() {
       setCreateOpen(false);
       showAlert('User Created', `${newUser.name} (${uid}) has been added.${secretKeyMsg}`, undefined, 'success');
     } finally { setCreating(false); }
+  }
+
+  async function handleRegenerateKey(u: User) {
+    showAlert(
+      'Regenerate Secret Key?',
+      `This will invalidate ${u.name}'s current key and create a new one. They will need the new key to log in.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Regenerate', style: 'destructive', onPress: async () => {
+            const oldKey = secretKeys.find(k => k.usedBy === u.id && k.isActive);
+            if (oldKey) await deleteSecretKey(oldKey.id);
+            const newKey = await assignSecretKeyToUser(u.id, u.name, u.role as 'safaikarmi' | 'official');
+            showAlert('New Key Generated', `New Secret Key for ${u.name}:\n\n${newKey.code}\n\nShare this securely.`, undefined, 'success');
+          },
+        },
+      ],
+      'warning'
+    );
   }
 
   const currentTab = TABS.find(t => t.key === activeTab) ?? TABS[0]!;
@@ -718,6 +737,21 @@ export default function AdminUsers() {
                       {!isProtected && (
                         <>
                           <SectionHeading icon="settings" label="Actions" color={MUTED} />
+                          {(profileUser.role === 'safaikarmi' || profileUser.role === 'official') && (() => {
+                            const userKey = secretKeys.find(k => k.usedBy === profileUser.id && k.isActive);
+                            return (
+                              <TouchableOpacity
+                                style={[s.actionCard, { backgroundColor: 'rgba(192,132,252,0.10)', borderColor: 'rgba(192,132,252,0.28)', width: '100%' }]}
+                                onPress={() => handleRegenerateKey(profileUser)} activeOpacity={0.8}
+                              >
+                                <Feather name="refresh-cw" size={18} color="#C084FC" />
+                                <View style={{ flex: 1 }}>
+                                  <Text style={[s.actionCardText, { color: '#C084FC' }]}>Regenerate Secret Key</Text>
+                                  {userKey && <Text style={{ color: 'rgba(192,132,252,0.6)', fontSize: 10, fontFamily: 'Inter_500Medium', marginTop: 2 }}>{userKey.code}</Text>}
+                                </View>
+                              </TouchableOpacity>
+                            );
+                          })()}
                           <View style={s.actionsGrid}>
                             <TouchableOpacity
                               style={[s.actionCard, { backgroundColor: profileUser.isActive ? '#D9770618' : '#10B98118', borderColor: profileUser.isActive ? '#D9770630' : '#10B98130', flex: 1 }]}
