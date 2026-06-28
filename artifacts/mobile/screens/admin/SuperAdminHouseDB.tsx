@@ -391,7 +391,7 @@ export default function SuperAdminHouseDB() {
       {view === 'wards' && (
         <View style={s.waHdr}>
           <View style={{ flex: 1 }}>
-            <Text style={s.waHdrTitle}>Communities</Text>
+            <Text style={s.waHdrTitle}>Wards</Text>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 2 }}>
               <Animated.View style={[s.waSyncDot, { backgroundColor: syncColor, opacity: syncPulse }]} />
               <Text style={s.waHdrSub}>{wards.length} wards · {totalHouses} houses</Text>
@@ -418,7 +418,7 @@ export default function SuperAdminHouseDB() {
             {view === 'groups' && selectedWard && (
               <>
                 <Text style={s.waHdrTitle} numberOfLines={1}>{selectedWard.name}</Text>
-                <Text style={s.waHdrSub}>Community · Ward {selectedWard.wardNumber}</Text>
+                <Text style={s.waHdrSub}>Ward {selectedWard.wardNumber}</Text>
               </>
             )}
             {view === 'houses' && (
@@ -501,15 +501,15 @@ export default function SuperAdminHouseDB() {
           ) : (
             <View>
               <View style={s.waSecHdr}>
-                <Text style={s.waSecTxt}>{wards.length} Communit{wards.length !== 1 ? 'ies' : 'y'}</Text>
+                <Text style={s.waSecTxt}>{wards.length} Ward{wards.length !== 1 ? 's' : ''}</Text>
               </View>
               {wards.length === 0 ? (
                 <View style={s.waEmpty}>
                   <Feather name="map" size={30} color={MUTED2} />
-                  <Text style={[s.waEmptyT, { color: TEXT }]}>No communities yet</Text>
+                  <Text style={[s.waEmptyT, { color: TEXT }]}>No wards yet</Text>
                   <Text style={[s.waEmptyS, { color: MUTED }]}>Tap + to add the first ward</Text>
                 </View>
-              ) : wards.map((ward, idx) => {
+              ) : [...wards].sort((a, b) => (a.wardNumber ?? 0) - (b.wardNumber ?? 0)).map((ward, idx) => {
                 const grad = WARD_GRADS[idx % WARD_GRADS.length];
                 const wHouses = houses.filter(h => h.wardId === ward.id).length;
                 const wWorkers = (ward.assignedWorkers ?? []).length;
@@ -569,7 +569,7 @@ export default function SuperAdminHouseDB() {
             </LinearGradient>
             <View style={{ flex: 1 }}>
               <Text style={[s.waRowName, { color: TEXT }]}>All Houses</Text>
-              <Text style={[s.waRowSub, { color: MUTED }]}>{houses.filter(h => h.wardId === selectedWard.id).length} houses in community</Text>
+              <Text style={[s.waRowSub, { color: MUTED }]}>{houses.filter(h => h.wardId === selectedWard.id).length} houses in ward</Text>
             </View>
             <Feather name="chevron-right" size={14} color={MUTED2} />
           </TouchableOpacity>
