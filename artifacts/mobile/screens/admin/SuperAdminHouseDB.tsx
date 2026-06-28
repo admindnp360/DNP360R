@@ -87,6 +87,23 @@ export default function SuperAdminHouseDB() {
   const [selectionMode, setSelectionMode]       = useState(false);
   const [selectedHouseIds, setSelectedHouseIds] = useState<string[]>([]);
 
+  // ── Bulk delete ────────────────────────────────────────────────────
+  async function handleDeleteSelected() {
+    if (selectedHouseIds.length === 0) return;
+    showAlert('Delete Houses?', `Permanently delete ${selectedHouseIds.length} house(s)?`, [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Delete All', style: 'destructive', onPress: async () => {
+          setSaving(true);
+          try {
+            await Promise.all(selectedHouseIds.map(id => deleteHouse(id)));
+            exitSelectionMode();
+            showAlert('Deleted', `${selectedHouseIds.length} house(s) deleted.`, undefined, 'success');
+          } finally { setSaving(false); }
+        },
+      },
+    ], 'error');
+  }
+
   // ── Loading state ──────────────────────────────────────────────────
   const [savingWorker, setSavingWorker] = useState(false);
   const [saving, setSaving]             = useState(false);
@@ -633,6 +650,10 @@ export default function SuperAdminHouseDB() {
                 <Feather name="move" size={12} color="#818CF8" />
                 <Text style={[s.selActionText, { color: '#818CF8' }]}>Move</Text>
               </TouchableOpacity>
+              <TouchableOpacity style={[s.selAction, { backgroundColor: 'rgba(239,68,68,0.12)', borderColor: 'rgba(239,68,68,0.28)' }]} onPress={handleDeleteSelected} disabled={selectedHouseIds.length === 0 || saving}>
+                <Feather name="trash-2" size={12} color="#EF4444" />
+                <Text style={[s.selActionText, { color: '#EF4444' }]}>Delete</Text>
+              </TouchableOpacity>
             </View>
           )}
           <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
@@ -656,14 +677,11 @@ export default function SuperAdminHouseDB() {
                         {isSelected && <Feather name="check" size={10} color="#fff" />}
                       </View>
                     ) : (
-                      <LinearGradient colors={['#4F46E522','#7C3AED14']} style={s.waHouseNum}>
-                        <Text style={s.waHouseNumTxt}>{idx + 1}</Text>
-                      </LinearGradient>
+                      <Text style={{ width: 22, fontSize: 10, fontFamily: 'Inter_500Medium', color: MUTED2, textAlign: 'center' }}>{idx + 1}</Text>
                     )}
-                    <View style={{ flex: 1 }}>
-                      <Text style={[s.waRowName, { color: TEXT, fontSize: 13 }]} numberOfLines={1}>{h.ownerName}</Text>
-                      <Text style={[s.waRowSub, { color: '#818CF8' }]}>{h.registrationNumber}</Text>
-                      <Text style={[s.waRowSub, { color: MUTED }]} numberOfLines={1}>{h.address}</Text>
+                    <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <Text style={{ fontSize: 13, fontFamily: 'Inter_700Bold', color: '#818CF8' }} numberOfLines={1}>{h.registrationNumber}</Text>
+                      <Text style={{ fontSize: 12, fontFamily: 'Inter_500Medium', color: TEXT, maxWidth: '45%' }} numberOfLines={1}>{h.ownerName}</Text>
                     </View>
                     {h.groupId && <View style={[s.waGrpDot, { backgroundColor: grpColor }]} />}
                     <Feather name="chevron-right" size={13} color={MUTED2} />
@@ -1034,7 +1052,7 @@ export default function SuperAdminHouseDB() {
             </Pressable>
           </LinearGradient>
           <ScrollView contentContainerStyle={{ padding: 20, gap: 14 }}>
-            {/* Action buttons */}
+            {/* Primary action buttons: Edit + Delete */}
             <View style={{ flexDirection: 'row', gap: 12 }}>
               <TouchableOpacity
                 style={{ flex: 1, borderRadius: 12, overflow: 'hidden' }}
@@ -1056,6 +1074,28 @@ export default function SuperAdminHouseDB() {
                   <Text style={{ color: '#fff', fontSize: 14, fontFamily: 'Inter_700Bold' }}>Delete</Text>
                 </LinearGradient>
               </TouchableOpacity>
+            </View>
+
+            {/* Secondary action buttons */}
+            <View style={{ gap: 8 }}>
+              {[
+                { icon: 'trash-2' as const, label: 'Garbage Collection Details', color: '#10B981', bg: 'rgba(16,185,129,0.10)', border: 'rgba(16,185,129,0.25)' },
+                { icon: 'alert-circle' as const, label: 'Complaints from this House', color: '#F97316', bg: 'rgba(249,115,22,0.10)', border: 'rgba(249,115,22,0.25)' },
+                { icon: 'tool' as const, label: 'Service Requests from this House', color: '#818CF8', bg: 'rgba(99,102,241,0.10)', border: 'rgba(99,102,241,0.25)' },
+              ].map(btn => (
+                <TouchableOpacity
+                  key={btn.label}
+                  style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingVertical: 13, borderRadius: 14, backgroundColor: btn.bg, borderWidth: 1, borderColor: btn.border }}
+                  activeOpacity={0.75}
+                  onPress={() => showAlert('Coming Soon', `${btn.label} — feature coming soon.`, undefined, 'success')}
+                >
+                  <View style={{ width: 34, height: 34, borderRadius: 10, backgroundColor: btn.bg, borderWidth: 1, borderColor: btn.border, justifyContent: 'center', alignItems: 'center' }}>
+                    <Feather name={btn.icon} size={15} color={btn.color} />
+                  </View>
+                  <Text style={{ flex: 1, fontSize: 13, fontFamily: 'Inter_600SemiBold', color: btn.color }}>{btn.label}</Text>
+                  <Feather name="chevron-right" size={14} color={btn.color} />
+                </TouchableOpacity>
+              ))}
             </View>
 
             {/* Details card */}
@@ -1366,7 +1406,7 @@ const s = StyleSheet.create({
   waCommRow:       { flexDirection: 'row', alignItems: 'center', gap: 14, paddingHorizontal: 16, paddingVertical: 12 },
   waCommAvatar:    { width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center' },
   waCommAvatarTxt: { color: '#fff', fontSize: 12, fontFamily: 'Inter_700Bold' },
-  waListRow:       { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingVertical: 11 },
+  waListRow:       { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 16, paddingVertical: 7 },
   waListAvatar:    { width: 38, height: 38, borderRadius: 19, justifyContent: 'center', alignItems: 'center' },
   waRowName:       { fontSize: 14, fontFamily: 'Inter_700Bold' },
   waRowSub:        { fontSize: 11, fontFamily: 'Inter_400Regular', marginTop: 1 },
