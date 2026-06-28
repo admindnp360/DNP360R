@@ -2,7 +2,7 @@ import { Feather } from '@expo/vector-icons';
 import * as FileSystem from 'expo-file-system/legacy';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Sharing from 'expo-sharing';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator, Animated, Modal, Pressable, ScrollView, StyleSheet,
   Text, TextInput, TouchableOpacity, View,
@@ -117,12 +117,12 @@ export default function SuperAdminHouseDB() {
   }, [syncStatus]);
 
   // ── Derived stats ─────────────────────────────────────────────────
-  const totalHouses    = houses.length;
-  const activeHouses   = houses.filter(h => h.isActive).length;
-  const ungroupedHouses = houses.filter(h => !h.groupId).length;
+  const totalHouses     = useMemo(() => houses.length, [houses]);
+  const activeHouses    = useMemo(() => houses.filter(h => h.isActive).length, [houses]);
+  const ungroupedHouses = useMemo(() => houses.filter(h => !h.groupId).length, [houses]);
 
   // ── Global search across all wards ────────────────────────────────
-  const globalResults = (() => {
+  const globalResults = useMemo(() => {
     const q = globalSearch.trim().toLowerCase();
     if (q.length < 2) return [];
     return houses.filter(h =>
@@ -132,7 +132,7 @@ export default function SuperAdminHouseDB() {
       h.address.toLowerCase().includes(q) ||
       (h.mobile || '').includes(q)
     );
-  })();
+  }, [houses, globalSearch]);
 
   // ── DB Tab – navigation helpers ───────────────────────────────────
   function goToGroups(ward: Ward) { setSelectedWard(ward); setView('groups'); setSearch(''); setGlobalSearch(''); }
@@ -176,7 +176,7 @@ export default function SuperAdminHouseDB() {
     setGrpSelectedIds(prev => prev.size === list.length ? new Set() : new Set(list.map(h => h.id)));
   }
 
-  const grpHouseList = (() => {
+  const grpHouseList = useMemo(() => {
     if (!grpWard) return [];
     let list = grpGroupFilter
       ? houses.filter(h => h.groupId === grpGroupFilter.id)
@@ -192,10 +192,10 @@ export default function SuperAdminHouseDB() {
       );
     }
     return list;
-  })();
+  }, [houses, grpWard, grpGroupFilter, grpShowUngrouped, grpSearch]);
 
-  const grpUngroupedCount = grpWard ? houses.filter(h => h.wardId === grpWard.id && !h.groupId).length : 0;
-  const grpAssignable = grpGroupFilter ? groups.filter(g => g.id !== grpGroupFilter.id) : groups;
+  const grpUngroupedCount = useMemo(() => grpWard ? houses.filter(h => h.wardId === grpWard.id && !h.groupId).length : 0, [houses, grpWard]);
+  const grpAssignable = useMemo(() => grpGroupFilter ? groups.filter(g => g.id !== grpGroupFilter.id) : groups, [groups, grpGroupFilter]);
 
   async function grpHandleAssign(g: Group) {
     if (grpSelectedIds.size === 0) return;
@@ -219,8 +219,11 @@ export default function SuperAdminHouseDB() {
     ], 'warning');
   }
 
+  // ── House detail modal ────────────────────────────────────────────
+  const [detailHouse, setDetailHouse] = useState<House | null>(null);
+
   // ── House CRUD ────────────────────────────────────────────────────
-  const houseList = (() => {
+  const houseList = useMemo(() => {
     let list: House[] = selectedGroup !== null
       ? houses.filter(h => h.groupId === selectedGroup.id)
       : selectedWard ? houses.filter(h => h.wardId === selectedWard.id) : [];
@@ -233,7 +236,7 @@ export default function SuperAdminHouseDB() {
       );
     }
     return list;
-  })();
+  }, [houses, selectedGroup, selectedWard, search]);
 
   async function handleAddHouse() {
     if (!selectedWard) return;
@@ -826,69 +829,32 @@ export default function SuperAdminHouseDB() {
 
               <ScrollView contentContainerStyle={{ paddingBottom: 180 }}>
                 {houseList.map((h, idx) => {
-                  const isExpanded = expandedHouseId === h.id && !selectionMode;
                   const isSelected = selectedHouseIds.includes(h.id);
                   return (
-                    <View key={h.id}>
-                      <TouchableOpacity
-                        style={[s.houseRow, isSelected && { backgroundColor: '#6366F115' }, isExpanded && { backgroundColor: '#6366F10A' }]}
-                        onPress={() => selectionMode ? toggleHouseSelection(h.id) : setExpandedHouseId(isExpanded ? null : h.id)}
-                        onLongPress={() => { if (!selectionMode) { setSelectionMode(true); setExpandedHouseId(null); } toggleHouseSelection(h.id); }}
-                        activeOpacity={0.8}
-                      >
-                        {selectionMode
-                          ? <View style={[s.checkbox, { borderColor: isSelected ? '#6366F1' : GLASS_BD, backgroundColor: isSelected ? '#6366F1' : 'transparent' }]}>
-                              {isSelected && <Feather name="check" size={10} color="#fff" />}
-                            </View>
-                          : <Text style={[s.houseIdx, { width: 38 }]}>{idx + 1}</Text>
-                        }
-                        <View style={s.colDivider} />
-                        <View style={[s.houseCellFlex, { flex: 1 }]}>
-                          <View style={[s.regDot, { backgroundColor: '#6366F1' }]} />
-                          <Text style={[s.regText, { color: '#818CF8' }]}>{h.registrationNumber}</Text>
-                        </View>
-                        <View style={s.colDivider} />
-                        <View style={[s.houseCellFlex, { flex: 1.3 }]}>
-                          <Text style={[s.ownerText, { color: TEXT }]} numberOfLines={1}>{h.ownerName}</Text>
-                          {!selectionMode && <Feather name={isExpanded ? 'chevron-up' : 'chevron-down'} size={13} color={MUTED} />}
-                        </View>
-                      </TouchableOpacity>
-
-                      {isExpanded && (
-                        <View style={s.houseDetail}>
-                          <View style={s.detailHeader}>
-                            <Text style={[s.detailTitle, { color: TEXT }]}>{h.ownerName}</Text>
-                            <View style={{ flexDirection: 'row', gap: 8 }}>
-                              <TouchableOpacity style={[s.detailAction, { backgroundColor: '#6366F120', borderColor: '#6366F135' }]} onPress={() => openEditHouse(h)}>
-                                <Feather name="edit-2" size={13} color="#6366F1" />
-                              </TouchableOpacity>
-                              <TouchableOpacity style={[s.detailAction, { backgroundColor: '#EF444420', borderColor: '#EF444435' }]} onPress={() => handleDeleteHouse(h)}>
-                                <Feather name="trash-2" size={13} color="#EF4444" />
-                              </TouchableOpacity>
-                            </View>
+                    <TouchableOpacity
+                      key={h.id}
+                      style={[s.houseRow, isSelected && { backgroundColor: '#6366F115' }]}
+                      onPress={() => selectionMode ? toggleHouseSelection(h.id) : setDetailHouse(h)}
+                      onLongPress={() => { if (!selectionMode) { setSelectionMode(true); setExpandedHouseId(null); } toggleHouseSelection(h.id); }}
+                      activeOpacity={0.8}
+                    >
+                      {selectionMode
+                        ? <View style={[s.checkbox, { borderColor: isSelected ? '#6366F1' : GLASS_BD, backgroundColor: isSelected ? '#6366F1' : 'transparent' }]}>
+                            {isSelected && <Feather name="check" size={10} color="#fff" />}
                           </View>
-                          {[
-                            { icon: 'hash', label: 'Registration', value: h.registrationNumber },
-                            { icon: 'user', label: 'Owner', value: h.ownerName },
-                            { icon: 'users', label: 'Father/Husband', value: h.fatherOrHusband || '—' },
-                            { icon: 'map-pin', label: 'Ward', value: `Ward ${h.wardNumber}` },
-                            { icon: 'layers', label: 'Group', value: h.groupName || 'Ungrouped' },
-                            { icon: 'home', label: 'Address', value: h.address },
-                            { icon: 'phone', label: 'Mobile', value: h.mobile || '—' },
-                            { icon: 'tag', label: 'Property Type', value: h.propertyType || '—' },
-                            { icon: 'activity', label: 'Status', value: h.status || 'Active' },
-                          ].map(row => (
-                            <View key={row.label} style={s.detailRow}>
-                              <View style={s.detailLabelWrap}>
-                                <Feather name={row.icon as any} size={11} color={MUTED} />
-                                <Text style={[s.detailLabel, { color: MUTED }]}>{row.label}</Text>
-                              </View>
-                              <Text style={[s.detailValue, { color: TEXT }]}>{row.value}</Text>
-                            </View>
-                          ))}
-                        </View>
-                      )}
-                    </View>
+                        : <Text style={[s.houseIdx, { width: 38 }]}>{idx + 1}</Text>
+                      }
+                      <View style={s.colDivider} />
+                      <View style={[s.houseCellFlex, { flex: 1 }]}>
+                        <View style={[s.regDot, { backgroundColor: '#6366F1' }]} />
+                        <Text style={[s.regText, { color: '#818CF8' }]}>{h.registrationNumber}</Text>
+                      </View>
+                      <View style={s.colDivider} />
+                      <View style={[s.houseCellFlex, { flex: 1.3 }]}>
+                        <Text style={[s.ownerText, { color: TEXT }]} numberOfLines={1}>{h.ownerName}</Text>
+                        {!selectionMode && <Feather name="chevron-right" size={13} color={MUTED} />}
+                      </View>
+                    </TouchableOpacity>
                   );
                 })}
 
@@ -1486,6 +1452,72 @@ export default function SuperAdminHouseDB() {
         </SafeAreaView>
       </Modal>
 
+      {/* ── House Detail Modal ────────────────────────────────────────── */}
+      <Modal visible={!!detailHouse} animationType="slide" presentationStyle="pageSheet">
+        <SafeAreaView style={{ flex: 1, backgroundColor: BG }}>
+          <LinearGradient colors={['#4F46E5','#7C3AED']} style={s.modalHdr}>
+            <View style={{ flex: 1 }}>
+              <Text style={s.modalTitle} numberOfLines={1}>{detailHouse?.ownerName}</Text>
+              <Text style={s.modalSub}>{detailHouse?.registrationNumber}</Text>
+            </View>
+            <Pressable onPress={() => setDetailHouse(null)} style={s.closeBtn}>
+              <Feather name="x" size={19} color="#fff" />
+            </Pressable>
+          </LinearGradient>
+          <ScrollView contentContainerStyle={{ padding: 20, gap: 14 }}>
+            {/* Action buttons */}
+            <View style={{ flexDirection: 'row', gap: 12 }}>
+              <TouchableOpacity
+                style={{ flex: 1, borderRadius: 12, overflow: 'hidden' }}
+                onPress={() => { if (detailHouse) { setDetailHouse(null); openEditHouse(detailHouse); } }}
+                activeOpacity={0.85}
+              >
+                <LinearGradient colors={['#0EA5E9','#0284C7']} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 13 }}>
+                  <Feather name="edit-2" size={15} color="#fff" />
+                  <Text style={{ color: '#fff', fontSize: 14, fontFamily: 'Inter_700Bold' }}>Edit</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={{ flex: 1, borderRadius: 12, overflow: 'hidden' }}
+                onPress={() => { if (detailHouse) { setDetailHouse(null); handleDeleteHouse(detailHouse); } }}
+                activeOpacity={0.85}
+              >
+                <LinearGradient colors={['#EF4444','#DC2626']} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 13 }}>
+                  <Feather name="trash-2" size={15} color="#fff" />
+                  <Text style={{ color: '#fff', fontSize: 14, fontFamily: 'Inter_700Bold' }}>Delete</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
+
+            {/* Details card */}
+            <View style={[s.detailCard]}>
+              {detailHouse && [
+                { icon: 'hash',       label: 'Registration No',  value: detailHouse.registrationNumber },
+                { icon: 'user',       label: 'Owner Name',       value: detailHouse.ownerName },
+                { icon: 'users',      label: 'Father / Husband', value: detailHouse.fatherOrHusband || '—' },
+                { icon: 'phone',      label: 'Mobile',           value: detailHouse.mobile || '—' },
+                { icon: 'map-pin',    label: 'Ward',             value: `Ward ${detailHouse.wardNumber}` },
+                { icon: 'layers',     label: 'Group',            value: detailHouse.groupName || 'Ungrouped' },
+                { icon: 'home',       label: 'Address',          value: detailHouse.address },
+                { icon: 'tag',        label: 'Property Type',    value: detailHouse.propertyType || 'Residential' },
+                { icon: 'activity',   label: 'Status',           value: detailHouse.status || 'Active' },
+                { icon: 'calendar',   label: 'Created On',       value: detailHouse.createdAt || '—' },
+              ].map((row, i, arr) => (
+                <View key={row.label} style={[s.detailRow, i === arr.length - 1 && { borderBottomWidth: 0, paddingBottom: 0 }]}>
+                  <View style={s.detailLabelWrap}>
+                    <View style={s.detailIconBox}>
+                      <Feather name={row.icon as any} size={12} color="#818CF8" />
+                    </View>
+                    <Text style={[s.detailLabel, { color: MUTED }]}>{row.label}</Text>
+                  </View>
+                  <Text style={[s.detailValue, { color: TEXT }]}>{row.value}</Text>
+                </View>
+              ))}
+            </View>
+          </ScrollView>
+        </SafeAreaView>
+      </Modal>
+
       {/* Export Modal */}
       <Modal visible={showExportModal} animationType="fade" transparent>
         <View style={s.exportOverlay}>
@@ -1645,10 +1677,12 @@ const s = StyleSheet.create({
   detailHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 },
   detailTitle: { fontSize: 15, fontFamily: 'Inter_700Bold' },
   detailAction: { width: 32, height: 32, borderRadius: 10, justifyContent: 'center', alignItems: 'center', borderWidth: 1 },
-  detailRow: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', paddingBottom: 8, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.05)' },
-  detailLabelWrap: { flexDirection: 'row', alignItems: 'center', gap: 5, flex: 1 },
-  detailLabel: { fontSize: 11, fontFamily: 'Inter_500Medium' },
-  detailValue: { fontSize: 12, fontFamily: 'Inter_600SemiBold', flex: 1, textAlign: 'right' },
+  detailCard: { backgroundColor: GLASS, borderRadius: 16, borderWidth: 1, borderColor: GLASS_BD, padding: 16, gap: 12 },
+  detailRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.05)' },
+  detailLabelWrap: { flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 },
+  detailIconBox: { width: 26, height: 26, borderRadius: 8, backgroundColor: 'rgba(99,102,241,0.15)', justifyContent: 'center', alignItems: 'center' },
+  detailLabel: { fontSize: 12, fontFamily: 'Inter_500Medium' },
+  detailValue: { fontSize: 13, fontFamily: 'Inter_600SemiBold', flex: 1, textAlign: 'right' },
   fab: { position: 'absolute', bottom: 24, right: 20 },
   fabGrad: { width: 56, height: 56, borderRadius: 18, justifyContent: 'center', alignItems: 'center', shadowColor: '#4F46E5', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.5, shadowRadius: 12, elevation: 8 },
 
