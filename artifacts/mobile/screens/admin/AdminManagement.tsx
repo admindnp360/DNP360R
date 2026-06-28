@@ -56,7 +56,7 @@ const TAB_CFG = [
 export default function AdminManagement() {
   const {
     notices, passwordResetRequests, secretKeys,
-    addNotice, deleteNotice, updatePasswordResetRequest, addSecretKey,
+    addNotice, deleteNotice, updatePasswordResetRequest, addSecretKey, deleteSecretKey,
   } = useAppData();
   const { resetUserPassword } = useAuth();
   const { showAlert } = useAlert();
@@ -157,7 +157,7 @@ export default function AdminManagement() {
       >
         <LinearGradient colors={used ? ['#1E293B','#0F172A'] : [grad[0]+'22', grad[1]+'10']} style={StyleSheet.absoluteFill} />
 
-        {/* top row: role pill + status */}
+        {/* top row: role pill + status + delete (unused only) */}
         <View style={s.keyCardTop}>
           <View style={[s.keyRolePill, { backgroundColor: color + '22', borderColor: color + '35' }]}>
             <View style={[s.keyRoleDot, { backgroundColor: color }]} />
@@ -165,7 +165,20 @@ export default function AdminManagement() {
           </View>
           {used
             ? <View style={s.usedPill}><Text style={s.usedTxt}>Used</Text></View>
-            : <View style={s.freePill}><Text style={s.freeTxt}>Unused</Text></View>
+            : <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <View style={s.freePill}><Text style={s.freeTxt}>Unused</Text></View>
+                <TouchableOpacity
+                  onPress={() => showAlert(
+                    'Delete Key?', `Delete ${k.code}? This cannot be undone.`,
+                    [{ text: 'Cancel', style: 'cancel' }, { text: 'Delete', style: 'destructive', onPress: () => deleteSecretKey(k.id) }],
+                    'error'
+                  )}
+                  hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                  style={{ backgroundColor: 'rgba(239,68,68,0.15)', borderRadius: 6, padding: 4, borderWidth: 1, borderColor: 'rgba(239,68,68,0.3)' }}
+                >
+                  <Feather name="trash-2" size={11} color="#F87171" />
+                </TouchableOpacity>
+              </View>
           }
         </View>
 
