@@ -11,6 +11,7 @@ import {
 } from 'firebase/auth';
 import {
   collection,
+  deleteDoc,
   doc,
   getDoc,
   getDocs,
@@ -102,6 +103,17 @@ async function getUserFromFirestore(uid: string): Promise<User | null> {
   } catch { return null; }
 }
 
+async function deleteDuplicateSuperAdmins(): Promise<void> {
+  try {
+    const snap = await getDocs(query(collection(db, 'users'), where('role', '==', 'admin')));
+    await Promise.all(
+      snap.docs
+        .filter(d => d.id !== 'SUPERADMIN')
+        .map(d => deleteDoc(d.ref))
+    );
+  } catch (e) { console.warn('Cleanup duplicate admins failed:', e); }
+}
+
 async function saveUserToFirestore(uid: string, data: User): Promise<void> {
   try {
     const { id: _id, ...rest } = data as any;
@@ -178,6 +190,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Save user doc under the fixed 'SUPERADMIN' doc ID — never under an
       // anonymous UID, which changes each session and creates duplicate rows.
       try { await saveUserToFirestore('SUPERADMIN', { ...userData as User, role: 'admin' }); } catch {}
+      // Remove any duplicate admin docs created by old anonymous-auth logins.
+      deleteDuplicateSuperAdmins();
       setUser(userData);
       await AsyncStorage.setItem('dnp360_user', JSON.stringify(userData));
       return true;
