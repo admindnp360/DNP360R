@@ -11,6 +11,7 @@ export interface User {
   avatar?: string;
   address?: string;
   isActive?: boolean;
+  isOnline?: boolean;
   createdAt?: string;
   isSuperAdmin?: boolean;
   cannotBeDeleted?: boolean;

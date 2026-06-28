@@ -253,11 +253,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const { password: _, secretCode: __, ...userData } = SUPER_ADMIN;
       try { await signInWithEmailAndPassword(firebaseAuth, SUPER_ADMIN.email, SUPER_ADMIN.password); }
       catch { try { await signInAnonymously(firebaseAuth); } catch {} }
-      if (firebaseAuth.currentUser) {
-        try { await saveUserToFirestore(firebaseAuth.currentUser.uid, { ...userData as User, role: 'admin' }); } catch {}
-      }
-      setUser(userData);
-      await AsyncStorage.setItem('dnp360_user', JSON.stringify(userData));
+      const onlineData = { ...(userData as User), isOnline: true };
+      try { await updateDoc(doc(db, 'users', 'SUPERADMIN'), { isOnline: true, _updatedAt: serverTimestamp() }); } catch {}
+      setUser(onlineData);
+      await AsyncStorage.setItem('dnp360_user', JSON.stringify(onlineData));
       return true;
     }
 
@@ -266,8 +265,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (demo) {
       const { password: _, ...userData } = demo;
       try { await signInAnonymously(firebaseAuth); } catch {}
-      setUser(userData);
-      await AsyncStorage.setItem('dnp360_user', JSON.stringify(userData));
+      const onlineData = { ...userData, isOnline: true };
+      try { await updateDoc(doc(db, 'users', demo.id), { isOnline: true, _updatedAt: serverTimestamp() }); } catch {}
+      setUser(onlineData);
+      await AsyncStorage.setItem('dnp360_user', JSON.stringify(onlineData));
       return true;
     }
 
@@ -276,8 +277,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const snap = await getDocs(query(collection(db, 'users'), where('id', '==', uid)));
       if (!snap.empty) {
         const docSnap = snap.docs[0];
-        const profile = { id: uid, ...docSnap.data() } as User;
+        const profile = { id: uid, ...docSnap.data(), isOnline: true } as User;
         try { await signInAnonymously(firebaseAuth); } catch {}
+        try { await updateDoc(doc(db, 'users', docSnap.id), { isOnline: true, _updatedAt: serverTimestamp() }); } catch {}
         setUser(profile);
         await AsyncStorage.setItem('dnp360_user', JSON.stringify(profile));
         return true;
@@ -285,9 +287,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Also try doc keyed by userId itself (legacy SUPERADMIN doc)
       const direct = await getUserFromFirestore(uid);
       if (direct) {
+        const onlineDirect = { ...direct, isOnline: true };
         try { await signInAnonymously(firebaseAuth); } catch {}
-        setUser(direct);
-        await AsyncStorage.setItem('dnp360_user', JSON.stringify(direct));
+        try { await updateDoc(doc(db, 'users', uid), { isOnline: true, _updatedAt: serverTimestamp() }); } catch {}
+        setUser(onlineDirect);
+        await AsyncStorage.setItem('dnp360_user', JSON.stringify(onlineDirect));
         return true;
       }
     } catch (e) {
@@ -370,6 +374,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   async function logout() {
+    if (user) {
+      try { await updateDoc(doc(db, 'users', user.id), { isOnline: false, _updatedAt: serverTimestamp() }); } catch {}
+    }
     setUser(null);
     await AsyncStorage.removeItem('dnp360_user');
     try { await signOut(firebaseAuth); } catch {}

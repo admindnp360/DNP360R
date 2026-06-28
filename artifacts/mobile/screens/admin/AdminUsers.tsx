@@ -39,7 +39,7 @@ const ROLE_GRAD: Record<string, readonly [string, string]> = {
 
 /* ─── component ──────────────────────────────────────────────── */
 export default function AdminUsers() {
-  const { users, updateUser, deleteUser, updateUserId, updateUserFull } = useAppData();
+  const { users, addUser, updateUser, deleteUser, updateUserId, updateUserFull } = useAppData();
   const { user: currentUser } = useAuth();
   const { showAlert } = useAlert();
   const isSuperAdmin = !!(currentUser as any)?.isSuperAdmin;
@@ -61,6 +61,15 @@ export default function AdminUsers() {
   const [editAvatar, setEditAvatar]   = useState('');
   const [saving, setSaving]           = useState(false);
   const [copiedId, setCopiedId]       = useState<string | null>(null);
+
+  /* create user modal */
+  const [createOpen, setCreateOpen]   = useState(false);
+  const [newRole, setNewRole]         = useState<'safaikarmi' | 'official' | 'citizen'>('safaikarmi');
+  const [newName, setNewName]         = useState('');
+  const [newEmail, setNewEmail]       = useState('');
+  const [newMobile, setNewMobile]     = useState('');
+  const [newUserId, setNewUserId]     = useState('');
+  const [creating, setCreating]       = useState(false);
 
   /* stats */
   const countSafaikarmi = users.filter(u => u.role === 'safaikarmi').length;
@@ -170,6 +179,52 @@ export default function AdminUsers() {
       [{ text: 'Cancel', style: 'cancel' }, { text: 'Delete', style: 'destructive', onPress: () => { deleteUser(u.id); closeProfile(); } }],
       'error'
     );
+  }
+
+  /* ── create user helpers ── */
+  function genNewUserId(role: string): string {
+    const prefix = role === 'citizen' ? 'CITI' : role === 'safaikarmi' ? 'SK' : 'OF';
+    const digits = String(Math.floor(1000 + Math.random() * 9000));
+    const letter = String.fromCharCode(65 + Math.floor(Math.random() * 26));
+    return `${prefix}${digits}${letter}`;
+  }
+
+  function openCreateModal() {
+    setNewRole('safaikarmi');
+    setNewName('');
+    setNewEmail('');
+    setNewMobile('');
+    setNewUserId(genNewUserId('safaikarmi'));
+    setCreateOpen(true);
+  }
+
+  function handleNewRoleChange(role: 'safaikarmi' | 'official' | 'citizen') {
+    setNewRole(role);
+    setNewUserId(genNewUserId(role));
+  }
+
+  async function handleCreateUser() {
+    if (!newName.trim()) { showAlert('Required', 'Please enter a name.', undefined, 'warning'); return; }
+    const uid = newUserId.trim().toUpperCase();
+    if (!uid) { showAlert('Required', 'User ID cannot be empty.', undefined, 'warning'); return; }
+    const conflict = users.find(u => u.id === uid);
+    if (conflict) { showAlert('ID Taken', `User ID "${uid}" is already used by ${conflict.name}.`, undefined, 'error'); return; }
+    setCreating(true);
+    try {
+      const newUser: User = {
+        id: uid,
+        name: newName.trim(),
+        email: newEmail.trim() || `${uid.toLowerCase()}@dnp360.app`,
+        mobile: newMobile.trim() || undefined,
+        role: newRole,
+        isActive: true,
+        isOnline: false,
+        createdAt: new Date().toISOString().split('T')[0],
+      };
+      await addUser(newUser);
+      setCreateOpen(false);
+      showAlert('User Created', `${newUser.name} (${uid}) has been added.`, undefined, 'success');
+    } finally { setCreating(false); }
   }
 
   const currentTab = TABS.find(t => t.key === activeTab) ?? TABS[0]!;
@@ -327,9 +382,13 @@ export default function AdminUsers() {
                   <View style={{ flex: 1 }}>
                     <Text style={s.tdName} numberOfLines={1}>{u.name}</Text>
                     <View style={s.statusRow}>
-                      <View style={[s.statusDot, { backgroundColor: u.isActive ? '#10B981' : '#EF4444' }]} />
-                      <Text style={[s.statusLabel, { color: u.isActive ? '#10B981' : '#EF4444' }]}>
-                        {u.isActive ? 'Active' : 'Frozen'}
+                      <View style={[s.statusDot, {
+                        backgroundColor: u.isOnline ? '#10B981' : u.isActive ? '#FBBF24' : '#EF4444'
+                      }]} />
+                      <Text style={[s.statusLabel, {
+                        color: u.isOnline ? '#10B981' : u.isActive ? '#FBBF24' : '#EF4444'
+                      }]}>
+                        {u.isOnline ? 'Online' : u.isActive ? 'Active' : 'Frozen'}
                       </Text>
                       <TouchableOpacity onPress={async () => { await Clipboard.setStringAsync(u.id); setCopiedId(u.id); setTimeout(() => setCopiedId(null), 1400); }}>
                         <Text style={[s.empIdLabel, copiedId === u.id && { color: '#10B981' }]}>
@@ -373,6 +432,137 @@ export default function AdminUsers() {
           })
         )}
       </ScrollView>
+
+      {/* ── FAB: Create User ── */}
+      {isSuperAdmin && (
+        <TouchableOpacity style={s.fab} activeOpacity={0.85} onPress={openCreateModal}>
+          <LinearGradient colors={['#6366F1', '#8B5CF6']} style={s.fabGrad}>
+            <Feather name="user-plus" size={20} color="#fff" />
+          </LinearGradient>
+        </TouchableOpacity>
+      )}
+
+      {/* ═══════════════ CREATE USER MODAL ═══════════════ */}
+      <Modal visible={createOpen} animationType="slide" presentationStyle="pageSheet">
+        <SafeAreaView style={{ flex: 1, backgroundColor: BG }}>
+          <LinearGradient colors={['#6366F1', '#8B5CF6']} style={s.modalHdr}>
+            <Pressable style={s.modalBack} onPress={() => setCreateOpen(false)}>
+              <Feather name="x" size={18} color="#fff" />
+            </Pressable>
+            <View style={{ flex: 1, alignItems: 'center' }}>
+              <Text style={{ color: '#fff', fontSize: 17, fontFamily: 'Inter_700Bold', textAlign: 'center' }}>Create New User</Text>
+              <Text style={s.modalHdrSub}>Provision a staff or citizen account</Text>
+            </View>
+            <View style={{ width: 34 }} />
+          </LinearGradient>
+
+          <ScrollView contentContainerStyle={{ padding: 18, gap: 16, paddingBottom: 60 }} showsVerticalScrollIndicator={false}>
+
+            {/* Role Selector */}
+            <Text style={s.createLabel}>Role</Text>
+            <View style={s.createRoleRow}>
+              {([
+                { role: 'safaikarmi' as const, label: 'Safai Karmi', icon: 'trash-2', grad: ['#10B981', '#059669'] as const },
+                { role: 'official' as const,   label: 'Official',    icon: 'briefcase', grad: ['#F59E0B', '#EF4444'] as const },
+                { role: 'citizen' as const,    label: 'Citizen',     icon: 'user',   grad: ['#0EA5E9', '#2563EB'] as const },
+              ]).map(opt => {
+                const active = newRole === opt.role;
+                return active ? (
+                  <TouchableOpacity key={opt.role} style={s.createRoleItem} activeOpacity={0.8} onPress={() => handleNewRoleChange(opt.role)}>
+                    <LinearGradient colors={opt.grad} style={s.createRolePillActive}>
+                      <Feather name={opt.icon as any} size={13} color="#fff" />
+                      <Text style={s.createRoleTxtActive}>{opt.label}</Text>
+                    </LinearGradient>
+                  </TouchableOpacity>
+                ) : (
+                  <TouchableOpacity key={opt.role} style={s.createRoleItem} activeOpacity={0.8} onPress={() => handleNewRoleChange(opt.role)}>
+                    <View style={s.createRolePillInactive}>
+                      <Feather name={opt.icon as any} size={13} color={MUTED} />
+                      <Text style={s.createRoleTxtInactive}>{opt.label}</Text>
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            {/* Auto User ID */}
+            <Text style={s.createLabel}>User ID</Text>
+            <View style={[s.createInputRow, { backgroundColor: 'rgba(99,102,241,0.08)', borderColor: 'rgba(99,102,241,0.3)' }]}>
+              <Feather name="hash" size={14} color="#818CF8" />
+              <TextInput
+                style={[s.createInput, { fontFamily: 'Inter_700Bold', letterSpacing: 2, color: '#C4B5FD' }]}
+                value={newUserId}
+                onChangeText={v => setNewUserId(v.replace(/[^A-Za-z0-9]/g, '').toUpperCase())}
+                autoCapitalize="characters" autoCorrect={false}
+                placeholder="Auto-generated"
+                placeholderTextColor={MUTED}
+              />
+              <TouchableOpacity onPress={() => setNewUserId(genNewUserId(newRole))} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                <Feather name="refresh-cw" size={14} color="#818CF8" />
+              </TouchableOpacity>
+            </View>
+            <Text style={s.createHint}>
+              Pattern: {newRole === 'citizen' ? 'CITI####L' : newRole === 'safaikarmi' ? 'SK####L' : 'OF####L'} · tap ↻ to regenerate
+            </Text>
+
+            {/* Name */}
+            <Text style={s.createLabel}>Full Name *</Text>
+            <View style={s.createInputRow}>
+              <Feather name="user" size={14} color={MUTED} />
+              <TextInput
+                style={s.createInput}
+                value={newName}
+                onChangeText={setNewName}
+                placeholder="Enter full name"
+                placeholderTextColor={MUTED}
+                autoCapitalize="words"
+              />
+            </View>
+
+            {/* Email (optional) */}
+            <Text style={s.createLabel}>Email <Text style={{ color: MUTED, fontFamily: 'Inter_400Regular' }}>(optional)</Text></Text>
+            <View style={s.createInputRow}>
+              <Feather name="mail" size={14} color={MUTED} />
+              <TextInput
+                style={s.createInput}
+                value={newEmail}
+                onChangeText={setNewEmail}
+                placeholder="Leave blank to auto-assign"
+                placeholderTextColor={MUTED}
+                keyboardType="email-address" autoCapitalize="none"
+              />
+            </View>
+
+            {/* Mobile (optional) */}
+            <Text style={s.createLabel}>Mobile <Text style={{ color: MUTED, fontFamily: 'Inter_400Regular' }}>(optional)</Text></Text>
+            <View style={s.createInputRow}>
+              <Feather name="phone" size={14} color={MUTED} />
+              <TextInput
+                style={s.createInput}
+                value={newMobile}
+                onChangeText={setNewMobile}
+                placeholder="10-digit mobile number"
+                placeholderTextColor={MUTED}
+                keyboardType="phone-pad"
+              />
+            </View>
+
+            {/* Create Button */}
+            <TouchableOpacity
+              onPress={handleCreateUser}
+              disabled={creating}
+              activeOpacity={0.85}
+              style={creating ? { opacity: 0.6 } : {}}
+            >
+              <LinearGradient colors={['#6366F1', '#8B5CF6']} style={s.saveBtn}>
+                <Feather name={creating ? 'loader' : 'user-plus'} size={16} color="#fff" />
+                <Text style={s.saveBtnText}>{creating ? 'Creating…' : 'Create User'}</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+
+          </ScrollView>
+        </SafeAreaView>
+      </Modal>
 
       {/* ═══════════════ PROFILE MODAL ═══════════════ */}
       <Modal visible={!!profileUser} animationType="slide" presentationStyle="pageSheet">
@@ -782,4 +972,23 @@ const s = StyleSheet.create({
   /* save */
   saveBtn:     { borderRadius: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 15 },
   saveBtnText: { color: '#fff', fontSize: 14, fontFamily: 'Inter_700Bold' },
+
+  /* FAB */
+  fab:     { position: 'absolute', bottom: 28, right: 20, borderRadius: 28, overflow: 'hidden', elevation: 8, shadowColor: '#6366F1', shadowOpacity: 0.45, shadowRadius: 12, shadowOffset: { width: 0, height: 4 } },
+  fabGrad: { width: 56, height: 56, justifyContent: 'center', alignItems: 'center' },
+
+  /* create user modal */
+  createLabel:          { fontSize: 11, fontFamily: 'Inter_600SemiBold', color: MUTED, letterSpacing: 0.4 },
+  createHint:           { fontSize: 10, fontFamily: 'Inter_400Regular', color: MUTED, marginTop: -8 },
+  createRoleRow:        { flexDirection: 'row', gap: 8 },
+  createRoleItem:       { flex: 1, borderRadius: 12, overflow: 'hidden' },
+  createRolePillActive: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, paddingVertical: 11, borderRadius: 12 },
+  createRolePillInactive: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, paddingVertical: 11, borderRadius: 12, borderWidth: 1, borderColor: GLASS_BD, backgroundColor: GLASS },
+  createRoleTxtActive:   { fontSize: 11, fontFamily: 'Inter_700Bold', color: '#fff' },
+  createRoleTxtInactive: { fontSize: 11, fontFamily: 'Inter_600SemiBold', color: MUTED },
+  createInputRow:       { flexDirection: 'row', alignItems: 'center', gap: 10, borderRadius: 12, borderWidth: 1, borderColor: GLASS_BD, backgroundColor: GLASS, paddingHorizontal: 13, paddingVertical: 2 },
+  createInput:          { flex: 1, fontSize: 14, fontFamily: 'Inter_400Regular', paddingVertical: 12, color: TEXT },
+
+  /* modal header subtitle */
+  modalHdrSub: { color: 'rgba(255,255,255,0.7)', fontSize: 11, fontFamily: 'Inter_400Regular', marginTop: 1 },
 });
