@@ -1052,50 +1052,67 @@ export default function SuperAdminHouseDB() {
             </Pressable>
           </LinearGradient>
           <ScrollView contentContainerStyle={{ padding: 20, gap: 14 }}>
-            {/* Primary action buttons: Edit + Delete */}
-            <View style={{ flexDirection: 'row', gap: 12 }}>
+            {/* ── 5-button action bar ─────────────────────────────────── */}
+            <View style={{
+              flexDirection: 'row', gap: 6,
+              backgroundColor: 'rgba(255,255,255,0.04)',
+              borderRadius: 18, borderWidth: 1,
+              borderColor: 'rgba(255,255,255,0.10)',
+              padding: 6,
+            }}>
+              {/* Edit */}
               <TouchableOpacity
-                style={{ flex: 1, borderRadius: 12, overflow: 'hidden' }}
+                style={{ flex: 2, borderRadius: 13, overflow: 'hidden' }}
                 onPress={() => { if (detailHouse) { setDetailHouse(null); openEditHouse(detailHouse); } }}
                 activeOpacity={0.85}
               >
-                <LinearGradient colors={['#0EA5E9','#0284C7']} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 13 }}>
-                  <Feather name="edit-2" size={15} color="#fff" />
-                  <Text style={{ color: '#fff', fontSize: 14, fontFamily: 'Inter_700Bold' }}>Edit</Text>
+                <LinearGradient colors={['#2563EB','#1D4ED8']} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 13 }}>
+                  <Feather name="edit-2" size={14} color="#fff" />
+                  <Text style={{ color: '#fff', fontSize: 13, fontFamily: 'Inter_700Bold' }}>Edit</Text>
                 </LinearGradient>
               </TouchableOpacity>
+
+              {/* Delete */}
               <TouchableOpacity
-                style={{ flex: 1, borderRadius: 12, overflow: 'hidden' }}
+                style={{ flex: 2, borderRadius: 13, overflow: 'hidden' }}
                 onPress={() => { if (detailHouse) { setDetailHouse(null); handleDeleteHouse(detailHouse); } }}
                 activeOpacity={0.85}
               >
-                <LinearGradient colors={['#EF4444','#DC2626']} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 13 }}>
-                  <Feather name="trash-2" size={15} color="#fff" />
-                  <Text style={{ color: '#fff', fontSize: 14, fontFamily: 'Inter_700Bold' }}>Delete</Text>
+                <LinearGradient colors={['#DC2626','#B91C1C']} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 13 }}>
+                  <Feather name="trash-2" size={14} color="#fff" />
+                  <Text style={{ color: '#fff', fontSize: 13, fontFamily: 'Inter_700Bold' }}>Delete</Text>
                 </LinearGradient>
               </TouchableOpacity>
-            </View>
 
-            {/* Secondary action buttons */}
-            <View style={{ gap: 8 }}>
-              {[
-                { icon: 'trash-2' as const, label: 'Garbage Collection Details', color: '#10B981', bg: 'rgba(16,185,129,0.10)', border: 'rgba(16,185,129,0.25)' },
-                { icon: 'alert-circle' as const, label: 'Complaints from this House', color: '#F97316', bg: 'rgba(249,115,22,0.10)', border: 'rgba(249,115,22,0.25)' },
-                { icon: 'tool' as const, label: 'Service Requests from this House', color: '#818CF8', bg: 'rgba(99,102,241,0.10)', border: 'rgba(99,102,241,0.25)' },
-              ].map(btn => (
-                <TouchableOpacity
-                  key={btn.label}
-                  style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingVertical: 13, borderRadius: 14, backgroundColor: btn.bg, borderWidth: 1, borderColor: btn.border }}
-                  activeOpacity={0.75}
-                  onPress={() => showAlert('Coming Soon', `${btn.label} — feature coming soon.`, undefined, 'success')}
-                >
-                  <View style={{ width: 34, height: 34, borderRadius: 10, backgroundColor: btn.bg, borderWidth: 1, borderColor: btn.border, justifyContent: 'center', alignItems: 'center' }}>
-                    <Feather name={btn.icon} size={15} color={btn.color} />
-                  </View>
-                  <Text style={{ flex: 1, fontSize: 13, fontFamily: 'Inter_600SemiBold', color: btn.color }}>{btn.label}</Text>
-                  <Feather name="chevron-right" size={14} color={btn.color} />
-                </TouchableOpacity>
-              ))}
+              {/* Garbage */}
+              <TouchableOpacity
+                style={{ flex: 1, borderRadius: 13, backgroundColor: 'rgba(16,185,129,0.12)', borderWidth: 1, borderColor: 'rgba(16,185,129,0.28)', alignItems: 'center', justifyContent: 'center', paddingVertical: 8, gap: 3 }}
+                activeOpacity={0.75}
+                onPress={() => showAlert('Coming Soon', 'Garbage Collection Details — feature coming soon.', undefined, 'success')}
+              >
+                <Feather name="trash-2" size={14} color="#10B981" />
+                <Text style={{ color: '#10B981', fontSize: 8, fontFamily: 'Inter_600SemiBold', textAlign: 'center', lineHeight: 10 }}>{'Garbage'}</Text>
+              </TouchableOpacity>
+
+              {/* Complaints */}
+              <TouchableOpacity
+                style={{ flex: 1, borderRadius: 13, backgroundColor: 'rgba(249,115,22,0.12)', borderWidth: 1, borderColor: 'rgba(249,115,22,0.28)', alignItems: 'center', justifyContent: 'center', paddingVertical: 8, gap: 3 }}
+                activeOpacity={0.75}
+                onPress={() => showAlert('Coming Soon', 'Complaints from this House — feature coming soon.', undefined, 'success')}
+              >
+                <Feather name="alert-circle" size={14} color="#F97316" />
+                <Text style={{ color: '#F97316', fontSize: 8, fontFamily: 'Inter_600SemiBold', textAlign: 'center', lineHeight: 10 }}>{'Complaint'}</Text>
+              </TouchableOpacity>
+
+              {/* Service */}
+              <TouchableOpacity
+                style={{ flex: 1, borderRadius: 13, backgroundColor: 'rgba(139,92,246,0.12)', borderWidth: 1, borderColor: 'rgba(139,92,246,0.28)', alignItems: 'center', justifyContent: 'center', paddingVertical: 8, gap: 3 }}
+                activeOpacity={0.75}
+                onPress={() => showAlert('Coming Soon', 'Service Requests from this House — feature coming soon.', undefined, 'success')}
+              >
+                <Feather name="tool" size={14} color="#8B5CF6" />
+                <Text style={{ color: '#8B5CF6', fontSize: 8, fontFamily: 'Inter_600SemiBold', textAlign: 'center', lineHeight: 10 }}>{'Service'}</Text>
+              </TouchableOpacity>
             </View>
 
             {/* Details card */}
