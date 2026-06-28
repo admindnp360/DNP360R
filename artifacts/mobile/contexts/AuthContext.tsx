@@ -268,7 +268,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (!keySnap.empty) {
           const keyData = keySnap.docs[0].data();
           if (keyData.isActive && keyData.usedBy) {
-            return loginWithUserId(keyData.usedBy);
+            const userId = keyData.usedBy as string;
+            const profile = await getUserFromFirestore(userId);
+            if (profile) {
+              try { await signInAnonymously(firebaseAuth); } catch {}
+              const onlineData = { ...profile, isOnline: true };
+              try { await updateDoc(doc(db, 'users', userId), { isOnline: true, _updatedAt: serverTimestamp() }); } catch {}
+              setUser(onlineData);
+              await AsyncStorage.setItem('dnp360_user', JSON.stringify(onlineData));
+              return true;
+            }
           }
         }
       } catch (e) {

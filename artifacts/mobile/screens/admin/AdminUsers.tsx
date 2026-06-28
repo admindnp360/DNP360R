@@ -739,15 +739,33 @@ export default function AdminUsers() {
                           <SectionHeading icon="settings" label="Actions" color={MUTED} />
                           {(profileUser.role === 'safaikarmi' || profileUser.role === 'official') && (() => {
                             const userKey = secretKeys.find(k => k.usedBy === profileUser.id && k.isActive);
+                            if (userKey) {
+                              return (
+                                <TouchableOpacity
+                                  style={[s.actionCard, { backgroundColor: 'rgba(192,132,252,0.10)', borderColor: 'rgba(192,132,252,0.28)', width: '100%' }]}
+                                  onPress={() => handleRegenerateKey(profileUser)} activeOpacity={0.8}
+                                >
+                                  <Feather name="refresh-cw" size={18} color="#C084FC" />
+                                  <View style={{ flex: 1 }}>
+                                    <Text style={[s.actionCardText, { color: '#C084FC' }]}>Regenerate Secret Key</Text>
+                                    <Text style={{ color: 'rgba(192,132,252,0.6)', fontSize: 10, fontFamily: 'Inter_500Medium', marginTop: 2 }}>{userKey.code}</Text>
+                                  </View>
+                                </TouchableOpacity>
+                              );
+                            }
                             return (
                               <TouchableOpacity
-                                style={[s.actionCard, { backgroundColor: 'rgba(192,132,252,0.10)', borderColor: 'rgba(192,132,252,0.28)', width: '100%' }]}
-                                onPress={() => handleRegenerateKey(profileUser)} activeOpacity={0.8}
+                                style={[s.actionCard, { backgroundColor: 'rgba(52,211,153,0.10)', borderColor: 'rgba(52,211,153,0.28)', width: '100%' }]}
+                                onPress={async () => {
+                                  const sk = await assignSecretKeyToUser(profileUser.id, profileUser.name, profileUser.role as 'safaikarmi' | 'official');
+                                  showAlert('Key Assigned', `Secret Key for ${profileUser.name}:\n\n${sk.code}\n\nShare this securely.`, undefined, 'success');
+                                }}
+                                activeOpacity={0.8}
                               >
-                                <Feather name="refresh-cw" size={18} color="#C084FC" />
+                                <Feather name="key" size={18} color="#34D399" />
                                 <View style={{ flex: 1 }}>
-                                  <Text style={[s.actionCardText, { color: '#C084FC' }]}>Regenerate Secret Key</Text>
-                                  {userKey && <Text style={{ color: 'rgba(192,132,252,0.6)', fontSize: 10, fontFamily: 'Inter_500Medium', marginTop: 2 }}>{userKey.code}</Text>}
+                                  <Text style={[s.actionCardText, { color: '#34D399' }]}>Assign Secret Key</Text>
+                                  <Text style={{ color: 'rgba(52,211,153,0.6)', fontSize: 10, fontFamily: 'Inter_500Medium', marginTop: 2 }}>No key assigned yet — tap to generate one</Text>
                                 </View>
                               </TouchableOpacity>
                             );
