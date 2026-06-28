@@ -135,7 +135,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     AsyncStorage.getItem('dnp360_user').then(stored => {
       if (stored && !settled) {
-        try { setUser(JSON.parse(stored)); } catch {}
+        try {
+          const parsed = JSON.parse(stored);
+          setUser(parsed);
+          // If already logged in as super admin, clean up duplicate docs immediately
+          if (parsed?.isSuperAdmin) deleteDuplicateSuperAdmins();
+        } catch {}
       }
       setIsLoading(false);
     }).catch(() => setIsLoading(false));
