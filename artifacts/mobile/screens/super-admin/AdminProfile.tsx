@@ -154,95 +154,69 @@ export default function AdminProfile() {
     <SafeAreaView style={{ flex: 1, backgroundColor: BG }} edges={['top']}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
 
-        {/* ══════════════════════════════════════════════════════════
-            HERO CARD  — 3-D glass + glow orbs
-        ══════════════════════════════════════════════════════════ */}
-        <View style={s.heroWrap}>
-          {/* Background gradient layers */}
-          <LinearGradient
-            colors={['#111B3E', '#0B1228', BG]}
-            style={StyleSheet.absoluteFill}
-          />
-          {/* Glow orbs */}
-          <View style={[s.orb, { width: 220, height: 220, top: -80, right: -60, backgroundColor: 'rgba(99,102,241,0.22)' }]} />
-          <View style={[s.orb, { width: 160, height: 160, bottom: -40, left: -50, backgroundColor: 'rgba(6,182,212,0.14)' }]} />
-          <View style={[s.orb, { width: 100, height: 100, top: 20, left: '40%', backgroundColor: 'rgba(244,114,182,0.10)' }]} />
+        {/* ══ COMPACT PROFILE STRIP ══ */}
+        <View style={s.strip}>
+          <LinearGradient colors={['rgba(99,102,241,0.12)','rgba(6,182,212,0.04)']} style={StyleSheet.absoluteFill} />
+          <View style={s.stripLeft}>
+            {/* Mini avatar */}
+            <TouchableOpacity onPress={openEdit} activeOpacity={0.8} style={s.miniAvatarWrap}>
+              <LinearGradient colors={['#6366F1','#8B5CF6','#EC4899']} style={s.miniRing} />
+              <View style={s.miniInner}>
+                {photoUri
+                  ? <Image source={{ uri: photoUri }} style={s.miniImg} />
+                  : <LinearGradient colors={['#6366F1','#8B5CF6','#EC4899']} style={s.miniImg}>
+                      <Text style={s.miniLetter}>{user.name[0].toUpperCase()}</Text>
+                    </LinearGradient>
+                }
+              </View>
+              <View style={s.miniOnline} />
+            </TouchableOpacity>
 
-          {/* Glass shimmer strip */}
-          <LinearGradient
-            colors={['rgba(255,255,255,0.07)', 'rgba(255,255,255,0)']}
-            start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-            style={s.shimmer}
-          />
-
-          {/* Top bar */}
-          <View style={s.heroTop}>
-            <View style={s.adminPill}>
-              <Feather name="shield" size={9} color={INDIGO} />
-              <Text style={s.adminPillTxt}>System Administrator</Text>
-            </View>
-            <View style={{ flexDirection: 'row', gap: 8 }}>
-              <TouchableOpacity style={s.iconBtn} onPress={openEdit} activeOpacity={0.8}>
-                <Feather name="edit-2" size={14} color={TEXT} />
-              </TouchableOpacity>
-              <TouchableOpacity style={[s.iconBtn, { backgroundColor: 'rgba(251,113,133,0.15)', borderColor: 'rgba(251,113,133,0.28)' }]} onPress={handleLogout} activeOpacity={0.8}>
-                <Feather name="log-out" size={14} color={RED} />
-              </TouchableOpacity>
+            {/* Name + role */}
+            <View style={{ flex: 1, gap: 2 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Text style={s.stripName} numberOfLines={1}>{user.name}</Text>
+                <View style={s.superBadge}>
+                  <Feather name="shield" size={7} color={INDIGO} />
+                  <Text style={s.superBadgeTxt}>SA</Text>
+                </View>
+              </View>
+              <Text style={s.stripEmail} numberOfLines={1}>{user.email}</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 1 }}>
+                <View style={s.onlinePip} />
+                <Text style={s.stripStatus}>Online · Full Access</Text>
+                {pendingResets > 0 && (
+                  <TouchableOpacity onPress={() => router.push('/(tabs)/tertiary?tab=resets' as any)} activeOpacity={0.8} style={s.resetsPill}>
+                    <Text style={s.resetsPillTxt}>⚠ {pendingResets} reset{pendingResets > 1 ? 's' : ''}</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
             </View>
           </View>
 
-          {/* Avatar */}
-          <TouchableOpacity style={s.avatarWrap} onPress={openEdit} activeOpacity={0.85}>
-            {/* 3-D ring layers */}
-            <LinearGradient colors={['rgba(99,102,241,0.50)', 'rgba(139,92,246,0.20)', 'transparent']} style={s.ring3} />
-            <LinearGradient colors={['#6366F1', '#8B5CF6', '#EC4899']} style={s.ring2} />
-            <View style={s.ring1}>
-              {photoUri
-                ? <Image source={{ uri: photoUri }} style={s.avatarImg} />
-                : (
-                  <LinearGradient colors={['#6366F1', '#8B5CF6', '#EC4899']} style={s.avatarGrad}>
-                    <Text style={s.avatarLetter}>{user.name[0].toUpperCase()}</Text>
-                  </LinearGradient>
-                )
-              }
-            </View>
-            <View style={s.cameraBtn}>
-              <Feather name="camera" size={10} color="#fff" />
-            </View>
-            <View style={s.onlineDot} />
-          </TouchableOpacity>
-
-          {/* Name + email */}
-          <Text style={s.heroName}>{user.name}</Text>
-          <Text style={s.heroEmail}>{user.email}</Text>
-
-          {/* Status chips */}
-          <View style={s.chipsRow}>
-            <View style={[s.chip, { borderColor: 'rgba(52,211,153,0.35)', backgroundColor: 'rgba(52,211,153,0.10)' }]}>
-              <View style={[s.chipDot, { backgroundColor: GREEN }]} />
-              <Text style={[s.chipTxt, { color: GREEN }]}>Online · Full Access</Text>
-            </View>
-            {pendingResets > 0 && (
-              <TouchableOpacity style={[s.chip, { borderColor: 'rgba(252,211,77,0.35)', backgroundColor: 'rgba(252,211,77,0.10)' }]} onPress={() => router.push('/(tabs)/tertiary?tab=resets' as any)} activeOpacity={0.8}>
-                <Feather name="alert-circle" size={9} color={AMBER} />
-                <Text style={[s.chipTxt, { color: AMBER }]}>{pendingResets} reset{pendingResets > 1 ? 's' : ''} pending</Text>
-              </TouchableOpacity>
-            )}
+          {/* Action buttons */}
+          <View style={{ flexDirection: 'row', gap: 6 }}>
+            <TouchableOpacity style={s.stripBtn} onPress={openEdit} activeOpacity={0.8}>
+              <Feather name="edit-2" size={13} color={INDIGO} />
+            </TouchableOpacity>
+            <TouchableOpacity style={[s.stripBtn, { borderColor: 'rgba(251,113,133,0.3)', backgroundColor: 'rgba(251,113,133,0.10)' }]} onPress={handleLogout} activeOpacity={0.8}>
+              <Feather name="log-out" size={13} color={RED} />
+            </TouchableOpacity>
           </View>
+        </View>
 
-          {/* Resolution rate bar */}
-          <View style={s.rateSect}>
-            <View style={s.rateTopRow}>
-              <Text style={s.rateLabel}>Resolution Rate</Text>
-              <Text style={[s.rateVal, { color: rate >= 60 ? GREEN : AMBER }]}>{rate}%</Text>
-            </View>
-            <View style={s.rateTrack}>
-              <LinearGradient
-                colors={rate >= 60 ? [GREEN, CYAN] : [AMBER, '#F97316']}
-                start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
-                style={[s.rateFill, { width: `${rate}%` as any }]}
-              />
-            </View>
+        {/* Resolution rate — slim bar below strip */}
+        <View style={s.rateBar}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 5 }}>
+            <Text style={s.rateLabel}>Complaint Resolution Rate</Text>
+            <Text style={[s.rateVal, { color: rate >= 60 ? GREEN : AMBER }]}>{rate}%</Text>
+          </View>
+          <View style={s.rateTrack}>
+            <LinearGradient
+              colors={rate >= 60 ? [GREEN, CYAN] : [AMBER, '#F97316']}
+              start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+              style={[s.rateFill, { width: `${Math.max(rate, 2)}%` as any }]}
+            />
           </View>
         </View>
 
@@ -373,32 +347,83 @@ export default function AdminProfile() {
             )}
           </View>
 
-          {/* ── ABOUT ── */}
-          <View style={[s.card, { overflow: 'hidden' }]}>
-            <LinearGradient colors={['rgba(99,102,241,0.16)','rgba(6,182,212,0.06)']} style={StyleSheet.absoluteFill} />
-            <View style={s.aboutAccent} />
-            <View style={{ padding: 18, gap: 10 }}>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <View style={{ flex: 1 }}>
-                  <Text style={{ color: TEXT, fontSize: 20, fontFamily: 'Inter_700Bold' }}>DNP360</Text>
-                  <Text style={{ color: MUTED, fontSize: 11, fontFamily: 'Inter_500Medium', marginTop: 3 }}>v1.0.0 · Nagar Parishad Daudnagar</Text>
-                  <Text style={{ color: MUTED, fontSize: 10, fontFamily: 'Inter_400Regular', marginTop: 2, opacity: 0.7 }}>Bihar, India · Digital India Initiative</Text>
+          {/* ── ABOUT DNP360 ── */}
+          <View style={[s.card, { overflow: 'hidden', borderColor: 'rgba(99,102,241,0.28)' }]}>
+            {/* Background layers */}
+            <LinearGradient colors={['rgba(99,102,241,0.18)','rgba(6,182,212,0.08)','rgba(7,11,26,0)']} style={StyleSheet.absoluteFill} />
+            <View style={[s.aboutAccent, { width: 4, backgroundColor: INDIGO }]} />
+
+            {/* Top — logo row */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14, padding: 16, paddingBottom: 12 }}>
+              <LinearGradient colors={['#6366F1','#8B5CF6','#EC4899']} style={s.appIconWrap}>
+                <Feather name="shield" size={22} color="#fff" />
+              </LinearGradient>
+              <View style={{ flex: 1 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 8 }}>
+                  <Text style={{ color: TEXT, fontSize: 22, fontFamily: 'Inter_700Bold', letterSpacing: 0.5 }}>DNP360</Text>
+                  <View style={s.verBadge}>
+                    <Text style={s.verTxt}>v2.1.0</Text>
+                  </View>
                 </View>
-                <LinearGradient colors={['rgba(255,255,255,0.13)','rgba(255,255,255,0.04)']} style={{ width: 48, height: 48, borderRadius: 14, justifyContent: 'center', alignItems: 'center' }}>
-                  <Feather name="shield" size={22} color="rgba(255,255,255,0.88)" />
-                </LinearGradient>
+                <Text style={{ color: INDIGO, fontSize: 11, fontFamily: 'Inter_600SemiBold', marginTop: 2 }}>Nagar Parishad Daudnagar</Text>
+                <Text style={{ color: MUTED, fontSize: 10, fontFamily: 'Inter_400Regular', marginTop: 1 }}>Bihar, India · Est. 2026</Text>
               </View>
-              <Text style={{ color: MUTED, fontSize: 12, fontFamily: 'Inter_400Regular', lineHeight: 18 }}>
-                Smart governance connecting citizens, Safai Karmis, and officials for efficient municipal management.
+            </View>
+
+            {/* Divider */}
+            <View style={{ height: 1, backgroundColor: BD, marginHorizontal: 16 }} />
+
+            {/* Info grid */}
+            <View style={{ flexDirection: 'row', padding: 14, gap: 10 }}>
+              {[
+                { icon: 'map-pin', color: CYAN,  label: 'District',  value: 'Aurangabad' },
+                { icon: 'globe',   color: GREEN, label: 'State',     value: 'Bihar' },
+                { icon: 'server',  color: PINK,  label: 'Backend',   value: 'Firebase' },
+                { icon: 'cpu',     color: AMBER, label: 'Platform',  value: 'React Native' },
+              ].map(item => (
+                <View key={item.label} style={s.aboutCell}>
+                  <View style={[s.aboutCellIcon, { backgroundColor: item.color + '1A' }]}>
+                    <Feather name={item.icon as any} size={11} color={item.color} />
+                  </View>
+                  <Text style={[s.aboutCellVal, { color: item.color }]}>{item.value}</Text>
+                  <Text style={s.aboutCellLbl}>{item.label}</Text>
+                </View>
+              ))}
+            </View>
+
+            {/* Divider */}
+            <View style={{ height: 1, backgroundColor: BD, marginHorizontal: 16 }} />
+
+            {/* Description */}
+            <View style={{ padding: 14, paddingTop: 12, gap: 10 }}>
+              <Text style={{ color: 'rgba(240,244,255,0.65)', fontSize: 12, fontFamily: 'Inter_400Regular', lineHeight: 19 }}>
+                A digital governance platform bridging <Text style={{ color: TEXT, fontFamily: 'Inter_600SemiBold' }}>citizens</Text>, <Text style={{ color: GREEN, fontFamily: 'Inter_600SemiBold' }}>Safai Karmis</Text>, and <Text style={{ color: AMBER, fontFamily: 'Inter_600SemiBold' }}>officials</Text> for efficient municipal service delivery under the Digital India initiative.
               </Text>
+
+              {/* Feature tags */}
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
-                {['Digital India', 'Smart Gov', 'Bihar', 'Open Data'].map(t => (
-                  <View key={t} style={{ backgroundColor: CARD_HI, paddingHorizontal: 9, paddingVertical: 4, borderRadius: 99, borderWidth: 1, borderColor: BD }}>
-                    <Text style={{ color: TEXT, fontSize: 10, fontFamily: 'Inter_600SemiBold', opacity: 0.8 }}>{t}</Text>
+                {[
+                  { label: '🇮🇳 Digital India', c: INDIGO },
+                  { label: '🏛 Smart Gov',      c: CYAN   },
+                  { label: '♻ Swachh Bharat',  c: GREEN  },
+                  { label: '📊 Open Data',      c: AMBER  },
+                  { label: '🔐 Secure',         c: PINK   },
+                ].map(t => (
+                  <View key={t.label} style={{ backgroundColor: t.c + '14', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 99, borderWidth: 1, borderColor: t.c + '35' }}>
+                    <Text style={{ color: t.c, fontSize: 10, fontFamily: 'Inter_600SemiBold' }}>{t.label}</Text>
                   </View>
                 ))}
               </View>
             </View>
+
+            {/* Footer */}
+            <LinearGradient colors={['rgba(99,102,241,0.12)','rgba(6,182,212,0.06)']} style={{ padding: 11, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Text style={{ color: MUTED, fontSize: 10, fontFamily: 'Inter_400Regular' }}>© 2026 DNP360 · All rights reserved</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: GREEN }} />
+                <Text style={{ color: GREEN, fontSize: 10, fontFamily: 'Inter_600SemiBold' }}>Live · Production</Text>
+              </View>
+            </LinearGradient>
           </View>
 
           {/* ── SIGN OUT ── */}
@@ -603,78 +628,81 @@ export default function AdminProfile() {
 
 // ─── Main styles ──────────────────────────────────────────────────────
 const s = StyleSheet.create({
-  // hero
-  heroWrap:   { overflow: 'hidden', paddingBottom: 28, paddingTop: 10 },
-  orb:        { position: 'absolute', borderRadius: 999 },
-  shimmer:    { position: 'absolute', left: 0, right: 0, top: 0, height: 2, opacity: 0.6 },
-  heroTop:    { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 18, marginBottom: 20 },
-  adminPill:  { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: 'rgba(129,140,248,0.16)', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 99, borderWidth: 1, borderColor: 'rgba(129,140,248,0.32)' },
-  adminPillTxt: { color: INDIGO, fontSize: 10, fontFamily: 'Inter_600SemiBold' },
-  iconBtn:    { width: 34, height: 34, borderRadius: 11, backgroundColor: CARD_HI, borderWidth: 1, borderColor: BD, justifyContent: 'center', alignItems: 'center' },
+  // ── compact strip ──
+  strip:       { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 14, paddingVertical: 10, overflow: 'hidden', borderBottomWidth: 1, borderBottomColor: BD },
+  stripLeft:   { flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1, marginRight: 8 },
 
-  // avatar
-  avatarWrap: { alignSelf: 'center', marginBottom: 16, position: 'relative', width: 110, height: 110 },
-  ring3:      { position: 'absolute', inset: -8, borderRadius: 999 },
-  ring2:      { position: 'absolute', inset: -3, borderRadius: 999, padding: 2 },
-  ring1:      { position: 'absolute', inset: 0, borderRadius: 999, overflow: 'hidden', backgroundColor: BG },
-  avatarImg:  { width: '100%', height: '100%', borderRadius: 999, justifyContent: 'center', alignItems: 'center' },
-  avatarGrad: { width: '100%', height: '100%', borderRadius: 999, justifyContent: 'center', alignItems: 'center' },
-  avatarLetter: { color: '#fff', fontSize: 40, fontFamily: 'Inter_700Bold' },
-  cameraBtn:  { position: 'absolute', bottom: 2, right: 2, width: 26, height: 26, borderRadius: 13, backgroundColor: 'rgba(99,102,241,0.90)', justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: BG },
-  onlineDot:  { position: 'absolute', top: 4, right: 4, width: 14, height: 14, borderRadius: 7, backgroundColor: GREEN, borderWidth: 2.5, borderColor: BG },
+  miniAvatarWrap: { width: 46, height: 46, position: 'relative', flexShrink: 0 },
+  miniRing:    { position: 'absolute', inset: -2, borderRadius: 999 },
+  miniInner:   { position: 'absolute', inset: 1.5, borderRadius: 999, overflow: 'hidden', backgroundColor: BG },
+  miniImg:     { width: '100%', height: '100%', borderRadius: 999, justifyContent: 'center', alignItems: 'center' },
+  miniLetter:  { color: '#fff', fontSize: 18, fontFamily: 'Inter_700Bold' },
+  miniOnline:  { position: 'absolute', bottom: 0, right: 0, width: 11, height: 11, borderRadius: 6, backgroundColor: GREEN, borderWidth: 2, borderColor: BG },
 
-  heroName:   { color: TEXT, fontSize: 24, fontFamily: 'Inter_700Bold', textAlign: 'center', paddingHorizontal: 20 },
-  heroEmail:  { color: MUTED, fontSize: 12, fontFamily: 'Inter_400Regular', textAlign: 'center', marginTop: 3, marginBottom: 12 },
+  stripName:   { color: TEXT, fontSize: 14, fontFamily: 'Inter_700Bold' },
+  stripEmail:  { color: MUTED, fontSize: 10, fontFamily: 'Inter_400Regular' },
+  stripStatus: { color: GREEN, fontSize: 9, fontFamily: 'Inter_600SemiBold' },
 
-  chipsRow:   { flexDirection: 'row', justifyContent: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 18, paddingHorizontal: 16 },
-  chip:       { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 99, borderWidth: 1 },
-  chipDot:    { width: 6, height: 6, borderRadius: 3 },
-  chipTxt:    { fontSize: 10, fontFamily: 'Inter_600SemiBold' },
+  superBadge:  { flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: 'rgba(129,140,248,0.15)', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 99, borderWidth: 1, borderColor: 'rgba(129,140,248,0.3)' },
+  superBadgeTxt: { color: INDIGO, fontSize: 8, fontFamily: 'Inter_700Bold' },
 
-  rateSect:   { marginHorizontal: 18, gap: 7 },
-  rateTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  rateLabel:  { color: MUTED, fontSize: 11, fontFamily: 'Inter_500Medium' },
-  rateVal:    { fontSize: 13, fontFamily: 'Inter_700Bold' },
-  rateTrack:  { height: 6, backgroundColor: 'rgba(255,255,255,0.10)', borderRadius: 99, overflow: 'hidden' },
-  rateFill:   { position: 'absolute', left: 0, top: 0, bottom: 0, borderRadius: 99 },
+  onlinePip:   { width: 6, height: 6, borderRadius: 3, backgroundColor: GREEN },
+  resetsPill:  { backgroundColor: 'rgba(252,211,77,0.15)', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 99, borderWidth: 1, borderColor: 'rgba(252,211,77,0.35)' },
+  resetsPillTxt: { color: AMBER, fontSize: 9, fontFamily: 'Inter_600SemiBold' },
 
-  // body
-  body:       { padding: 16, gap: 14 },
-  sectionLabel: { color: TEXT, fontSize: 15, fontFamily: 'Inter_700Bold' },
+  stripBtn:    { width: 32, height: 32, borderRadius: 10, backgroundColor: 'rgba(129,140,248,0.12)', borderWidth: 1, borderColor: 'rgba(129,140,248,0.28)', justifyContent: 'center', alignItems: 'center' },
+
+  // ── rate bar ──
+  rateBar:     { paddingHorizontal: 14, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: BD },
+  rateLabel:   { color: MUTED, fontSize: 10, fontFamily: 'Inter_500Medium' },
+  rateVal:     { fontSize: 11, fontFamily: 'Inter_700Bold' },
+  rateTrack:   { height: 4, backgroundColor: 'rgba(255,255,255,0.10)', borderRadius: 99, overflow: 'hidden' },
+  rateFill:    { position: 'absolute', left: 0, top: 0, bottom: 0, borderRadius: 99 },
+
+  // ── body ──
+  body:        { padding: 16, gap: 14 },
+  sectionLabel:{ color: TEXT, fontSize: 15, fontFamily: 'Inter_700Bold' },
 
   // stats grid — 4 columns
-  statsGrid:  { flexDirection: 'row', flexWrap: 'wrap', gap: 9 },
-  statCell:   { width: '22%', flexGrow: 1, borderRadius: 16, borderWidth: 1, padding: 10, alignItems: 'center', gap: 5, overflow: 'hidden' },
-  statIcon:   { width: 28, height: 28, borderRadius: 8, justifyContent: 'center', alignItems: 'center' },
-  statVal:    { fontSize: 17, fontFamily: 'Inter_700Bold' },
-  statLbl:    { color: MUTED, fontSize: 9, fontFamily: 'Inter_600SemiBold', textAlign: 'center' },
+  statsGrid:   { flexDirection: 'row', flexWrap: 'wrap', gap: 9 },
+  statCell:    { width: '22%', flexGrow: 1, borderRadius: 16, borderWidth: 1, padding: 10, alignItems: 'center', gap: 5, overflow: 'hidden' },
+  statIcon:    { width: 28, height: 28, borderRadius: 8, justifyContent: 'center', alignItems: 'center' },
+  statVal:     { fontSize: 17, fontFamily: 'Inter_700Bold' },
+  statLbl:     { color: MUTED, fontSize: 9, fontFamily: 'Inter_600SemiBold', textAlign: 'center' },
 
   // card
-  card:       { backgroundColor: CARD, borderRadius: 20, borderWidth: 1, borderColor: BD, overflow: 'hidden' },
-  cardHdr:    { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 14, paddingVertical: 13, paddingBottom: 10 },
-  cardIcon:   { width: 30, height: 30, borderRadius: 9, justifyContent: 'center', alignItems: 'center' },
-  cardTitle:  { color: TEXT, fontSize: 14, fontFamily: 'Inter_700Bold', flex: 1 },
-  editChip:   { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(129,140,248,0.12)', paddingHorizontal: 9, paddingVertical: 4, borderRadius: 99, borderWidth: 1, borderColor: 'rgba(129,140,248,0.26)' },
-  editChipTxt:{ fontSize: 10, fontFamily: 'Inter_600SemiBold', color: INDIGO },
+  card:        { backgroundColor: CARD, borderRadius: 20, borderWidth: 1, borderColor: BD, overflow: 'hidden' },
+  cardHdr:     { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 14, paddingVertical: 13, paddingBottom: 10 },
+  cardIcon:    { width: 30, height: 30, borderRadius: 9, justifyContent: 'center', alignItems: 'center' },
+  cardTitle:   { color: TEXT, fontSize: 14, fontFamily: 'Inter_700Bold', flex: 1 },
+  editChip:    { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(129,140,248,0.12)', paddingHorizontal: 9, paddingVertical: 4, borderRadius: 99, borderWidth: 1, borderColor: 'rgba(129,140,248,0.26)' },
+  editChipTxt: { fontSize: 10, fontFamily: 'Inter_600SemiBold', color: INDIGO },
 
   // list rows
-  listRow:    { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 14, paddingVertical: 13 },
-  rowDiv:     { borderBottomWidth: 1, borderBottomColor: BD },
-  listIcon:   { width: 32, height: 32, borderRadius: 9, justifyContent: 'center', alignItems: 'center' },
-  listLabel:  { color: TEXT, fontSize: 13, fontFamily: 'Inter_600SemiBold' },
-  listValue:  { fontSize: 15, fontFamily: 'Inter_700Bold', marginLeft: 'auto', marginRight: 6 },
-  listSub:    { color: MUTED, fontSize: 10, fontFamily: 'Inter_400Regular', marginBottom: 1 },
+  listRow:     { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 14, paddingVertical: 13 },
+  rowDiv:      { borderBottomWidth: 1, borderBottomColor: BD },
+  listIcon:    { width: 32, height: 32, borderRadius: 9, justifyContent: 'center', alignItems: 'center' },
+  listLabel:   { color: TEXT, fontSize: 13, fontFamily: 'Inter_600SemiBold' },
+  listValue:   { fontSize: 15, fontFamily: 'Inter_700Bold', marginLeft: 'auto', marginRight: 6 },
+  listSub:     { color: MUTED, fontSize: 10, fontFamily: 'Inter_400Regular', marginBottom: 1 },
 
-  // about
+  // about card
   aboutAccent: { position: 'absolute', left: 0, top: 0, bottom: 0, width: 3, backgroundColor: INDIGO },
+  appIconWrap: { width: 52, height: 52, borderRadius: 16, justifyContent: 'center', alignItems: 'center' },
+  verBadge:    { backgroundColor: 'rgba(129,140,248,0.18)', paddingHorizontal: 7, paddingVertical: 3, borderRadius: 99, borderWidth: 1, borderColor: 'rgba(129,140,248,0.36)' },
+  verTxt:      { color: INDIGO, fontSize: 10, fontFamily: 'Inter_700Bold' },
+  aboutCell:   { flex: 1, alignItems: 'center', gap: 5 },
+  aboutCellIcon:{ width: 28, height: 28, borderRadius: 8, justifyContent: 'center', alignItems: 'center' },
+  aboutCellVal: { fontSize: 10, fontFamily: 'Inter_700Bold', textAlign: 'center' },
+  aboutCellLbl: { color: MUTED, fontSize: 9, fontFamily: 'Inter_400Regular', textAlign: 'center' },
 
   // logout
-  logoutWrap: { borderRadius: 18, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(251,113,133,0.28)' },
-  logoutBtn:  { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 15 },
-  logoutBar:  { position: 'absolute', left: 0, top: 0, bottom: 0, width: 3, backgroundColor: RED },
-  logoutIcon: { width: 38, height: 38, borderRadius: 11, justifyContent: 'center', alignItems: 'center' },
-  logoutTxt:  { flex: 1, color: RED, fontSize: 15, fontFamily: 'Inter_700Bold' },
-  logoutChev: { width: 28, height: 28, borderRadius: 8, justifyContent: 'center', alignItems: 'center' },
+  logoutWrap:  { borderRadius: 18, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(251,113,133,0.28)' },
+  logoutBtn:   { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 15 },
+  logoutBar:   { position: 'absolute', left: 0, top: 0, bottom: 0, width: 3, backgroundColor: RED },
+  logoutIcon:  { width: 38, height: 38, borderRadius: 11, justifyContent: 'center', alignItems: 'center' },
+  logoutTxt:   { flex: 1, color: RED, fontSize: 15, fontFamily: 'Inter_700Bold' },
+  logoutChev:  { width: 28, height: 28, borderRadius: 8, justifyContent: 'center', alignItems: 'center' },
 });
 
 // ─── Modal styles ─────────────────────────────────────────────────────
