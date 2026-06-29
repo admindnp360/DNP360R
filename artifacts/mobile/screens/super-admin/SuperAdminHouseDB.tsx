@@ -52,7 +52,13 @@ export default function SuperAdminHouseDB() {
 
   // ── Navigation state ──────────────────────────────────────────────
   const { view: initView } = useLocalSearchParams<{ view?: string }>();
-  const [view, setView]                   = useState<View_>((initView as View_) || 'wards');
+  const [view, setView]                   = useState<View_>('wards');
+
+  useEffect(() => {
+    if (initView && ['wards','groups','houses'].includes(initView)) {
+      setView(initView as View_);
+    }
+  }, [initView]);
   const [selectedWard, setSelectedWard]   = useState<Ward | null>(null);
   const [selectedGroup, setSelectedGroup] = useState<Group | null>(null);
   const [expandedHouseId, setExpandedHouseId] = useState<string | null>(null);

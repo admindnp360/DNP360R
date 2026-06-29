@@ -2,7 +2,7 @@ import { Feather } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams } from 'expo-router';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Modal, Pressable, ScrollView, StyleSheet,
   Text, TextInput, TouchableOpacity, View,
@@ -63,7 +63,13 @@ export default function AdminManagement() {
   const { showAlert } = useAlert();
 
   const { tab: initTab } = useLocalSearchParams<{ tab?: string }>();
-  const [tab, setTab]                 = useState<Tab>((initTab as Tab) || 'notices');
+  const [tab, setTab]                 = useState<Tab>('notices');
+
+  useEffect(() => {
+    if (initTab && ['genkey','notices','resets','import','reports'].includes(initTab)) {
+      setTab(initTab as Tab);
+    }
+  }, [initTab]);
   const [generating, setGenerating]   = useState<string | null>(null);
   const [newKey, setNewKey]           = useState<SecretKey | null>(null);
   const [copiedId, setCopiedId]       = useState<string | null>(null);
