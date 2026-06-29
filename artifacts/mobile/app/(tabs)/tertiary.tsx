@@ -3,7 +3,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import CitizenEmergency from '@/screens/citizen/CitizenEmergency';
 import SKPerformance from '@/screens/safaikarmi/SKPerformance';
 import OfficialHouses from '@/screens/official/OfficialHouses';
-import AdminManagement from '@/screens/admin/AdminManagement';
+import AdminManagement from '@/screens/super-admin/AdminManagement';
 
 export default function TertiaryTab() {
   const { user } = useAuth();

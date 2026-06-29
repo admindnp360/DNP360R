@@ -1,6 +1,6 @@
 import React from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import AdminProfile from '@/screens/admin/AdminProfile';
+import AdminProfile from '@/screens/super-admin/AdminProfile';
 import ProfileScreen from '@/screens/shared/ProfileScreen';
 
 export default function ProfileTab() {

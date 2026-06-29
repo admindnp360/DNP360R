@@ -3,7 +3,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import CitizenComplaints from '@/screens/citizen/CitizenComplaints';
 import SKScan from '@/screens/safaikarmi/SKScan';
 import OfficialComplaints from '@/screens/official/OfficialComplaints';
-import AdminUsers from '@/screens/admin/AdminUsers';
+import AdminUsers from '@/screens/super-admin/AdminUsers';
 
 export default function ActionTab() {
   const { user } = useAuth();

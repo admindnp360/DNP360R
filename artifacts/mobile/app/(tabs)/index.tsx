@@ -3,7 +3,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import CitizenHome from '@/screens/citizen/CitizenHome';
 import SKHome from '@/screens/safaikarmi/SKHome';
 import OfficialHome from '@/screens/official/OfficialHome';
-import AdminHome from '@/screens/admin/AdminHome';
+import AdminHome from '@/screens/super-admin/AdminHome';
 
 export default function HomeTab() {
   const { user } = useAuth();
