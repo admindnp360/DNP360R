@@ -352,7 +352,7 @@ export default function AdminProfile() {
             {/* Top — logo row */}
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14, padding: 16, paddingBottom: 12 }}>
               <View style={[s.appIconWrap, { backgroundColor: '#070B1A', justifyContent: 'center', alignItems: 'center' }]}>
-                <Image source={require('../assets/images/dnp360-logo.png')} style={{ width: 52, height: 36, resizeMode: 'contain' }} />
+                <Image source={require('../../assets/images/dnp360-logo.png')} style={{ width: 52, height: 36, resizeMode: 'contain' }} />
               </View>
               <View style={{ flex: 1 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 8 }}>
