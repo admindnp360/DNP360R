@@ -195,14 +195,9 @@ export default function AdminProfile() {
           </View>
 
           {/* Action buttons */}
-          <View style={{ flexDirection: 'row', gap: 6 }}>
-            <TouchableOpacity style={s.stripBtn} onPress={openEdit} activeOpacity={0.8}>
-              <Feather name="edit-2" size={13} color={INDIGO} />
-            </TouchableOpacity>
-            <TouchableOpacity style={[s.stripBtn, { borderColor: 'rgba(251,113,133,0.3)', backgroundColor: 'rgba(251,113,133,0.10)' }]} onPress={handleLogout} activeOpacity={0.8}>
-              <Feather name="log-out" size={13} color={RED} />
-            </TouchableOpacity>
-          </View>
+          <TouchableOpacity style={s.stripBtn} onPress={openEdit} activeOpacity={0.8}>
+            <Feather name="edit-2" size={13} color={INDIGO} />
+          </TouchableOpacity>
         </View>
 
         {/* Resolution rate — slim bar below strip */}
