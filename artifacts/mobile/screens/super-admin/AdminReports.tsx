@@ -6,7 +6,7 @@ import * as Sharing from 'expo-sharing';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import * as XLSX from 'xlsx';
 import {
-  ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet,
+  ActivityIndicator, Modal, Platform, Pressable, ScrollView, StyleSheet,
   Text, TouchableOpacity, View,
 } from 'react-native';
 import { collection, doc, getDocs, limit, orderBy, query, setDoc } from 'firebase/firestore';
@@ -399,15 +399,19 @@ export default function AdminReports() {
       XLSX.utils.book_append_sheet(wb, ws, 'Collection Data');
       XLSX.utils.book_append_sheet(wb, wsSummary, 'Summary');
 
-      const xlsxBase64 = XLSX.write(wb, { type: 'base64', bookType: 'xlsx' });
       const filename = `DNP360_${report.id}_${new Date().toISOString().slice(0, 10)}.xlsx`;
-      const path = FileSystem.cacheDirectory + filename;
-      await FileSystem.writeAsStringAsync(path, xlsxBase64, { encoding: FileSystem.EncodingType.Base64 });
-      await Sharing.shareAsync(path, {
-        mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        dialogTitle: `Export: ${report.label}`,
-        UTI: 'com.microsoft.excel.xlsx',
-      });
+      if (Platform.OS === 'web') {
+        XLSX.writeFile(wb, filename);
+      } else {
+        const xlsxBase64 = XLSX.write(wb, { type: 'base64', bookType: 'xlsx' });
+        const path = FileSystem.cacheDirectory + filename;
+        await FileSystem.writeAsStringAsync(path, xlsxBase64, { encoding: FileSystem.EncodingType.Base64 });
+        await Sharing.shareAsync(path, {
+          mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          dialogTitle: `Export: ${report.label}`,
+          UTI: 'com.microsoft.excel.xlsx',
+        });
+      }
     } catch (e: any) { showAlert('Export Failed', e?.message ?? 'Unknown error', undefined, 'error'); }
     finally { setExporting(false); }
   }
@@ -467,42 +471,70 @@ export default function AdminReports() {
         }).join('');
       }
 
-      const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>
-        body{font-family:Arial,sans-serif;margin:0;padding:16px;background:#fff;color:#111}
-        h1{font-size:16px;margin:0 0 4px}
-        .sub{font-size:11px;color:#666;margin-bottom:12px}
-        .summary{display:flex;gap:12px;margin-bottom:14px}
-        .scard{flex:1;border-radius:8px;padding:8px 12px;text-align:center}
-        .sv{font-size:18px;font-weight:700}.sl{font-size:9px;color:#555;text-transform:uppercase;margin-top:2px}
-        table{border-collapse:collapse;width:100%;font-size:9px}
-        th{background:#1e1b4b;color:#fff;padding:5px 6px;white-space:nowrap;text-align:center}
-        td{padding:4px 6px;text-align:center;border-bottom:1px solid #e5e7eb}
-        tr:nth-child(even){background:#f9fafb}
-        .legend{display:flex;gap:16px;margin-bottom:10px;font-size:10px}
-        .ldot{width:10px;height:10px;border-radius:50%;display:inline-block;margin-right:4px}
-        footer{margin-top:16px;font-size:9px;color:#999;text-align:center}
+      // Ward-wise summary for PDF chart section
+      const wardMap: Record<number, { p: number; tot: number }> = {};
+      for (const row of rpt.rows) {
+        const wn = row.wardNo ?? 0;
+        if (!wardMap[wn]) wardMap[wn] = { p: 0, tot: 0 };
+        wardMap[wn].p   += row.totalPresent;
+        wardMap[wn].tot += row.totalDays;
+      }
+      const wardBars = Object.entries(wardMap).sort(([a],[b]) => Number(a)-Number(b)).map(([wn, d]) => {
+        const pct = d.tot > 0 ? Math.round((d.p / d.tot) * 100) : 0;
+        const clr = pct >= 80 ? '#16a34a' : pct >= 50 ? '#d97706' : '#dc2626';
+        return `<tr><td style="padding:4px 8px;font-size:10px;white-space:nowrap">Ward ${wn}</td>
+          <td style="padding:4px 8px;width:100%"><div style="background:#e5e7eb;border-radius:4px;height:14px;position:relative">
+            <div style="background:${clr};width:${pct}%;height:14px;border-radius:4px"></div>
+          </div></td>
+          <td style="padding:4px 8px;font-size:10px;font-weight:700;color:${clr};white-space:nowrap">${pct}%</td></tr>`;
+      }).join('');
+
+      const html = `<!DOCTYPE html><html><head><meta charset="utf-8">
+      <style>
+        @page{size:A4 landscape;margin:12mm}
+        *{box-sizing:border-box}
+        body{font-family:Arial,sans-serif;margin:0;padding:0;background:#fff;color:#111;font-size:10px}
+        h1{font-size:14px;margin:0 0 2px;color:#1e1b4b}
+        .sub{font-size:9px;color:#666;margin-bottom:10px}
+        .row{display:flex;gap:10px;margin-bottom:10px}
+        .scard{flex:1;border-radius:6px;padding:6px 10px;text-align:center}
+        .sv{font-size:16px;font-weight:700}.sl{font-size:8px;color:#555;text-transform:uppercase;margin-top:1px}
+        table.data{border-collapse:collapse;width:100%;font-size:7.5px}
+        table.data th{background:#1e1b4b;color:#fff;padding:4px 5px;white-space:nowrap;text-align:center}
+        table.data td{padding:3px 5px;text-align:center;border-bottom:1px solid #e5e7eb}
+        table.data tr:nth-child(even){background:#f9fafb}
+        table.ward{border-collapse:collapse;width:100%}
+        .legend{display:flex;gap:12px;margin-bottom:8px;font-size:9px}
+        .ldot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:3px}
+        h2{font-size:11px;margin:10px 0 6px;color:#1e1b4b;border-bottom:1px solid #e5e7eb;padding-bottom:3px}
+        footer{margin-top:10px;font-size:8px;color:#999;text-align:center;border-top:1px solid #e5e7eb;padding-top:6px}
       </style></head><body>
         <h1>DNP360 — Nagar Parishad Daudnagar</h1>
         <div class="sub">Report: <strong>${rpt.label}</strong> &nbsp;|&nbsp; Generated: ${new Date(rpt.generatedAt).toLocaleString('en-IN')} &nbsp;|&nbsp; ${rpt.rows.length} houses</div>
-        <div class="summary">
+        <div class="row">
           <div class="scard" style="background:#dcfce7"><div class="sv" style="color:#16a34a">${totP}</div><div class="sl">Collected</div></div>
           <div class="scard" style="background:#fee2e2"><div class="sv" style="color:#dc2626">${totN}</div><div class="sl">Missed</div></div>
           <div class="scard" style="background:#fef9c3"><div class="sv" style="color:#d97706">${totL}</div><div class="sl">Late</div></div>
           <div class="scard" style="background:#ede9fe"><div class="sv" style="color:#7c3aed">${avgPct}</div><div class="sl">Avg %</div></div>
         </div>
+        ${wardBars ? `<h2>Ward-wise Collection Performance</h2><table class="ward">${wardBars}</table>` : ''}
+        <h2>Collection Details</h2>
         <div class="legend">
           <span><span class="ldot" style="background:#22c55e"></span>P = Collected</span>
           <span><span class="ldot" style="background:#ef4444"></span>N = Not Collected</span>
           <span><span class="ldot" style="background:#f59e0b"></span>L = Late</span>
         </div>
-        <table><thead><tr>${colHeaders}</tr></thead><tbody>${dataRows}</tbody></table>
+        <table class="data"><thead><tr>${colHeaders}</tr></thead><tbody>${dataRows}</tbody></table>
         <footer>Generated by DNP360 Admin &bull; ${new Date().toLocaleString('en-IN')}</footer>
       </body></html>`;
 
-      const { uri } = await Print.printToFileAsync({ html, base64: false });
-      const dest = FileSystem.cacheDirectory + `DNP360_${rpt.id}_${new Date().toISOString().slice(0,10)}.pdf`;
-      await FileSystem.moveAsync({ from: uri, to: dest });
-      await Sharing.shareAsync(dest, { mimeType: 'application/pdf', dialogTitle: `PDF: ${rpt.label}`, UTI: 'com.adobe.pdf' });
+      if (Platform.OS === 'web') {
+        const w = (window as any).open('', '_blank');
+        if (w) { w.document.write(html); w.document.close(); w.focus(); w.print(); }
+        else showAlert('Popup Blocked', 'Please allow popups to export PDF.', undefined, 'info');
+      } else {
+        await Print.printAsync({ html });
+      }
     } catch (e: any) { showAlert('PDF Failed', e?.message ?? 'Unknown error', undefined, 'error'); }
     finally { setExportingPDF(false); }
   }
@@ -814,6 +846,9 @@ export default function AdminReports() {
             </View>
           )}
 
+          {/* Ward-wise bar chart */}
+          {report.rows.length > 0 && <WardChart rows={report.rows} />}
+
           {/* Table */}
           {report.type === 'monthly' && (
             <ScrollView horizontal showsHorizontalScrollIndicator style={s.tableWrap}>
@@ -958,6 +993,52 @@ export default function AdminReports() {
         </View>
       )}
     </ScrollView>
+  );
+}
+
+// ── WardChart sub-component ────────────────────────────────────────
+function WardChart({ rows }: { rows: import('@/types').HouseCollectionRow[] }) {
+  const wardMap: Record<number, { p: number; tot: number }> = {};
+  for (const row of rows) {
+    const wn = row.wardNo ?? 0;
+    if (!wardMap[wn]) wardMap[wn] = { p: 0, tot: 0 };
+    wardMap[wn].p   += row.totalPresent;
+    wardMap[wn].tot += row.totalDays;
+  }
+  const entries = Object.entries(wardMap).sort(([a],[b]) => Number(a)-Number(b));
+  if (entries.length < 2) return null;
+
+  const maxPct = Math.max(...entries.map(([, d]) => d.tot > 0 ? (d.p / d.tot) * 100 : 0), 1);
+
+  return (
+    <View style={{ marginBottom: 14, borderRadius: 14, borderWidth: 1, borderColor: 'rgba(255,255,255,0.09)', backgroundColor: 'rgba(255,255,255,0.04)', padding: 12 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 10 }}>
+        <Feather name="bar-chart-2" size={13} color="#818CF8" />
+        <Text style={{ color: '#F0F4FF', fontSize: 12, fontFamily: 'Inter_700Bold' }}>Ward-wise Collection</Text>
+      </View>
+      {entries.map(([wn, d]) => {
+        const pct = d.tot > 0 ? (d.p / d.tot) * 100 : 0;
+        const barW = maxPct > 0 ? (pct / maxPct) * 100 : 0;
+        const clr = pct >= 80 ? '#34D399' : pct >= 50 ? '#FBBF24' : '#FB7185';
+        return (
+          <View key={wn} style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 7 }}>
+            <Text style={{ color: 'rgba(255,255,255,0.50)', fontSize: 9, fontFamily: 'Inter_600SemiBold', width: 36 }}>W{wn}</Text>
+            <View style={{ flex: 1, height: 12, backgroundColor: 'rgba(255,255,255,0.07)', borderRadius: 6, overflow: 'hidden' }}>
+              <View style={{ width: `${barW}%`, height: 12, backgroundColor: clr, borderRadius: 6 }} />
+            </View>
+            <Text style={{ color: clr, fontSize: 10, fontFamily: 'Inter_700Bold', width: 36, textAlign: 'right' }}>{pct.toFixed(0)}%</Text>
+          </View>
+        );
+      })}
+      <View style={{ flexDirection: 'row', gap: 12, marginTop: 4 }}>
+        {[['#34D399','≥80% Good'],['#FBBF24','50–79% Avg'],['#FB7185','<50% Poor']].map(([c,l]) => (
+          <View key={l} style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+            <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: c }} />
+            <Text style={{ color: 'rgba(255,255,255,0.40)', fontSize: 8, fontFamily: 'Inter_400Regular' }}>{l}</Text>
+          </View>
+        ))}
+      </View>
+    </View>
   );
 }
 
