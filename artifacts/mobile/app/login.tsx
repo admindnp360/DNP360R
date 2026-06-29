@@ -37,7 +37,7 @@ function GlowInput({ icon, color, placeholder, value, onChangeText, keyboardType
       <TextInput
         style={[inp.text, letterSpacing ? { letterSpacing } : {}]}
         placeholder={placeholder}
-        placeholderTextColor="#2D3748"
+        placeholderTextColor="#64748B"
         value={value}
         onChangeText={onChangeText}
         keyboardType={keyboardType}

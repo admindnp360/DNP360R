@@ -20,12 +20,12 @@ SplashScreen.preventAutoHideAsync();
 
 function RootLayoutNav() {
   return (
-    <Stack screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="index" />
-      <Stack.Screen name="login" />
-      <Stack.Screen name="forgot-password" options={{ headerShown: false }} />
-      <Stack.Screen name="signup" options={{ headerShown: false }} />
-      <Stack.Screen name="(tabs)" />
+    <Stack screenOptions={{ headerShown: false, animation: 'fade', animationDuration: 280 }}>
+      <Stack.Screen name="index" options={{ animation: 'fade' }} />
+      <Stack.Screen name="login" options={{ animation: 'fade' }} />
+      <Stack.Screen name="forgot-password" options={{ animation: 'slide_from_right', animationDuration: 320 }} />
+      <Stack.Screen name="signup" options={{ animation: 'slide_from_right', animationDuration: 320 }} />
+      <Stack.Screen name="(tabs)" options={{ animation: 'fade', animationDuration: 350 }} />
     </Stack>
   );
 }

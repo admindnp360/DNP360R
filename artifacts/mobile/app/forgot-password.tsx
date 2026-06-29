@@ -283,7 +283,7 @@ function GlowInput({ icon, color, placeholder, value, onChangeText, keyboardType
       <TextInput
         style={s.inputText}
         placeholder={placeholder}
-        placeholderTextColor="#334155"
+        placeholderTextColor="#64748B"
         value={value}
         onChangeText={onChangeText}
         keyboardType={keyboardType}
