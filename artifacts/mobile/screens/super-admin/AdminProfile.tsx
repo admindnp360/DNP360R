@@ -2,7 +2,7 @@ import { Feather } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Image, Modal, Pressable, ScrollView, StyleSheet,
   Switch, Text, TextInput, TouchableOpacity, View,
@@ -11,6 +11,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAlert } from '@/contexts/AlertContext';
 import { useAppData } from '@/contexts/AppContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { type ActivityEntry, subscribeActivityLog } from '@/lib/activityLog';
 
 // ── Design tokens ──────────────────────────────────────────────────────
 const BG       = '#04071A';
@@ -200,29 +201,22 @@ export default function AdminProfile() {
   const activeKeys    = secretKeys.filter(k => k.isActive).length;
   const photoUri      = editPhoto ?? user.avatar ?? (user as any).photo;
 
-  // ── Activity log (derived from live data) ──────────────────────────
-  const activityLog = useMemo(() => {
-    const logs: { icon: string; color: string; title: string; desc: string; time: string }[] = [];
-    const now = new Date();
-    const fmt = (d: Date) => {
-      const diff = Math.floor((now.getTime() - d.getTime()) / 60000);
-      if (diff < 1)  return 'just now';
-      if (diff < 60) return `${diff}m ago`;
-      if (diff < 1440) return `${Math.floor(diff / 60)}h ago`;
-      return `${Math.floor(diff / 1440)}d ago`;
-    };
-    logs.push({ icon: 'log-in',      color: INDIGO_L, title: 'Admin Login',        desc: `${user.name} signed in`,          time: fmt(new Date(now.getTime() - 3 * 60000)) });
-    if (resolved > 0)
-      logs.push({ icon: 'check-circle', color: GREEN_L, title: 'Complaints Resolved', desc: `${resolved} complaint${resolved > 1 ? 's' : ''} resolved`, time: fmt(new Date(now.getTime() - 18 * 60000)) });
-    if (pendingResets > 0)
-      logs.push({ icon: 'unlock',       color: AMBER_L, title: 'Password Reset Req',  desc: `${pendingResets} pending request${pendingResets > 1 ? 's' : ''}`, time: fmt(new Date(now.getTime() - 35 * 60000)) });
-    if (users.length > 0)
-      logs.push({ icon: 'users',        color: CYAN,    title: 'User Base',           desc: `${totalUsers} registered users`,  time: fmt(new Date(now.getTime() - 2 * 3600000)) });
-    if (activeNotices > 0)
-      logs.push({ icon: 'volume-2',     color: PINK,    title: 'Notice Published',    desc: `${activeNotices} active notice${activeNotices > 1 ? 's' : ''}`, time: fmt(new Date(now.getTime() - 5 * 3600000)) });
-    logs.push({ icon: 'home',          color: CYAN,    title: 'House DB Sync',       desc: `${activeHouses} active properties`, time: fmt(new Date(now.getTime() - 8 * 3600000)) });
-    return logs.slice(0, 6);
-  }, [resolved, pendingResets, totalUsers, activeNotices, activeHouses]);
+  // ── Activity log — real-time Firestore ─────────────────────────────
+  const [firestoreLogs, setFirestoreLogs] = useState<ActivityEntry[]>([]);
+  useEffect(() => {
+    const unsub = subscribeActivityLog(setFirestoreLogs);
+    return unsub;
+  }, []);
+
+  const fmtTime = (ts: any) => {
+    if (!ts) return 'just now';
+    const date = ts?.toDate ? ts.toDate() : new Date(ts);
+    const diff = Math.floor((Date.now() - date.getTime()) / 60000);
+    if (diff < 1)    return 'just now';
+    if (diff < 60)   return `${diff}m ago`;
+    if (diff < 1440) return `${Math.floor(diff / 60)}h ago`;
+    return `${Math.floor(diff / 1440)}d ago`;
+  };
 
   function openEdit() {
     setEditName(user!.name);
@@ -393,10 +387,14 @@ export default function AdminProfile() {
           <View>
             <SectionHead label="Recent Activity" icon="activity" grad={[INDIGO, CYAN]} />
             <GlassCard>
-              {activityLog.map((item, i) => (
-                <View key={i} style={[al.row, i < activityLog.length - 1 && al.div]}>
-                  {/* timeline line */}
-                  {i < activityLog.length - 1 && <View style={[al.timeline, { backgroundColor: item.color + '30' }]} />}
+              {firestoreLogs.length === 0 ? (
+                <View style={{ padding: 24, alignItems: 'center', gap: 8 }}>
+                  <Feather name="clock" size={24} color={MUTED2} />
+                  <Text style={{ color: MUTED, fontSize: 12, fontFamily: 'Inter_400Regular' }}>No activity recorded yet</Text>
+                </View>
+              ) : firestoreLogs.map((item, i) => (
+                <View key={item.id ?? i} style={[al.row, i < firestoreLogs.length - 1 && al.div]}>
+                  {i < firestoreLogs.length - 1 && <View style={[al.timeline, { backgroundColor: item.color + '30' }]} />}
                   <View style={[al.dot, { backgroundColor: item.color + '20', borderColor: item.color + '60' }]}>
                     <Feather name={item.icon as any} size={12} color={item.color} />
                   </View>
@@ -404,7 +402,7 @@ export default function AdminProfile() {
                     <Text style={[al.title, { color: TEXT }]}>{item.title}</Text>
                     <Text style={al.desc}>{item.desc}</Text>
                   </View>
-                  <Text style={[al.time, { color: item.color }]}>{item.time}</Text>
+                  <Text style={[al.time, { color: item.color }]}>{fmtTime(item.createdAt)}</Text>
                 </View>
               ))}
             </GlassCard>

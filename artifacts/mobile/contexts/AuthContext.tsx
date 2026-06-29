@@ -26,6 +26,7 @@ import {
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { Platform } from 'react-native';
 import { db, firebaseAuth } from '@/lib/firebase';
+import { logActivity } from '@/lib/activityLog';
 import type { User, UserRole } from '@/types';
 
 interface AuthContextType {
@@ -202,6 +203,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       deleteDuplicateSuperAdmins();
       setUser(userData);
       await AsyncStorage.setItem('dnp360_user', JSON.stringify(userData));
+      logActivity({ icon: 'log-in', color: '#818CF8', title: 'Admin Login', desc: `${userData.name} signed in as Super Admin` });
       return true;
     }
 

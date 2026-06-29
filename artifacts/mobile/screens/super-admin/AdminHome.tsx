@@ -109,7 +109,7 @@ export default function AdminHome() {
             <TextInput
               style={s.searchInput}
               placeholder="Search houses, users, wards…"
-              placeholderTextColor="#334155"
+              placeholderTextColor="#64748B"
               value={search}
               onChangeText={setSearch}
             />
@@ -146,7 +146,7 @@ export default function AdminHome() {
                         <Text style={s.searchItemName} numberOfLines={1}>{section.getName(item)}</Text>
                         <Text style={s.searchItemSub} numberOfLines={1}>{section.getSub(item)}</Text>
                       </View>
-                      <Feather name="chevron-right" size={11} color="#1E293B" />
+                      <Feather name="chevron-right" size={11} color="#64748B" />
                     </TouchableOpacity>
                   ))}
                   {section.items.length > 4 && <Text style={s.searchMore}>+{section.items.length - 4} more</Text>}
@@ -156,7 +156,7 @@ export default function AdminHome() {
           )}
           {q.length >= 2 && totalResults === 0 && (
             <View style={s.searchEmpty}>
-              <Feather name="inbox" size={16} color="#1E293B" />
+              <Feather name="inbox" size={16} color="#94A3B8" />
               <Text style={s.searchEmptyTxt}>Nothing found</Text>
             </View>
           )}
@@ -270,7 +270,7 @@ export default function AdminHome() {
                 <Text style={s.qaSub} numberOfLines={1}>{item.sub}</Text>
               </View>
               <View style={s.qaArrow}>
-                <Feather name="chevron-right" size={13} color="#334155" />
+                <Feather name="chevron-right" size={13} color="#94A3B8" />
               </View>
             </TouchableOpacity>
           ))}
@@ -306,7 +306,7 @@ const s = StyleSheet.create({
 
   /* Top bar */
   topBar: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10 },
-  greeting: { color: '#334155', fontSize: 12, fontFamily: 'Inter_500Medium' },
+  greeting: { color: '#94A3B8', fontSize: 12, fontFamily: 'Inter_500Medium' },
   name: { color: '#F1F5F9', fontSize: 21, fontFamily: 'Inter_700Bold', marginTop: 1 },
   headerRight: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   alertPill: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 99, backgroundColor: 'rgba(251,113,133,0.14)', borderWidth: 1, borderColor: 'rgba(251,113,133,0.28)' },
@@ -330,17 +330,17 @@ const s = StyleSheet.create({
   searchInput: { flex: 1, color: '#CBD5E1', fontSize: 14, fontFamily: 'Inter_400Regular' },
   searchDrop: { borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.06)', paddingHorizontal: 12, paddingBottom: 10 },
   searchDropDivider: { height: 1, backgroundColor: 'rgba(255,255,255,0.04)', marginBottom: 6 },
-  searchDropCount: { color: '#334155', fontSize: 10, fontFamily: 'Inter_700Bold', letterSpacing: 0.6, paddingVertical: 4 },
+  searchDropCount: { color: '#94A3B8', fontSize: 10, fontFamily: 'Inter_700Bold', letterSpacing: 0.6, paddingVertical: 4 },
   searchSecHdr: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8, marginBottom: 4 },
   searchSecBadge: { width: 18, height: 18, borderRadius: 5, justifyContent: 'center', alignItems: 'center' },
   searchSecTxt: { fontSize: 10, fontFamily: 'Inter_700Bold', letterSpacing: 0.4 },
   searchItem: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 7 },
   searchItemAvatar: { width: 30, height: 30, borderRadius: 9, justifyContent: 'center', alignItems: 'center' },
   searchItemName: { fontSize: 13, fontFamily: 'Inter_600SemiBold', color: '#CBD5E1' },
-  searchItemSub: { fontSize: 11, fontFamily: 'Inter_400Regular', color: '#334155' },
-  searchMore: { color: '#334155', fontSize: 10, fontFamily: 'Inter_500Medium', paddingTop: 4 },
+  searchItemSub: { fontSize: 11, fontFamily: 'Inter_400Regular', color: '#94A3B8' },
+  searchMore: { color: '#94A3B8', fontSize: 10, fontFamily: 'Inter_500Medium', paddingTop: 4 },
   searchEmpty: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 16, justifyContent: 'center' },
-  searchEmptyTxt: { color: '#334155', fontSize: 13, fontFamily: 'Inter_400Regular' },
+  searchEmptyTxt: { color: '#94A3B8', fontSize: 13, fontFamily: 'Inter_400Regular' },
 
   /* Alert banner */
   alertBanner: {
@@ -376,7 +376,7 @@ const s = StyleSheet.create({
   metricDiv: { borderRightWidth: 1, borderRightColor: 'rgba(255,255,255,0.06)' },
   metricDot: { width: 18, height: 3, borderRadius: 3 },
   metricVal: { fontSize: 24, fontFamily: 'Inter_700Bold' },
-  metricLbl: { color: '#334155', fontSize: 9, fontFamily: 'Inter_700Bold', textTransform: 'uppercase', letterSpacing: 0.6 },
+  metricLbl: { color: '#94A3B8', fontSize: 9, fontFamily: 'Inter_700Bold', textTransform: 'uppercase', letterSpacing: 0.6 },
   barTrack: { height: 4, backgroundColor: 'rgba(255,255,255,0.06)', marginHorizontal: 16, marginBottom: 16, borderRadius: 99, overflow: 'hidden', marginTop: 4 },
   barFill: { position: 'absolute', left: 0, top: 0, bottom: 0, borderRadius: 99, opacity: 0.9 },
   barGlow: { position: 'absolute', left: 0, top: 1, height: 2, borderRadius: 99, opacity: 0.4 },
@@ -393,14 +393,14 @@ const s = StyleSheet.create({
   statCardBevel: { position: 'absolute', top: 0, left: 0, right: 0, height: 1, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.2)', borderRadius: 18 },
   statIconBox: { width: 42, height: 42, borderRadius: 13, justifyContent: 'center', alignItems: 'center', overflow: 'hidden' },
   statVal: { fontSize: 24, fontFamily: 'Inter_700Bold' },
-  statLbl: { color: '#334155', fontSize: 10, fontFamily: 'Inter_600SemiBold', textAlign: 'center' },
+  statLbl: { color: '#CBD5E1', fontSize: 10, fontFamily: 'Inter_600SemiBold', textAlign: 'center' },
 
   /* Quick access */
   qaRow: { flexDirection: 'row', alignItems: 'center', gap: 13, paddingHorizontal: 16, paddingVertical: 14 },
   qaDiv: { borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.05)' },
   qaIconBox: { width: 38, height: 38, borderRadius: 12, justifyContent: 'center', alignItems: 'center', overflow: 'hidden' },
   qaLabel: { color: '#E2E8F0', fontSize: 13, fontFamily: 'Inter_600SemiBold' },
-  qaSub: { color: '#334155', fontSize: 11, fontFamily: 'Inter_400Regular', marginTop: 2 },
+  qaSub: { color: '#94A3B8', fontSize: 11, fontFamily: 'Inter_400Regular', marginTop: 2 },
   qaArrow: { width: 28, height: 28, borderRadius: 9, backgroundColor: 'rgba(255,255,255,0.04)', justifyContent: 'center', alignItems: 'center' },
 
   /* Notice banner */

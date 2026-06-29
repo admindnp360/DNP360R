@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { logActivity } from '@/lib/activityLog';
 import {
   collection,
   deleteDoc,
@@ -506,6 +507,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const updatedItem = { ...complaints.find(c => c.id === id)!, ...updates, updatedAt: today() };
     setComplaints(prev => prev.map(c => c.id === id ? updatedItem : c));
     await fsSaveDoc('complaints', updatedItem);
+    if (updates.status === 'resolved') logActivity({ icon: 'check-circle', color: '#6EE7B7', title: 'Complaint Resolved', desc: `Complaint #${id.slice(-6)} marked as resolved` });
+    else if (updates.status) logActivity({ icon: 'alert-circle', color: '#FCD34D', title: 'Complaint Updated', desc: `Complaint #${id.slice(-6)} → ${updates.status}` });
   }
 
   async function addHouseVisit(visit: Omit<HouseVisit, 'id'>) {
@@ -717,6 +720,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   async function addUser(u: User) {
     setUsers(prev => [...prev, u]);
     await fsSaveDoc('users', u);
+    logActivity({ icon: 'user-plus', color: '#22D3EE', title: 'User Created', desc: `${u.name} (${u.role}) added — ID: ${u.id}` });
   }
 
   async function updateUser(id: string, updates: Partial<User>) {
@@ -734,6 +738,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     ) return;
     setUsers(prev => prev.filter(u => u.id !== id));
     await fsDeleteDoc('users', id);
+    if (target) logActivity({ icon: 'user-x', color: '#FCA5A5', title: 'User Deleted', desc: `${target.name} (${target.role}) removed` });
   }
 
   async function addSecretKey(role: SecretKey['role']): Promise<SecretKey> {
