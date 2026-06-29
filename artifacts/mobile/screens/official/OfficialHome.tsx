@@ -33,7 +33,7 @@ export default function OfficialHome() {
             <View style={{ flex: 1 }}>
               <Text style={styles.greeting}>{t('official')} · {t('nagar')}</Text>
               <Text style={styles.name}>{user?.name ?? 'Official'}</Text>
-              <Text style={styles.emp}>ID: {user?.employeeId ?? 'N/A'}</Text>
+              <Text style={styles.emp}>ID: {user?.id ?? 'N/A'}</Text>
             </View>
             <View style={{ alignItems: 'flex-end', gap: 8 }}>
               <View style={styles.avatar}>

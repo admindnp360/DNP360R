@@ -190,6 +190,8 @@ export interface PasswordResetRequest {
   requestedAt: string;
   status: 'pending' | 'approved' | 'rejected';
   adminNote?: string;
+  adminDescription?: string;
+  userNote?: string;
 }
 
 export interface ImportError {

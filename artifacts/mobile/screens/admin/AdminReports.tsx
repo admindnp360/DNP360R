@@ -8,11 +8,19 @@ import {
   ActivityIndicator, Pressable, ScrollView, StyleSheet,
   Text, TouchableOpacity, View,
 } from 'react-native';
+import { collection, doc, getDocs, limit, orderBy, query, setDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 import { useAlert } from '@/contexts/AlertContext';
 import { useAppData } from '@/contexts/AppContext';
 import type {
   CollectionStatus, GeneratedReport, HouseCollectionRow, ReportType, WeekHeader,
 } from '@/types';
+
+type HistoryEntry = {
+  id: string; type: ReportType; label: string; year: number; month?: number;
+  quarter?: number; wardId: string | null; wardNumber?: number | null;
+  generatedAt: string; rowCount: number;
+};
 
 // ── Design tokens ─────────────────────────────────────────────────────
 const BG       = '#060B18';
@@ -79,6 +87,19 @@ export default function AdminReports() {
   const [exporting, setExporting] = useState(false);
   const [autoGenDone, setAutoGenDone] = useState(false);
   const [reportHistory, setReportHistory] = useState<GeneratedReport[]>([]);
+  const [historyMeta, setHistoryMeta]     = useState<HistoryEntry[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+
+  // ── Load history from Firestore on mount ──────────────────────────
+  useEffect(() => {
+    (async () => {
+      setHistoryLoading(true);
+      try {
+        const snap = await getDocs(query(collection(db, 'reportHistory'), orderBy('generatedAt', 'desc'), limit(30)));
+        setHistoryMeta(snap.docs.map(d => d.data() as HistoryEntry));
+      } catch { /* silent */ } finally { setHistoryLoading(false); }
+    })();
+  }, []);
 
   // ── Auto-generate on last day at 9 PM IST ─────────────────────────
   useEffect(() => {
@@ -305,8 +326,15 @@ export default function AdminReports() {
       else if (tab === 'quarterly') rpt = buildQuarterlyReport(selYear, selQuarter, selWardId);
       else                          rpt = buildYearlyReport(selYear, selWardId);
       setReport(rpt);
-      // Push to history (keep last 20, deduplicate by id)
       setReportHistory(prev => [rpt, ...prev.filter(r => r.id !== rpt.id)].slice(0, 20));
+      const entry: HistoryEntry = {
+        id: rpt.id, type: rpt.type, label: rpt.label, year: rpt.year,
+        month: rpt.month ?? undefined, quarter: rpt.quarter ?? undefined,
+        wardId: rpt.wardId, wardNumber: rpt.wardNumber,
+        generatedAt: rpt.generatedAt, rowCount: rpt.rows.length,
+      };
+      setHistoryMeta(prev => [entry, ...prev.filter(h => h.id !== entry.id)].slice(0, 30));
+      try { await setDoc(doc(db, 'reportHistory', rpt.id), entry); } catch { /* silent */ }
       if (!silent) showAlert('Report Ready', rpt.label, undefined, 'success');
     } finally { setGenerating(false); }
   }
@@ -511,35 +539,44 @@ export default function AdminReports() {
       </View>
 
       {/* ── Report History ─────────────────────────────────────────── */}
-      {reportHistory.length > 0 && (
-        <View style={{ marginTop: 14, paddingLeft: 14 }}>
-          <Text style={{ color: MUTED, fontSize: 10, fontFamily: 'Inter_600SemiBold', letterSpacing: 0.6, textTransform: 'uppercase', marginBottom: 8 }}>Recent Reports</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingRight: 14 }}>
-            {reportHistory.map(r => {
+      {(historyMeta.length > 0 || historyLoading) && (
+        <View style={{ marginTop: 14, paddingHorizontal: 14 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 10 }}>
+            <Feather name="clock" size={11} color={MUTED} />
+            <Text style={{ color: MUTED, fontSize: 10, fontFamily: 'Inter_600SemiBold', letterSpacing: 0.6, textTransform: 'uppercase', flex: 1 }}>Report History</Text>
+            {historyLoading && <ActivityIndicator size={10} color={MUTED} />}
+            <Text style={{ color: MUTED, fontSize: 9, fontFamily: 'Inter_400Regular' }}>{historyMeta.length} saved</Text>
+          </View>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingRight: 4 }}>
+            {historyMeta.map(r => {
               const isActive = report?.id === r.id;
               const color = r.type === 'monthly' ? '#0EA5E9' : r.type === 'quarterly' ? '#818CF8' : '#34D399';
               const icon = r.type === 'monthly' ? 'calendar' : r.type === 'quarterly' ? 'bar-chart-2' : 'trending-up';
+              const rptFromMemory = reportHistory.find(h => h.id === r.id);
               return (
                 <TouchableOpacity
                   key={r.id}
-                  onPress={() => setReport(r)}
+                  onPress={() => { if (rptFromMemory) setReport(rptFromMemory); else showAlert('Reload Required', 'Please regenerate this report — only current-session reports can be viewed.', undefined, 'info'); }}
                   style={{
                     backgroundColor: isActive ? color + '1A' : GLASS,
                     borderRadius: 12, borderWidth: 1,
-                    borderColor: isActive ? color + '44' : 'rgba(255,255,255,0.10)',
-                    paddingHorizontal: 12, paddingVertical: 9, gap: 3,
-                    minWidth: 130,
+                    borderColor: isActive ? color + '55' : 'rgba(255,255,255,0.10)',
+                    paddingHorizontal: 12, paddingVertical: 10, gap: 4, minWidth: 140,
                   }}
                   activeOpacity={0.75}
                 >
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
                     <Feather name={icon as any} size={11} color={color} />
                     <Text style={{ color, fontSize: 11, fontFamily: 'Inter_700Bold' }} numberOfLines={1}>{r.label}</Text>
+                    {rptFromMemory && <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: color, marginLeft: 'auto' }} />}
                   </View>
                   <Text style={{ color: MUTED, fontSize: 10, fontFamily: 'Inter_400Regular' }}>
-                    {new Date(r.generatedAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+                    {new Date(r.generatedAt).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
                   </Text>
-                  <Text style={{ color: MUTED, fontSize: 10, fontFamily: 'Inter_400Regular' }}>{r.rows.length} houses</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                    <Feather name="home" size={9} color={MUTED} />
+                    <Text style={{ color: MUTED, fontSize: 9, fontFamily: 'Inter_400Regular' }}>{r.rowCount} houses</Text>
+                  </View>
                 </TouchableOpacity>
               );
             })}

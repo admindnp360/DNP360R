@@ -3,6 +3,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
 import {
+  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -14,10 +15,12 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { addDoc, collection } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 import { useAlert } from '@/contexts/AlertContext';
 import { useAppData } from '@/contexts/AppContext';
 
-type Tab = 'request' | 'check';
+type Tab = 'request' | 'check' | 'reopen';
 
 const STATUS_CONFIG = {
   pending: {
@@ -56,6 +59,34 @@ export default function ForgotPasswordScreen() {
   const [loading, setLoading] = useState(false);
   const [checkEmail, setCheckEmail] = useState('');
   const [checkedRequest, setCheckedRequest] = useState<typeof passwordResetRequests[0] | null | 'not_found'>(null);
+
+  const [reopenEmail, setReopenEmail] = useState('');
+  const [reopenMobile, setReopenMobile] = useState('');
+  const [reopenName, setReopenName] = useState('');
+  const [reopenLoading, setReopenLoading] = useState(false);
+  const [reopenDone, setReopenDone] = useState(false);
+
+  async function handleReopenRequest() {
+    if (!reopenEmail.trim() || !reopenName.trim()) {
+      showAlert('Missing Fields', 'Please enter your name and registered email.', undefined, 'warning');
+      return;
+    }
+    setReopenLoading(true);
+    try {
+      await addDoc(collection(db, 'reopenRequests'), {
+        name: reopenName.trim(),
+        email: reopenEmail.trim().toLowerCase(),
+        mobile: reopenMobile.trim() || null,
+        requestedAt: new Date().toISOString(),
+        status: 'pending',
+      });
+      setReopenDone(true);
+    } catch {
+      showAlert('Error', 'Unable to submit request. Please try again.', undefined, 'error');
+    } finally {
+      setReopenLoading(false);
+    }
+  }
 
   async function handleRequest() {
     if (!email.trim() || !name.trim()) {
@@ -97,19 +128,20 @@ export default function ForgotPasswordScreen() {
       </View>
 
       <View style={s.tabRow}>
-        {(['request', 'check'] as Tab[]).map(t => (
-          <Pressable key={t} style={s.tabWrap} onPress={() => setTab(t)}>
-            {tab === t
-              ? <LinearGradient
-                  colors={t === 'request' ? ['#F59E0B','#EF4444'] : ['#2563EB','#6366F1']}
-                  style={s.tabActive}
-                >
-                  <Feather name={t === 'request' ? 'send' : 'search'} size={13} color="#fff" />
-                  <Text style={s.tabActiveTxt}>{t === 'request' ? 'Submit Request' : 'Check Status'}</Text>
+        {([
+          { key: 'request', icon: 'send',      label: 'Reset Password', colors: ['#F59E0B','#EF4444'] as const },
+          { key: 'check',   icon: 'search',    label: 'Check Status',   colors: ['#2563EB','#6366F1'] as const },
+          { key: 'reopen',  icon: 'user-check', label: 'Reopen Account', colors: ['#10B981','#059669'] as const },
+        ] as const).map(t => (
+          <Pressable key={t.key} style={s.tabWrap} onPress={() => setTab(t.key)}>
+            {tab === t.key
+              ? <LinearGradient colors={t.colors} style={s.tabActive}>
+                  <Feather name={t.icon as any} size={13} color="#fff" />
+                  <Text style={s.tabActiveTxt}>{t.label}</Text>
                 </LinearGradient>
               : <View style={s.tabInactive}>
-                  <Feather name={t === 'request' ? 'send' : 'search'} size={13} color="#4B5563" />
-                  <Text style={s.tabInactiveTxt}>{t === 'request' ? 'Submit Request' : 'Check Status'}</Text>
+                  <Feather name={t.icon as any} size={13} color="#4B5563" />
+                  <Text style={s.tabInactiveTxt}>{t.label}</Text>
                 </View>
             }
           </Pressable>
@@ -225,7 +257,7 @@ export default function ForgotPasswordScreen() {
                 </View>
               </>
             )
-          ) : (
+          ) : tab === 'check' ? (
             <>
               <View style={s.heroWrap}>
                 <LinearGradient colors={['#2563EB','#6366F1']} style={s.heroIcon}>
@@ -302,6 +334,102 @@ export default function ForgotPasswordScreen() {
                   </View>
                 );
               })()}
+            </>
+          ) : reopenDone ? (
+            <>
+              <View style={s.heroWrap}>
+                <LinearGradient colors={['#10B981','#059669']} style={s.heroIcon}>
+                  <Feather name="user-check" size={28} color="#fff" />
+                </LinearGradient>
+              </View>
+              <Text style={s.sectionTitle}>Request Submitted!</Text>
+              <Text style={s.sectionSub}>Your account reopen request has been sent to the Super Admin. You will be contacted within 48 hours.</Text>
+              <TouchableOpacity style={s.btnWrap} onPress={() => router.replace('/login')} activeOpacity={0.85}>
+                <View style={[s.btn, { backgroundColor: 'rgba(255,255,255,0.06)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' }]}>
+                  <Feather name="arrow-left" size={16} color="#94A3B8" />
+                  <Text style={[s.btnTxt, { color: '#94A3B8' }]}>Back to Login</Text>
+                </View>
+              </TouchableOpacity>
+            </>
+          ) : (
+            <>
+              <View style={s.heroWrap}>
+                <LinearGradient colors={['#10B981','#059669']} style={s.heroIcon}>
+                  <Feather name="user-check" size={28} color="#fff" />
+                </LinearGradient>
+              </View>
+              <Text style={s.sectionTitle}>Reopen Your Account</Text>
+              <Text style={s.sectionSub}>
+                If you deleted your account within the last 48 hours, submit a request here and the Super Admin will restore it.
+              </Text>
+
+              <View style={s.card}>
+                <View style={[s.infoBox, { borderColor: 'rgba(16,185,129,0.25)', backgroundColor: 'rgba(16,185,129,0.07)' }]}>
+                  <Feather name="clock" size={12} color="#34D399" />
+                  <Text style={[s.infoTxt, { color: '#34D399' }]}>Account deletion is reversible within 48 hours only.</Text>
+                </View>
+
+                <View style={s.fieldGroup}>
+                  <Text style={s.label}>Full Name <Text style={s.req}>*</Text></Text>
+                  <View style={s.inputBox}>
+                    <Feather name="user" size={15} color="#10B981" style={s.inputIcon} />
+                    <TextInput
+                      style={s.input}
+                      placeholder="Your registered full name"
+                      placeholderTextColor="#94A3B8"
+                      autoCapitalize="words"
+                      value={reopenName}
+                      onChangeText={setReopenName}
+                    />
+                  </View>
+                </View>
+
+                <View style={s.fieldGroup}>
+                  <Text style={s.label}>Registered Email <Text style={s.req}>*</Text></Text>
+                  <View style={s.inputBox}>
+                    <Feather name="mail" size={15} color="#10B981" style={s.inputIcon} />
+                    <TextInput
+                      style={s.input}
+                      placeholder="your@email.com"
+                      placeholderTextColor="#94A3B8"
+                      keyboardType="email-address"
+                      autoCapitalize="none"
+                      value={reopenEmail}
+                      onChangeText={setReopenEmail}
+                    />
+                  </View>
+                </View>
+
+                <View style={s.fieldGroup}>
+                  <Text style={s.label}>Mobile Number (optional)</Text>
+                  <View style={s.inputBox}>
+                    <Feather name="smartphone" size={15} color="#10B981" style={s.inputIcon} />
+                    <TextInput
+                      style={s.input}
+                      placeholder="10-digit mobile"
+                      placeholderTextColor="#94A3B8"
+                      keyboardType="phone-pad"
+                      value={reopenMobile}
+                      onChangeText={setReopenMobile}
+                      maxLength={10}
+                    />
+                  </View>
+                </View>
+
+                <TouchableOpacity
+                  style={[s.btnWrap, reopenLoading && { opacity: 0.65 }]}
+                  onPress={handleReopenRequest}
+                  disabled={reopenLoading}
+                  activeOpacity={0.85}
+                >
+                  <LinearGradient colors={['#10B981','#059669']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={s.btn}>
+                    {reopenLoading
+                      ? <ActivityIndicator size="small" color="#fff" />
+                      : <Feather name="user-check" size={16} color="#fff" />}
+                    <Text style={s.btnTxt}>{reopenLoading ? 'Submitting…' : 'Submit Reopen Request'}</Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+              </View>
             </>
           )}
         </ScrollView>

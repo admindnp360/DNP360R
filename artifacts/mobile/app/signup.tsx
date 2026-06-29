@@ -79,6 +79,17 @@ export default function SignUpScreen() {
           <Text style={s.successTitle}>Account Created!</Text>
           <Text style={s.successName}>{createdName}</Text>
           <Text style={s.successMsg}>Your citizen account is ready.{'\n'}Redirecting to dashboard…</Text>
+          <View style={{ marginTop: 16, backgroundColor: 'rgba(99,102,241,0.12)', borderRadius: 12, borderWidth: 1, borderColor: 'rgba(99,102,241,0.3)', padding: 14, gap: 6 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <View style={{ width: 22, height: 22, borderRadius: 11, backgroundColor: 'rgba(99,102,241,0.3)', alignItems: 'center', justifyContent: 'center' }}>
+                <Text style={{ color: '#818CF8', fontSize: 12, fontFamily: 'Inter_700Bold' }}>!</Text>
+              </View>
+              <Text style={{ color: '#A5B4FC', fontSize: 12, fontFamily: 'Inter_700Bold' }}>Also sign in with User ID</Text>
+            </View>
+            <Text style={{ color: 'rgba(165,180,252,0.75)', fontSize: 11, fontFamily: 'Inter_400Regular', lineHeight: 17 }}>
+              You can sign in using your assigned User ID — find it in your Profile after logging in. Use the "User ID" tab on the login page.
+            </Text>
+          </View>
           <TouchableOpacity onPress={() => router.replace('/(tabs)')} activeOpacity={0.85} style={s.successBtnWrap}>
             <LinearGradient colors={['#10B981', '#059669']} style={s.successBtn}>
               <Feather name="arrow-right" size={16} color="#fff" />

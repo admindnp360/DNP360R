@@ -75,9 +75,10 @@ export default function LoginScreen() {
   const { login, loginWithUserId, loginWithGoogle } = useAuth();
   const { showAlert } = useAlert();
   const [tab, setTab] = useState<'citizen' | 'staff'>('citizen');
-  const [subTab, setSubTab] = useState<'email' | 'mobile'>('email');
+  const [subTab, setSubTab] = useState<'email' | 'mobile' | 'userid'>('email');
   const [email, setEmail] = useState('');
   const [mobile, setMobile] = useState('');
+  const [citizenUserId, setCitizenUserId] = useState('');
   const [password, setPassword] = useState('');
   const [staffUserId, setStaffUserId] = useState('');
   const [staffMode, setStaffMode] = useState<'userid' | 'secretkey'>('userid');
@@ -105,8 +106,19 @@ export default function LoginScreen() {
     }
     setLoading(true);
     try {
-      const ok = await login(id, password, subTab);
+      const ok = await login(id, password, subTab as 'email' | 'mobile');
       if (!ok) showAlert('Login Failed', 'Invalid credentials. Please check your details.', undefined, 'error');
+      else router.replace('/(tabs)');
+    } finally { setLoading(false); }
+  }
+
+  async function handleCitizenUserIdSignIn() {
+    const uid = citizenUserId.trim().toUpperCase();
+    if (!uid) { showAlert('Missing ID', 'Please enter your User ID.', undefined, 'warning'); return; }
+    setLoading(true);
+    try {
+      const ok = await loginWithUserId(uid);
+      if (!ok) showAlert('Not Found', 'User ID not recognised. Please check and try again.', undefined, 'error');
       else router.replace('/(tabs)');
     } finally { setLoading(false); }
   }
@@ -176,14 +188,16 @@ export default function LoginScreen() {
             {tab === 'citizen' ? (
               <>
                 <Text style={s.cardTitle}>Welcome Back</Text>
-                <Text style={s.cardSub}>Sign in with your email or mobile number</Text>
+                <Text style={s.cardSub}>
+                  {subTab === 'userid' ? 'Sign in with your assigned User ID' : 'Sign in with your email or mobile number'}
+                </Text>
 
                 <View style={s.subRow}>
-                  {(['email','mobile'] as const).map(t => (
+                  {(['email', 'mobile', 'userid'] as const).map(t => (
                     <Pressable key={t} onPress={() => setSubTab(t)} style={[s.subBtn, subTab === t && s.subBtnActive]}>
-                      <Feather name={t === 'email' ? 'mail' : 'smartphone'} size={12} color={subTab === t ? '#60A5FA' : '#4B5563'} />
+                      <Feather name={t === 'email' ? 'mail' : t === 'mobile' ? 'smartphone' : 'hash'} size={12} color={subTab === t ? '#60A5FA' : '#4B5563'} />
                       <Text style={[s.subBtnTxt, subTab === t && s.subBtnTxtActive]}>
-                        {t === 'email' ? 'Email' : 'Mobile'}
+                        {t === 'email' ? 'Email' : t === 'mobile' ? 'Mobile' : 'User ID'}
                       </Text>
                     </Pressable>
                   ))}
@@ -202,7 +216,7 @@ export default function LoginScreen() {
                       onChangeText={setEmail}
                     />
                   </View>
-                ) : (
+                ) : subTab === 'mobile' ? (
                   <View style={s.inputBox}>
                     <Feather name="smartphone" size={16} color="#4B6EAF" style={s.inputIcon} />
                     <TextInput
@@ -215,56 +229,95 @@ export default function LoginScreen() {
                       maxLength={10}
                     />
                   </View>
+                ) : (
+                  <View style={s.inputBox}>
+                    <Feather name="hash" size={16} color="#6366F1" style={s.inputIcon} />
+                    <TextInput
+                      style={s.input}
+                      placeholder="Your User ID (e.g. CT1001A)"
+                      placeholderTextColor="#94A3B8"
+                      autoCapitalize="characters"
+                      autoCorrect={false}
+                      value={citizenUserId}
+                      onChangeText={v => setCitizenUserId(v.replace(/[^A-Za-z0-9]/g, '').toUpperCase())}
+                      onSubmitEditing={handleCitizenUserIdSignIn}
+                      returnKeyType="done"
+                    />
+                  </View>
                 )}
 
-                <View style={s.inputBox}>
-                  <Feather name="lock" size={16} color="#4B6EAF" style={s.inputIcon} />
-                  <TextInput
-                    style={[s.input, { flex: 1 }]}
-                    placeholder="Password"
-                    placeholderTextColor="#94A3B8"
-                    secureTextEntry={!showPassword}
-                    value={password}
-                    onChangeText={setPassword}
-                    onSubmitEditing={handleSignIn}
-                    returnKeyType="done"
-                  />
-                  <Pressable onPress={() => setShowPassword(p => !p)} style={s.eyeBtn}>
-                    <Feather name={showPassword ? 'eye-off' : 'eye'} size={16} color="#4B6EAF" />
-                  </Pressable>
-                </View>
+                {subTab !== 'userid' && (
+                  <>
+                    <View style={s.inputBox}>
+                      <Feather name="lock" size={16} color="#4B6EAF" style={s.inputIcon} />
+                      <TextInput
+                        style={[s.input, { flex: 1 }]}
+                        placeholder="Password"
+                        placeholderTextColor="#94A3B8"
+                        secureTextEntry={!showPassword}
+                        value={password}
+                        onChangeText={setPassword}
+                        onSubmitEditing={handleSignIn}
+                        returnKeyType="done"
+                      />
+                      <Pressable onPress={() => setShowPassword(p => !p)} style={s.eyeBtn}>
+                        <Feather name={showPassword ? 'eye-off' : 'eye'} size={16} color="#4B6EAF" />
+                      </Pressable>
+                    </View>
+                    <Pressable onPress={() => router.push('/forgot-password')} style={s.forgotRow}>
+                      <Text style={s.forgotTxt}>Forgot Password?</Text>
+                    </Pressable>
+                  </>
+                )}
 
-                <Pressable onPress={() => router.push('/forgot-password')} style={s.forgotRow}>
-                  <Text style={s.forgotTxt}>Forgot Password?</Text>
-                </Pressable>
+                {subTab === 'userid' && (
+                  <View style={s.prefixHint}>
+                    <Feather name="info" size={10} color="#6366F1" />
+                    <Text style={s.prefixHintLabel}>User ID is printed on your registration slip or found in your Profile.</Text>
+                  </View>
+                )}
 
-                <View style={s.signInRow}>
+                {subTab === 'userid' ? (
                   <TouchableOpacity
-                    onPress={handleSignIn}
-                    disabled={loading || googleLoading}
+                    onPress={handleCitizenUserIdSignIn}
+                    disabled={loading || !citizenUserId.trim()}
                     activeOpacity={0.88}
-                    style={[s.btnWrap, { flex: 1 }, loading && { opacity: 0.65 }]}
+                    style={[s.btnWrap, (loading || !citizenUserId.trim()) && { opacity: 0.4 }]}
                   >
-                    <LinearGradient colors={['#2563EB','#4F46E5']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={s.btn}>
+                    <LinearGradient colors={['#6366F1','#4F46E5']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={s.btn}>
                       {loading ? <ActivityIndicator color="#fff" size="small" /> : <Feather name="log-in" size={16} color="#fff" />}
-                      <Text style={s.btnTxt}>{loading ? 'Signing in…' : 'Sign In'}</Text>
+                      <Text style={s.btnTxt}>{loading ? 'Signing in…' : 'Sign In with User ID'}</Text>
                     </LinearGradient>
                   </TouchableOpacity>
+                ) : (
+                  <View style={s.signInRow}>
+                    <TouchableOpacity
+                      onPress={handleSignIn}
+                      disabled={loading || googleLoading}
+                      activeOpacity={0.88}
+                      style={[s.btnWrap, { flex: 1 }, loading && { opacity: 0.65 }]}
+                    >
+                      <LinearGradient colors={['#2563EB','#4F46E5']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={s.btn}>
+                        {loading ? <ActivityIndicator color="#fff" size="small" /> : <Feather name="log-in" size={16} color="#fff" />}
+                        <Text style={s.btnTxt}>{loading ? 'Signing in…' : 'Sign In'}</Text>
+                      </LinearGradient>
+                    </TouchableOpacity>
 
-                  <TouchableOpacity
-                    onPress={handleGoogleSignIn}
-                    disabled={loading || googleLoading}
-                    activeOpacity={0.88}
-                    style={[s.btnWrap, { flex: 1 }, googleLoading && { opacity: 0.65 }]}
-                  >
-                    <LinearGradient colors={['#DB4437','#EA4335']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={s.btn}>
-                      {googleLoading
-                        ? <ActivityIndicator color="#fff" size="small" />
-                        : <Text style={s.googleG}>G</Text>}
-                      <Text style={s.btnTxt}>{googleLoading ? 'Opening…' : 'Google'}</Text>
-                    </LinearGradient>
-                  </TouchableOpacity>
-                </View>
+                    <TouchableOpacity
+                      onPress={handleGoogleSignIn}
+                      disabled={loading || googleLoading}
+                      activeOpacity={0.88}
+                      style={[s.btnWrap, { flex: 1 }, googleLoading && { opacity: 0.65 }]}
+                    >
+                      <LinearGradient colors={['#DB4437','#EA4335']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={s.btn}>
+                        {googleLoading
+                          ? <ActivityIndicator color="#fff" size="small" />
+                          : <Text style={s.googleG}>G</Text>}
+                        <Text style={s.btnTxt}>{googleLoading ? 'Opening…' : 'Google'}</Text>
+                      </LinearGradient>
+                    </TouchableOpacity>
+                  </View>
+                )}
               </>
             ) : (
               <>

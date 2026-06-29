@@ -71,6 +71,7 @@ export default function AdminManagement() {
   const [selectedRequest, setSelectedRequest]     = useState<PasswordResetRequest | null>(null);
   const [tempPassword, setTempPassword]           = useState('');
   const [adminNote, setAdminNote]                 = useState('');
+  const [adminDescription, setAdminDescription]   = useState('');
   const [noticeTitle, setNoticeTitle]             = useState('');
   const [noticeContent, setNoticeContent]         = useState('');
   const [noticeType, setNoticeType]               = useState<'notice'|'announcement'|'alert'>('notice');
@@ -116,7 +117,7 @@ export default function AdminManagement() {
   }
 
   function openApproveModal(req: PasswordResetRequest) {
-    setSelectedRequest(req); setTempPassword(''); setAdminNote(''); setShowApproveModal(true);
+    setSelectedRequest(req); setTempPassword(''); setAdminNote(''); setAdminDescription(''); setShowApproveModal(true);
   }
 
   async function handleApproveReset() {
@@ -126,8 +127,8 @@ export default function AdminManagement() {
     try {
       const ok = await resetUserPassword(selectedRequest.email, tempPassword.trim());
       if (!ok) { showAlert('Error', 'No user found with this email.', undefined, 'error'); return; }
-      await updatePasswordResetRequest(selectedRequest.id, 'approved', adminNote.trim() || undefined);
-      setShowApproveModal(false); setSelectedRequest(null); setTempPassword(''); setAdminNote('');
+      await updatePasswordResetRequest(selectedRequest.id, 'approved', adminNote.trim() || undefined, adminDescription.trim() || undefined);
+      setShowApproveModal(false); setSelectedRequest(null); setTempPassword(''); setAdminNote(''); setAdminDescription('');
       showAlert('Approved', `Password reset for ${selectedRequest.name}.`, undefined, 'success');
     } finally { setSaving(false); }
   }
@@ -825,11 +826,17 @@ export default function AdminManagement() {
                 placeholder="Min. 6 characters" placeholderTextColor={MUTED}
                 value={tempPassword} onChangeText={setTempPassword} autoCapitalize="none"
               />
-              <Text style={[s.fieldLabel, { color: TEXT }]}>Note to User (optional)</Text>
+              <Text style={[s.fieldLabel, { color: TEXT }]}>Temporary Password Note (shown to user)</Text>
               <TextInput
                 style={[s.textarea, { color: TEXT, backgroundColor: GLASS, borderColor: GLASS_BD }]}
-                placeholder="e.g. Contact office if you need help…" placeholderTextColor={MUTED}
-                value={adminNote} onChangeText={setAdminNote} multiline numberOfLines={3} textAlignVertical="top"
+                placeholder="e.g. Your new password is above. Change it after login." placeholderTextColor={MUTED}
+                value={adminNote} onChangeText={setAdminNote} multiline numberOfLines={2} textAlignVertical="top"
+              />
+              <Text style={[s.fieldLabel, { color: TEXT, marginTop: 4 }]}>Additional Description (internal note)</Text>
+              <TextInput
+                style={[s.textarea, { color: TEXT, backgroundColor: GLASS, borderColor: GLASS_BD }]}
+                placeholder="Any extra notes for Super Admin record…" placeholderTextColor={MUTED}
+                value={adminDescription} onChangeText={setAdminDescription} multiline numberOfLines={3} textAlignVertical="top"
               />
               <TouchableOpacity onPress={handleApproveReset} disabled={saving} activeOpacity={0.85} style={saving ? { opacity: 0.6 } : {}}>
                 <LinearGradient colors={['#10B981', '#059669']} style={s.submitBtn}>

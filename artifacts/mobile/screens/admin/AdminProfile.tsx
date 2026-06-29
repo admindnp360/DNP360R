@@ -149,7 +149,6 @@ export default function AdminProfile() {
           </View>
 
           <Text style={s.heroName}>{user.name}</Text>
-          <Text style={s.heroEmpId}>{user.employeeId}</Text>
           <Text style={s.heroEmail}>{user.email}</Text>
 
           <View style={s.heroBadgeRow}>
@@ -257,7 +256,6 @@ export default function AdminProfile() {
             {[
               { icon: 'mail',      grad: ['#6366F1','#8B5CF6'] as const, label: 'Email',        value: user.email },
               { icon: 'phone',     grad: ['#10B981','#059669'] as const, label: 'Mobile',       value: user.mobile ?? 'Not set' },
-              { icon: 'briefcase', grad: ['#F59E0B','#EF4444'] as const, label: 'Employee ID',  value: user.employeeId ?? '—' },
               { icon: 'hash',      grad: ['#0EA5E9','#2563EB'] as const, label: 'User ID',      value: user.role === 'superadmin' ? 'SUPERADMIN' : user.id },
               { icon: 'calendar',  grad: ['#EC4899','#DB2777'] as const, label: 'Member Since', value: user.createdAt ?? '—' },
             ].map((row, i, arr) => (

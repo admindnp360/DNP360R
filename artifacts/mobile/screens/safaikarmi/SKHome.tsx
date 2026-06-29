@@ -53,8 +53,8 @@ export default function SKHome() {
               <Text style={styles.heroGreeting}>{getGreeting()},</Text>
               <Text style={styles.heroName}>{user?.name ?? 'Worker'} 👷</Text>
               <View style={styles.heroEmpRow}>
-                <Feather name="briefcase" size={11} color="#6EE7B7" />
-                <Text style={styles.heroEmpId}>{user?.employeeId ?? ''} · Safai Karmi</Text>
+                <Feather name="hash" size={11} color="#6EE7B7" />
+                <Text style={styles.heroEmpId}>{user?.id ?? ''} · Safai Karmi</Text>
               </View>
             </View>
             <LinearGradient colors={['#10B981', '#059669']} style={styles.avatarRing}>

@@ -435,6 +435,27 @@ export default function SuperAdminHouseDB() {
     ], 'warning');
   }
 
+  async function handleUngroupSearchSelected() {
+    if (selectedSearchIds.length === 0) return;
+    showAlert('Ungroup Houses?', `Remove ${selectedSearchIds.length} house(s) from their group?`, [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Ungroup', style: 'destructive', onPress: async () => {
+          setSaving(true);
+          try { await removeGroupFromHouses(selectedSearchIds); exitSearchSel(); showAlert('Done', 'Houses ungrouped.', undefined, 'success'); }
+          finally { setSaving(false); }
+        },
+      },
+    ], 'warning');
+  }
+
+  function openMoveModalFromSearch() {
+    if (selectedSearchIds.length === 0) return;
+    setSelectedHouseIds([...selectedSearchIds]);
+    setMoveWardId(wards[0]?.id ?? '');
+    setMoveGroupId(null);
+    setShowMoveModal(true);
+  }
+
   // ── Export CSV ────────────────────────────────────────────────────
   function buildCSV(list: House[]): string {
     const escape = (v: string) => `"${(v ?? '').replace(/"/g, '""')}"`;
@@ -593,6 +614,14 @@ export default function SuperAdminHouseDB() {
                       <Text style={[s.selActionText, { color: '#818CF8' }]}>{selectedSearchIds.length === globalResults.houses.length ? 'Deselect All' : 'Select All'}</Text>
                     </TouchableOpacity>
                     <View style={{ flex: 1 }} />
+                    <TouchableOpacity style={[s.selAction, { backgroundColor: 'rgba(249,115,22,0.12)', borderColor: 'rgba(249,115,22,0.28)' }]} onPress={handleUngroupSearchSelected} disabled={selectedSearchIds.length === 0 || saving}>
+                      <Feather name="scissors" size={12} color="#F97316" />
+                      <Text style={[s.selActionText, { color: '#F97316' }]}>Ungroup</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={[s.selAction, { backgroundColor: 'rgba(99,102,241,0.12)', borderColor: 'rgba(99,102,241,0.28)' }]} onPress={openMoveModalFromSearch} disabled={selectedSearchIds.length === 0 || saving}>
+                      <Feather name="move" size={12} color="#818CF8" />
+                      <Text style={[s.selActionText, { color: '#818CF8' }]}>Move</Text>
+                    </TouchableOpacity>
                     <TouchableOpacity style={[s.selAction, { backgroundColor: 'rgba(239,68,68,0.12)', borderColor: 'rgba(239,68,68,0.28)' }]} onPress={handleDeleteSearchSelected} disabled={selectedSearchIds.length === 0 || saving}>
                       <Feather name="trash-2" size={12} color="#EF4444" />
                       <Text style={[s.selActionText, { color: '#EF4444' }]}>Delete</Text>
