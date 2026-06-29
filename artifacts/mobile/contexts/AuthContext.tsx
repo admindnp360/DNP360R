@@ -5,6 +5,7 @@ import {
   deleteUser as firebaseDeleteUser,
   onAuthStateChanged,
   signInAnonymously,
+  signInWithCredential,
   signInWithEmailAndPassword,
   signInWithPopup,
   signOut,
@@ -33,6 +34,7 @@ interface AuthContextType {
   login: (identifier: string, password: string, method?: 'email' | 'mobile') => Promise<boolean>;
   loginWithUserId: (userId: string) => Promise<boolean>;
   loginWithGoogle: () => Promise<boolean>;
+  loginWithGoogleCredential: (idToken: string) => Promise<boolean>;
   register: (name: string, email: string, mobile: string, password: string, address?: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
   updateProfile: (updates: Partial<User>) => Promise<void>;
@@ -354,13 +356,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return false;
   }
 
-  async function loginWithGoogle(): Promise<boolean> {
-    if (Platform.OS !== 'web') return false;
+  async function _saveGoogleUser(fu: { uid: string; displayName: string | null; email: string | null; phoneNumber: string | null }): Promise<boolean> {
     try {
-      const provider = new GoogleAuthProvider();
-      const result = await signInWithPopup(firebaseAuth, provider);
-      const fu = result.user;
-
       let profile = await getUserFromFirestore(fu.uid);
       if (!profile) {
         profile = {
@@ -380,12 +377,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           });
         }
       }
-
       setUser(profile);
       await AsyncStorage.setItem('dnp360_user', JSON.stringify(profile));
       return true;
     } catch (e) {
+      console.error('Google sign-in save error:', e);
+      return false;
+    }
+  }
+
+  async function loginWithGoogle(): Promise<boolean> {
+    if (Platform.OS !== 'web') return false;
+    try {
+      const provider = new GoogleAuthProvider();
+      const result = await signInWithPopup(firebaseAuth, provider);
+      return _saveGoogleUser(result.user);
+    } catch (e) {
       console.error('Google sign-in error:', e);
+      return false;
+    }
+  }
+
+  async function loginWithGoogleCredential(idToken: string): Promise<boolean> {
+    try {
+      const credential = GoogleAuthProvider.credential(idToken);
+      const result = await signInWithCredential(firebaseAuth, credential);
+      return _saveGoogleUser(result.user);
+    } catch (e) {
+      console.error('Google credential sign-in error:', e);
       return false;
     }
   }
@@ -518,7 +537,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, loginWithUserId, loginWithGoogle, register, logout, updateProfile, resetUserPassword, updateSecretKey, changePassword, deleteAccount }}>
+    <AuthContext.Provider value={{ user, isLoading, login, loginWithUserId, loginWithGoogle, loginWithGoogleCredential, register, logout, updateProfile, resetUserPassword, updateSecretKey, changePassword, deleteAccount }}>
       {children}
     </AuthContext.Provider>
   );

@@ -1,7 +1,9 @@
 import { Feather } from '@expo/vector-icons';
+import * as Google from 'expo-auth-session/providers/google';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import React, { useRef, useState } from 'react';
+import * as WebBrowser from 'expo-web-browser';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Image,
@@ -18,6 +20,8 @@ import {
 import { useAlert } from '@/contexts/AlertContext';
 import { useAuth } from '@/contexts/AuthContext';
 
+WebBrowser.maybeCompleteAuthSession();
+
 const IS_WEB = Platform.OS === 'web';
 
 function DNPLogo() {
@@ -30,7 +34,7 @@ function DNPLogo() {
 }
 
 export default function LoginScreen() {
-  const { login, loginWithUserId, loginWithGoogle } = useAuth();
+  const { login, loginWithUserId, loginWithGoogle, loginWithGoogleCredential } = useAuth();
   const { showAlert } = useAlert();
   const [tab, setTab] = useState<'citizen' | 'staff'>('citizen');
   const [subTab, setSubTab] = useState<'email' | 'mobile' | 'userid'>('email');
@@ -44,6 +48,29 @@ export default function LoginScreen() {
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const codeRef = useRef<TextInput>(null);
+
+  const [googleRequest, googleResponse, googlePromptAsync] = Google.useAuthRequest({
+    webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
+    androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
+    iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
+  });
+
+  useEffect(() => {
+    if (googleResponse?.type === 'success') {
+      const idToken = googleResponse.authentication?.idToken;
+      if (idToken) {
+        setGoogleLoading(true);
+        loginWithGoogleCredential(idToken)
+          .then(ok => {
+            if (ok) router.replace('/(tabs)');
+            else showAlert('Sign-In Failed', 'Google Sign-In failed. Please try again.', undefined, 'error');
+          })
+          .finally(() => setGoogleLoading(false));
+      }
+    } else if (googleResponse?.type === 'error') {
+      showAlert('Sign-In Error', googleResponse.error?.message ?? 'Google Sign-In failed.', undefined, 'error');
+    }
+  }, [googleResponse]);
 
   async function handleStaffLogin() {
     const uid = staffUserId.trim().toUpperCase();
@@ -82,16 +109,22 @@ export default function LoginScreen() {
   }
 
   async function handleGoogleSignIn() {
-    setGoogleLoading(true);
-    try {
-      const ok = await loginWithGoogle();
-      if (ok) router.replace('/(tabs)');
-      else showAlert('Sign-In Failed', IS_WEB
-        ? 'Google Sign-In failed. Ensure your domain is authorised in Firebase Console.'
-        : 'Google Sign-In is only available on the web version.', undefined, 'warning');
-    } catch {
-      showAlert('Error', 'Google Sign-In is unavailable. Please use Email login.', undefined, 'error');
-    } finally { setGoogleLoading(false); }
+    if (IS_WEB) {
+      setGoogleLoading(true);
+      try {
+        const ok = await loginWithGoogle();
+        if (ok) router.replace('/(tabs)');
+        else showAlert('Sign-In Failed', 'Google Sign-In failed. Ensure your domain is authorised in Firebase Console.', undefined, 'warning');
+      } catch {
+        showAlert('Error', 'Google Sign-In is unavailable. Please use Email login.', undefined, 'error');
+      } finally { setGoogleLoading(false); }
+    } else {
+      if (!googleRequest) {
+        showAlert('Not Configured', 'Google Sign-In is not configured. Please set EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID.', undefined, 'warning');
+        return;
+      }
+      await googlePromptAsync();
+    }
   }
 
   return (
