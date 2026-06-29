@@ -1,6 +1,7 @@
 import { Feather } from '@expo/vector-icons';
 import * as FileSystem from 'expo-file-system/legacy';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import * as XLSX from 'xlsx';
@@ -85,6 +86,7 @@ export default function AdminReports() {
   const [report, setReport]       = useState<GeneratedReport | null>(null);
   const [generating, setGenerating] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [exportingPDF, setExportingPDF] = useState(false);
   const [autoGenDone, setAutoGenDone] = useState(false);
   const [reportHistory, setReportHistory] = useState<GeneratedReport[]>([]);
   const [historyMeta, setHistoryMeta]     = useState<HistoryEntry[]>([]);
@@ -410,6 +412,101 @@ export default function AdminReports() {
     finally { setExporting(false); }
   }
 
+  // ── Export to PDF ──────────────────────────────────────────────────
+  async function handleExportPDF(rpt: GeneratedReport = report!) {
+    if (!rpt) return;
+    const canShare = await Sharing.isAvailableAsync();
+    if (!canShare) { showAlert('Not Supported', 'Sharing is not available on this device.', undefined, 'error'); return; }
+    setExportingPDF(true);
+    try {
+      const totP = rpt.rows.reduce((a, r) => a + r.totalPresent, 0);
+      const totN = rpt.rows.reduce((a, r) => a + r.totalAbsent, 0);
+      const totL = rpt.rows.reduce((a, r) => a + r.totalLate, 0);
+      const totAll = totP + totN;
+      const avgPct = totAll > 0 ? ((totP / totAll) * 100).toFixed(1) + '%' : '—';
+
+      // ── Build column headers ───────────────────────────────────────
+      let colHeaders = '';
+      let dataRows = '';
+
+      if (rpt.type === 'monthly') {
+        colHeaders = rpt.dayHeaders.map(d => `<th>${d}</th>`).join('');
+        dataRows = rpt.rows.map(row => {
+          const cells = rpt.dayHeaders.map(d => {
+            const st = row.dailyStatus[d] ?? 'N';
+            const clr = st === 'P' ? '#22c55e' : st === 'L' ? '#f59e0b' : '#ef4444';
+            return `<td style="color:${clr};font-weight:700">${st}</td>`;
+          }).join('');
+          return `<tr><td>${row.sNo}</td><td>${row.houseRegNo}</td><td>${row.wardNo}</td>${cells}<td style="color:#22c55e">${row.totalPresent}</td><td style="color:#ef4444">${row.totalAbsent}</td><td style="color:#f59e0b">${row.totalLate}</td><td style="color:#818cf8">${row.percentage}</td></tr>`;
+        }).join('');
+        colHeaders = `<th>#</th><th>Reg No</th><th>Ward</th>${colHeaders}<th>P</th><th>N</th><th>L</th><th>%</th>`;
+      } else if (rpt.type === 'quarterly') {
+        const wh = rpt.weekHeaders ?? [];
+        colHeaders = `<th>#</th><th>Reg No</th><th>Ward</th>${wh.map(h => `<th>${h.label}</th>`).join('')}<th>P</th><th>N</th><th>L</th><th>%</th>`;
+        dataRows = rpt.rows.map(row => {
+          const cells = wh.map(h => {
+            const col = row.weeklyCollected?.[h.key] ?? 0;
+            const tot = h.totalDays;
+            const ratio = tot > 0 ? col / tot : 0;
+            const clr = ratio >= 0.8 ? '#22c55e' : ratio >= 0.5 ? '#f59e0b' : '#ef4444';
+            return `<td style="color:${clr};font-weight:700">${col}/${tot}</td>`;
+          }).join('');
+          return `<tr><td>${row.sNo}</td><td>${row.houseRegNo}</td><td>${row.wardNo}</td>${cells}<td style="color:#22c55e">${row.totalPresent}</td><td style="color:#ef4444">${row.totalAbsent}</td><td style="color:#f59e0b">${row.totalLate}</td><td style="color:#818cf8">${row.percentage}</td></tr>`;
+        }).join('');
+      } else {
+        colHeaders = `<th>#</th><th>Reg No</th><th>Ward</th>${MONTH_NAMES.map(m => `<th>${m.slice(0,3)}</th>`).join('')}<th>P</th><th>N</th><th>L</th><th>%</th>`;
+        dataRows = rpt.rows.map(row => {
+          const cells = Array.from({ length: 12 }, (_, i) => {
+            const p = row.monthlyData?.[i + 1]?.p ?? 0;
+            const tot = daysInMonth(i + 1, rpt.year);
+            const ratio = tot > 0 ? p / tot : 0;
+            const clr = ratio >= 0.8 ? '#22c55e' : ratio >= 0.5 ? '#f59e0b' : '#ef4444';
+            return `<td style="color:${clr};font-weight:700">${p}</td>`;
+          }).join('');
+          return `<tr><td>${row.sNo}</td><td>${row.houseRegNo}</td><td>${row.wardNo}</td>${cells}<td style="color:#22c55e">${row.totalPresent}</td><td style="color:#ef4444">${row.totalAbsent}</td><td style="color:#f59e0b">${row.totalLate}</td><td style="color:#818cf8">${row.percentage}</td></tr>`;
+        }).join('');
+      }
+
+      const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>
+        body{font-family:Arial,sans-serif;margin:0;padding:16px;background:#fff;color:#111}
+        h1{font-size:16px;margin:0 0 4px}
+        .sub{font-size:11px;color:#666;margin-bottom:12px}
+        .summary{display:flex;gap:12px;margin-bottom:14px}
+        .scard{flex:1;border-radius:8px;padding:8px 12px;text-align:center}
+        .sv{font-size:18px;font-weight:700}.sl{font-size:9px;color:#555;text-transform:uppercase;margin-top:2px}
+        table{border-collapse:collapse;width:100%;font-size:9px}
+        th{background:#1e1b4b;color:#fff;padding:5px 6px;white-space:nowrap;text-align:center}
+        td{padding:4px 6px;text-align:center;border-bottom:1px solid #e5e7eb}
+        tr:nth-child(even){background:#f9fafb}
+        .legend{display:flex;gap:16px;margin-bottom:10px;font-size:10px}
+        .ldot{width:10px;height:10px;border-radius:50%;display:inline-block;margin-right:4px}
+        footer{margin-top:16px;font-size:9px;color:#999;text-align:center}
+      </style></head><body>
+        <h1>DNP360 — Nagar Parishad Daudnagar</h1>
+        <div class="sub">Report: <strong>${rpt.label}</strong> &nbsp;|&nbsp; Generated: ${new Date(rpt.generatedAt).toLocaleString('en-IN')} &nbsp;|&nbsp; ${rpt.rows.length} houses</div>
+        <div class="summary">
+          <div class="scard" style="background:#dcfce7"><div class="sv" style="color:#16a34a">${totP}</div><div class="sl">Collected</div></div>
+          <div class="scard" style="background:#fee2e2"><div class="sv" style="color:#dc2626">${totN}</div><div class="sl">Missed</div></div>
+          <div class="scard" style="background:#fef9c3"><div class="sv" style="color:#d97706">${totL}</div><div class="sl">Late</div></div>
+          <div class="scard" style="background:#ede9fe"><div class="sv" style="color:#7c3aed">${avgPct}</div><div class="sl">Avg %</div></div>
+        </div>
+        <div class="legend">
+          <span><span class="ldot" style="background:#22c55e"></span>P = Collected</span>
+          <span><span class="ldot" style="background:#ef4444"></span>N = Not Collected</span>
+          <span><span class="ldot" style="background:#f59e0b"></span>L = Late</span>
+        </div>
+        <table><thead><tr>${colHeaders}</tr></thead><tbody>${dataRows}</tbody></table>
+        <footer>Generated by DNP360 Admin &bull; ${new Date().toLocaleString('en-IN')}</footer>
+      </body></html>`;
+
+      const { uri } = await Print.printToFileAsync({ html, base64: false });
+      const dest = FileSystem.cacheDirectory + `DNP360_${rpt.id}_${new Date().toISOString().slice(0,10)}.pdf`;
+      await FileSystem.moveAsync({ from: uri, to: dest });
+      await Sharing.shareAsync(dest, { mimeType: 'application/pdf', dialogTitle: `PDF: ${rpt.label}`, UTI: 'com.adobe.pdf' });
+    } catch (e: any) { showAlert('PDF Failed', e?.message ?? 'Unknown error', undefined, 'error'); }
+    finally { setExportingPDF(false); }
+  }
+
   const yearOptions = useMemo(() => {
     const y = now.getFullYear();
     return [y - 2, y - 1, y, y + 1];
@@ -610,7 +707,7 @@ export default function AdminReports() {
                       <Text style={[s.histCatBadgeTxt, { color: '#22D3EE' }]}>{list.length}</Text>
                     </View>
                   </View>
-                  {list.map((r, i) => <HistoryCard key={r.id} r={r} isActive={report?.id === r.id} inMemory={!!reportHistory.find(h => h.id === r.id)} onPress={() => { const m = reportHistory.find(h => h.id === r.id); if (m) { setReport(m); setShowHistory(false); } else { showAlert('Reload Required', 'Please regenerate — only current-session reports can be re-viewed.', undefined, 'info'); setShowHistory(false); } }} last={i === list.length - 1} />)}
+                  {list.map((r, i) => { const mem = reportHistory.find(h => h.id === r.id); return <HistoryCard key={r.id} r={r} isActive={report?.id === r.id} inMemory={!!mem} onPress={() => { if (mem) { setReport(mem); setShowHistory(false); } else { showAlert('Reload Required', 'Please regenerate — only current-session reports can be re-viewed.', undefined, 'info'); setShowHistory(false); } }} onExportPDF={mem ? () => { handleExportPDF(mem); } : undefined} last={i === list.length - 1} />; })}
                 </View>
               );
             })()}
@@ -634,7 +731,7 @@ export default function AdminReports() {
                       <Text style={[s.histCatBadgeTxt, { color: '#A78BFA' }]}>{manualList.length}</Text>
                     </View>
                   </View>
-                  {manualList.map((r, i) => <HistoryCard key={r.id} r={r} isActive={report?.id === r.id} inMemory={!!reportHistory.find(h => h.id === r.id)} onPress={() => { const m = reportHistory.find(h => h.id === r.id); if (m) { setReport(m); setShowHistory(false); } else { showAlert('Reload Required', 'Please regenerate — only current-session reports can be re-viewed.', undefined, 'info'); setShowHistory(false); } }} last={i === manualList.length - 1} />)}
+                  {manualList.map((r, i) => { const mem = reportHistory.find(h => h.id === r.id); return <HistoryCard key={r.id} r={r} isActive={report?.id === r.id} inMemory={!!mem} onPress={() => { if (mem) { setReport(mem); setShowHistory(false); } else { showAlert('Reload Required', 'Please regenerate — only current-session reports can be re-viewed.', undefined, 'info'); setShowHistory(false); } }} onExportPDF={mem ? () => { handleExportPDF(mem); } : undefined} last={i === manualList.length - 1} />; })}
                 </View>
               );
             })()}
@@ -661,23 +758,25 @@ export default function AdminReports() {
                 {report.rows.length} houses · Generated {new Date(report.generatedAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
               </Text>
             </View>
-            {/* Export Excel + Share */}
-            <TouchableOpacity
-              onPress={handleExport}
-              disabled={exporting}
-              activeOpacity={0.8}
-            >
-              <LinearGradient colors={['#10B981','#059669']} style={s.exportBtnWide}>
-                {exporting
-                  ? <ActivityIndicator size={13} color="#fff" />
-                  : <>
-                      <Feather name="download" size={13} color="#fff" />
-                      <Text style={s.exportBtnWideTxt}>Excel</Text>
-                      <Feather name="share-2" size={13} color="rgba(255,255,255,0.7)" />
-                    </>
-                }
-              </LinearGradient>
-            </TouchableOpacity>
+            {/* Export buttons */}
+            <View style={{ gap: 6 }}>
+              <TouchableOpacity onPress={handleExport} disabled={exporting} activeOpacity={0.8}>
+                <LinearGradient colors={['#10B981','#059669']} style={s.exportBtnWide}>
+                  {exporting ? <ActivityIndicator size={13} color="#fff" /> : <>
+                    <Feather name="download" size={13} color="#fff" />
+                    <Text style={s.exportBtnWideTxt}>Excel</Text>
+                  </>}
+                </LinearGradient>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => handleExportPDF()} disabled={exportingPDF} activeOpacity={0.8}>
+                <LinearGradient colors={['#EF4444','#DC2626']} style={s.exportBtnWide}>
+                  {exportingPDF ? <ActivityIndicator size={13} color="#fff" /> : <>
+                    <Feather name="file-text" size={13} color="#fff" />
+                    <Text style={s.exportBtnWideTxt}>PDF</Text>
+                  </>}
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
           </View>
 
           {/* Legend */}
@@ -863,8 +962,9 @@ export default function AdminReports() {
 }
 
 // ── HistoryCard sub-component ───────────────────────────────────────
-function HistoryCard({ r, isActive, inMemory, onPress, last }: {
-  r: HistoryEntry; isActive: boolean; inMemory: boolean; onPress: () => void; last: boolean;
+function HistoryCard({ r, isActive, inMemory, onPress, onExportPDF, last }: {
+  r: HistoryEntry; isActive: boolean; inMemory: boolean; onPress: () => void;
+  onExportPDF?: () => void; last: boolean;
 }) {
   const color = r.type === 'monthly' ? '#0EA5E9' : r.type === 'quarterly' ? '#818CF8' : '#34D399';
   const icon  = r.type === 'monthly' ? 'calendar' : r.type === 'quarterly' ? 'bar-chart-2' : 'trending-up';
@@ -888,6 +988,16 @@ function HistoryCard({ r, isActive, inMemory, onPress, last }: {
         </View>
       </View>
       <View style={{ alignItems: 'flex-end', gap: 6 }}>
+        {inMemory && onExportPDF && (
+          <TouchableOpacity
+            onPress={e => { e.stopPropagation?.(); onExportPDF(); }}
+            style={{ backgroundColor: '#EF444420', borderRadius: 6, paddingHorizontal: 7, paddingVertical: 3, flexDirection: 'row', alignItems: 'center', gap: 3 }}
+            activeOpacity={0.7}
+          >
+            <Feather name="file-text" size={9} color="#EF4444" />
+            <Text style={{ color: '#EF4444', fontSize: 9, fontFamily: 'Inter_700Bold' }}>PDF</Text>
+          </TouchableOpacity>
+        )}
         {inMemory && (
           <View style={{ backgroundColor: color + '20', borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 }}>
             <Text style={{ color, fontSize: 9, fontFamily: 'Inter_700Bold' }}>VIEW</Text>
