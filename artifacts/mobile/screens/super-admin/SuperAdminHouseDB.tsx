@@ -17,12 +17,12 @@ import { PROPERTY_TYPES } from '@/types';
 import SuperAdminImport from './SuperAdminImport';
 
 // ─── Glass Design Tokens ──────────────────────────────────────────────
-const BG        = '#060B18';
+const BG        = '#04081A';
 const GLASS     = 'rgba(255,255,255,0.07)';
 const GLASS_HI  = 'rgba(255,255,255,0.12)';
 const GLASS_BD  = 'rgba(255,255,255,0.13)';
 const TEXT      = '#F0F4FF';
-const MUTED     = 'rgba(255,255,255,0.45)';
+const MUTED     = '#64748B';
 const MUTED2    = 'rgba(255,255,255,0.25)';
 
 type View_ = 'wards' | 'groups' | 'houses';
@@ -503,6 +503,9 @@ export default function SuperAdminHouseDB() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: BG }} edges={['top']}>
+      <LinearGradient colors={['#04081A', '#080F28', '#0C1538']} style={StyleSheet.absoluteFill as any} />
+      <View style={{ position: 'absolute', top: -80, right: -60, width: 250, height: 250, borderRadius: 125, backgroundColor: 'rgba(79,70,229,0.12)' }} pointerEvents="none" />
+      <View style={{ position: 'absolute', bottom: 120, left: -80, width: 220, height: 220, borderRadius: 110, backgroundColor: 'rgba(16,185,129,0.07)' }} pointerEvents="none" />
 
       {/* ── Header ─────────────────────────────────────────────────── */}
       {view === 'wards' && (
@@ -1697,8 +1700,8 @@ export default function SuperAdminHouseDB() {
           const attendancePct = userAttendance.length > 0 ? Math.round((presentDays / userAttendance.length) * 100) : null;
           const houseCount = houses.filter(h => h.wardId === u.wardId).length;
           return (
-            <SafeAreaView style={{ flex: 1, backgroundColor: '#060B18' }} edges={['top']}>
-              <LinearGradient colors={[gradColors[0] + '22', '#060B18']} style={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 24 }}>
+            <SafeAreaView style={{ flex: 1, backgroundColor: '#04081A' }} edges={['top']}>
+              <LinearGradient colors={[gradColors[0] + '22', '#04081A']} style={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 24 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
                   <Text style={{ color: TEXT, fontSize: 17, fontFamily: 'Inter_700Bold' }}>User Profile</Text>
                   <TouchableOpacity onPress={() => setSelectedSearchUser(null)} style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.08)', alignItems: 'center', justifyContent: 'center' }}>
@@ -1800,7 +1803,7 @@ const s = StyleSheet.create({
   statLbl: { color: 'rgba(255,255,255,0.7)', fontSize: 10, fontFamily: 'Inter_500Medium' },
 
   // Info bar (always visible at top of DB segment)
-  infoBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: 'rgba(15,20,50,0.95)', borderBottomWidth: 1, borderBottomColor: 'rgba(99,102,241,0.18)', paddingHorizontal: 14, paddingVertical: 10 },
+  infoBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: 'rgba(255,255,255,0.035)', borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.08)', borderBottomWidth: 1, borderBottomColor: 'rgba(0,0,0,0.28)', paddingHorizontal: 14, paddingVertical: 10 },
   infoBarStat: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   infoBarIcon: { width: 30, height: 30, borderRadius: 9, justifyContent: 'center', alignItems: 'center' },
   infoBarNum: { fontSize: 14, fontFamily: 'Inter_700Bold', color: '#818CF8' },
@@ -1811,8 +1814,8 @@ const s = StyleSheet.create({
   infoBarSyncTxt: { fontSize: 10, fontFamily: 'Inter_600SemiBold' },
 
   // Segment bar
-  segBar: { flexDirection: 'row', backgroundColor: 'rgba(255,255,255,0.04)', borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.08)', paddingHorizontal: 8 },
-  segBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 12, paddingHorizontal: 10, borderRadius: 10, margin: 6, borderWidth: 1, borderColor: 'transparent', position: 'relative' },
+  segBar: { flexDirection: 'row', backgroundColor: 'rgba(255,255,255,0.03)', borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.08)', borderBottomWidth: 1, borderBottomColor: 'rgba(0,0,0,0.28)', paddingHorizontal: 8 },
+  segBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 12, paddingHorizontal: 10, borderRadius: 10, margin: 6, borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)', position: 'relative' },
   segLabel: { fontSize: 13 },
   segUnderline: { position: 'absolute', bottom: -7, left: 16, right: 16, height: 2, borderRadius: 1 },
 
@@ -1842,7 +1845,7 @@ const s = StyleSheet.create({
   searchResultLeft: { flex: 1, gap: 2 },
 
   // Ward cards
-  wardCard: { borderRadius: 13, borderWidth: 1, borderColor: 'rgba(255,255,255,0.10)', overflow: 'hidden', flexDirection: 'row', alignItems: 'center' },
+  wardCard: { borderRadius: 13, borderWidth: 1, borderTopColor: 'rgba(255,255,255,0.18)', borderLeftColor: 'rgba(255,255,255,0.08)', borderRightColor: 'rgba(255,255,255,0.04)', borderBottomColor: 'rgba(0,0,0,0.3)', overflow: 'hidden', flexDirection: 'row', alignItems: 'center' },
   wardAccentBar: { width: 4, alignSelf: 'stretch' },
   wardRow: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8, paddingLeft: 10, paddingVertical: 11, paddingRight: 4 },
   wardBadge: { width: 32, height: 32, borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
@@ -1858,7 +1861,7 @@ const s = StyleSheet.create({
 
   // Group views
   allHousesCard: { borderRadius: 16, borderWidth: 1, borderColor: '#6366F135', overflow: 'hidden', flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 14, paddingVertical: 14 },
-  groupCard: { borderRadius: 16, borderWidth: 1, overflow: 'hidden', flexDirection: 'row', alignItems: 'center' },
+  groupCard: { borderRadius: 16, borderWidth: 1, borderTopColor: 'rgba(255,255,255,0.18)', borderLeftColor: 'rgba(255,255,255,0.08)', borderRightColor: 'rgba(255,255,255,0.04)', borderBottomColor: 'rgba(0,0,0,0.3)', overflow: 'hidden', flexDirection: 'row', alignItems: 'center' },
   groupAccentBar: { width: 4, alignSelf: 'stretch' },
   groupCardMain: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12, paddingLeft: 12, paddingVertical: 14, paddingRight: 6 },
   groupIconBox: { width: 40, height: 40, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
@@ -1889,7 +1892,7 @@ const s = StyleSheet.create({
   selBarCount: { fontSize: 13, fontFamily: 'Inter_700Bold' },
   selAction: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 10, borderWidth: 1 },
   selActionText: { fontSize: 12, fontFamily: 'Inter_600SemiBold' },
-  houseCard: { borderRadius: 16, borderWidth: 1, borderColor: GLASS_BD, overflow: 'hidden', flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 14, paddingVertical: 14, backgroundColor: GLASS },
+  houseCard: { borderRadius: 16, borderWidth: 1, borderTopColor: 'rgba(255,255,255,0.15)', borderLeftColor: 'rgba(255,255,255,0.08)', borderRightColor: 'rgba(255,255,255,0.04)', borderBottomColor: 'rgba(0,0,0,0.28)', overflow: 'hidden', flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 14, paddingVertical: 14, backgroundColor: GLASS },
   houseCardLeft: { },
   houseNumBox: { width: 28, height: 28, borderRadius: 9, backgroundColor: 'rgba(99,102,241,0.15)', justifyContent: 'center', alignItems: 'center' },
   houseNumText: { fontSize: 11, fontFamily: 'Inter_700Bold', color: '#818CF8' },
@@ -1992,14 +1995,14 @@ const s = StyleSheet.create({
   exportCountText: { fontSize: 12, fontFamily: 'Inter_600SemiBold' },
 
   // ── WhatsApp Community Style ─────────────────────────────────────────
-  waHdr:           { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingTop: 14, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.07)' },
-  waSubHdr:        { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingTop: 14, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.07)' },
+  waHdr:           { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingTop: 14, paddingBottom: 12, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.07)', borderBottomWidth: 1, borderBottomColor: 'rgba(0,0,0,0.28)', backgroundColor: 'rgba(255,255,255,0.025)' },
+  waSubHdr:        { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingTop: 14, paddingBottom: 12, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.07)', borderBottomWidth: 1, borderBottomColor: 'rgba(0,0,0,0.28)', backgroundColor: 'rgba(255,255,255,0.025)' },
   waHdrTitle:      { color: '#F0F4FF', fontSize: 19, fontFamily: 'Inter_700Bold' },
-  waHdrSub:        { color: 'rgba(255,255,255,0.42)', fontSize: 11, fontFamily: 'Inter_400Regular' },
-  waHdrBtn:        { width: 38, height: 38, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.06)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)', justifyContent: 'center', alignItems: 'center' },
-  waBackCircle:    { width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(99,102,241,0.18)', justifyContent: 'center', alignItems: 'center' },
+  waHdrSub:        { color: '#64748B', fontSize: 11, fontFamily: 'Inter_400Regular' },
+  waHdrBtn:        { width: 38, height: 38, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.07)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.13)', justifyContent: 'center', alignItems: 'center' },
+  waBackCircle:    { width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(99,102,241,0.20)', borderWidth: 1, borderColor: 'rgba(99,102,241,0.35)', justifyContent: 'center', alignItems: 'center' },
   waSyncDot:       { width: 7, height: 7, borderRadius: 4 },
-  waSearchWrap:    { flexDirection: 'row', alignItems: 'center', gap: 8, marginHorizontal: 14, marginVertical: 9, backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 9, borderWidth: 1, borderColor: 'rgba(255,255,255,0.10)' },
+  waSearchWrap:    { flexDirection: 'row', alignItems: 'center', gap: 8, marginHorizontal: 14, marginVertical: 9, backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 9, borderWidth: 1, borderColor: 'rgba(255,255,255,0.10)', borderTopColor: 'rgba(255,255,255,0.10)', borderBottomColor: 'rgba(0,0,0,0.2)' },
   waSearchIn:      { flex: 1, fontSize: 13, fontFamily: 'Inter_400Regular', padding: 0 },
   waSecHdr:        { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 7 },
   waSecTxt:        { fontSize: 10, fontFamily: 'Inter_700Bold', color: '#818CF8', letterSpacing: 0.8, textTransform: 'uppercase' },

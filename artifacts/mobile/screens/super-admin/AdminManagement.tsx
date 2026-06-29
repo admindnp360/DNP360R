@@ -16,12 +16,12 @@ import AdminReports from './AdminReports';
 import SuperAdminImport from './SuperAdminImport';
 
 // ── Design tokens ────────────────────────────────────────────────────
-const BG       = '#060B18';
+const BG       = '#04081A';
 const GLASS    = 'rgba(255,255,255,0.06)';
 const GLASS_HI = 'rgba(255,255,255,0.10)';
-const GLASS_BD = 'rgba(255,255,255,0.10)';
+const GLASS_BD = 'rgba(255,255,255,0.12)';
 const TEXT     = '#F0F4FF';
-const MUTED    = 'rgba(255,255,255,0.42)';
+const MUTED    = '#64748B';
 
 // Role colour system
 const SK_GRAD: readonly [string, string]  = ['#10B981', '#059669'];
@@ -269,6 +269,9 @@ export default function AdminManagement() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: BG }} edges={['top']}>
+      <LinearGradient colors={['#04081A', '#080F28', '#0C1538']} style={StyleSheet.absoluteFill as any} />
+      <View style={{ position: 'absolute', top: -80, right: -60, width: 250, height: 250, borderRadius: 125, backgroundColor: 'rgba(124,58,237,0.13)' }} pointerEvents="none" />
+      <View style={{ position: 'absolute', bottom: 100, left: -70, width: 220, height: 220, borderRadius: 110, backgroundColor: 'rgba(16,185,129,0.07)' }} pointerEvents="none" />
 
       {/* ── TAB BAR ── */}
       <View style={s.tabBar}>
@@ -878,11 +881,11 @@ const s = StyleSheet.create({
   headerSub:   { color: MUTED, fontSize: 12, fontFamily: 'Inter_400Regular', marginTop: 4, zIndex: 1 },
 
   // tab bar
-  tabBar:      { flexDirection: 'row', gap: 8, paddingHorizontal: 16, paddingVertical: 10, backgroundColor: BG, borderBottomWidth: 1, borderBottomColor: GLASS_BD },
-  tabPill:     { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 9, borderRadius: 14, borderWidth: 1, borderColor: 'transparent' },
+  tabBar:      { flexDirection: 'row', gap: 6, paddingHorizontal: 14, paddingVertical: 10, backgroundColor: 'rgba(255,255,255,0.03)', borderBottomWidth: 1, borderTopColor: 'rgba(255,255,255,0.08)', borderBottomColor: 'rgba(0,0,0,0.28)' },
+  tabPill:     { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, paddingVertical: 9, borderRadius: 13, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', backgroundColor: 'rgba(255,255,255,0.04)' },
   tabBadge:    { position: 'absolute', top: -5, right: -8, width: 16, height: 16, borderRadius: 8, backgroundColor: '#EF4444', justifyContent: 'center', alignItems: 'center' },
   tabBadgeTxt: { color: '#fff', fontSize: 9, fontFamily: 'Inter_700Bold' },
-  tabLabel:    { fontSize: 12 },
+  tabLabel:    { fontSize: 11 },
 
   // ── GEN KEY TAB ──────────────────────────────────────────────
   // stats row
@@ -964,7 +967,7 @@ const s = StyleSheet.create({
   ntLiveTxt:      { color: '#34D399', fontSize: 9, fontFamily: 'Inter_700Bold' },
 
   // ── notice detail bottom sheet ──────────────────────────────────
-  ntDetailSheet:  { backgroundColor: '#0C1428', borderTopLeftRadius: 28, borderTopRightRadius: 28, paddingHorizontal: 20, paddingBottom: 32, paddingTop: 10, gap: 14 },
+  ntDetailSheet:  { backgroundColor: '#080F28', borderTopLeftRadius: 28, borderTopRightRadius: 28, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.14)', paddingHorizontal: 20, paddingBottom: 32, paddingTop: 10, gap: 14 },
   ntDetailHandle: { width: 36, height: 4, borderRadius: 2, backgroundColor: GLASS_BD, alignSelf: 'center', marginBottom: 6 },
   ntDetailHero:   { flexDirection: 'row', alignItems: 'flex-start', gap: 14, paddingBottom: 4 },
   ntDetailHeroIcon:{ width: 50, height: 50, borderRadius: 14, borderWidth: 1, justifyContent: 'center', alignItems: 'center' },

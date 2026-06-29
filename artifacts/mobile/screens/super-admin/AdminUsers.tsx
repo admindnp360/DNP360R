@@ -15,11 +15,11 @@ import { useAuth } from '@/contexts/AuthContext';
 import type { User } from '@/types';
 
 /* ─── design tokens ──────────────────────────────────────────── */
-const BG       = '#060B18';
+const BG       = '#04081A';
 const GLASS    = 'rgba(255,255,255,0.055)';
-const GLASS_BD = 'rgba(255,255,255,0.10)';
+const GLASS_BD = 'rgba(255,255,255,0.12)';
 const TEXT     = '#F0F4FF';
-const MUTED    = 'rgba(240,244,255,0.42)';
+const MUTED    = '#64748B';
 
 /* ─── constants ──────────────────────────────────────────────── */
 type RoleTab = 'all' | 'safaikarmi' | 'official' | 'citizen';
@@ -294,6 +294,9 @@ export default function AdminUsers() {
   /* ── render ──────────────────────────────────────────── */
   return (
     <SafeAreaView style={s.root} edges={['top']}>
+      <LinearGradient colors={['#04081A', '#080F28', '#0C1538']} style={StyleSheet.absoluteFill as any} />
+      <View style={{ position: 'absolute', top: -90, right: -70, width: 260, height: 260, borderRadius: 130, backgroundColor: 'rgba(99,102,241,0.12)' }} pointerEvents="none" />
+      <View style={{ position: 'absolute', bottom: 120, left: -80, width: 220, height: 220, borderRadius: 110, backgroundColor: 'rgba(16,185,129,0.07)' }} pointerEvents="none" />
 
       {/* ── Compact sticky info bar ── */}
       <View style={s.infoBar}>
@@ -1023,7 +1026,7 @@ const ef = StyleSheet.create({
 /* ── main styles ──────────────────────────────────────────────── */
 const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: BG },
-  list: { flex: 1, backgroundColor: BG },
+  list: { flex: 1 },
 
   /* info bar */
   infoBar: {
@@ -1054,11 +1057,13 @@ const s = StyleSheet.create({
   clearAllText:   { fontSize: 8, fontFamily: 'Inter_600SemiBold' },
 
   /* tabs — 30% compact */
-  tabRow:  { flexDirection: 'row', gap: 4, paddingHorizontal: 9, paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: GLASS_BD, backgroundColor: 'rgba(255,255,255,0.02)' },
+  tabRow:  { flexDirection: 'row', gap: 4, paddingHorizontal: 9, paddingVertical: 7, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.08)', borderBottomWidth: 1, borderBottomColor: 'rgba(0,0,0,0.3)', backgroundColor: 'rgba(255,255,255,0.03)' },
   tabItem: { flex: 1 },
   tabPillActive: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
     gap: 3, borderRadius: 99, paddingVertical: 5, paddingHorizontal: 3,
+    borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.20)',
+    borderBottomWidth: 1, borderBottomColor: 'rgba(0,0,0,0.28)',
   },
   tabLabelActive:  { color: '#fff', fontSize: 8, fontFamily: 'Inter_700Bold' },
   tabCountBubble:  { backgroundColor: 'rgba(255,255,255,0.28)', borderRadius: 99, paddingHorizontal: 3, paddingVertical: 1 },
@@ -1066,13 +1071,13 @@ const s = StyleSheet.create({
   tabPillInactive: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
     gap: 3, borderRadius: 99, paddingVertical: 5, paddingHorizontal: 3,
-    borderWidth: 1, borderColor: GLASS_BD, backgroundColor: GLASS,
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', backgroundColor: 'rgba(255,255,255,0.04)',
   },
   tabLabelInactive: { fontSize: 8, fontFamily: 'Inter_500Medium', color: MUTED },
   tabCountInactive: { fontSize: 7, fontFamily: 'Inter_600SemiBold', color: MUTED },
 
   /* table */
-  tableHead: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 7, borderBottomWidth: 1, borderBottomColor: GLASS_BD, backgroundColor: 'rgba(99,102,241,0.08)' },
+  tableHead: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 7, borderTopWidth: 1, borderTopColor: 'rgba(99,102,241,0.15)', borderBottomWidth: 1, borderBottomColor: 'rgba(0,0,0,0.25)', backgroundColor: 'rgba(99,102,241,0.07)' },
   thNo:   { width: 30, fontSize: 9, fontFamily: 'Inter_700Bold', color: '#818CF8', textTransform: 'uppercase', letterSpacing: 0.4 },
   thName: { flex: 1,   fontSize: 9, fontFamily: 'Inter_700Bold', color: '#818CF8', textTransform: 'uppercase', letterSpacing: 0.4 },
   thRole: { width: 46, fontSize: 9, fontFamily: 'Inter_700Bold', color: '#818CF8', textTransform: 'uppercase', letterSpacing: 0.4, marginRight: 4, textAlign: 'center' },
@@ -1100,7 +1105,7 @@ const s = StyleSheet.create({
   rowActionBtn:{ width: 26, height: 26, borderRadius: 8, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(129,140,248,0.12)', borderWidth: 1, borderColor: 'rgba(129,140,248,0.25)' },
 
   /* empty */
-  emptyWrap:  { margin: 24, borderRadius: 18, borderWidth: 1, borderColor: GLASS_BD, padding: 36, alignItems: 'center', gap: 12, backgroundColor: GLASS },
+  emptyWrap:  { margin: 24, borderRadius: 18, borderWidth: 1, borderTopColor: 'rgba(255,255,255,0.16)', borderLeftColor: 'rgba(255,255,255,0.08)', borderRightColor: 'rgba(255,255,255,0.04)', borderBottomColor: 'rgba(0,0,0,0.3)', padding: 36, alignItems: 'center', gap: 12, backgroundColor: GLASS },
   emptyIcon:  { width: 52, height: 52, borderRadius: 16, justifyContent: 'center', alignItems: 'center' },
   emptyTitle: { fontSize: 15, fontFamily: 'Inter_700Bold', color: TEXT },
   emptyHint:  { fontSize: 12, fontFamily: 'Inter_400Regular', color: MUTED },
