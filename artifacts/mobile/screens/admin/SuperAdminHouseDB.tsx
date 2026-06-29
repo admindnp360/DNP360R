@@ -11,7 +11,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAlert } from '@/contexts/AlertContext';
 import { useAppData } from '@/contexts/AppContext';
 import { useAuth } from '@/contexts/AuthContext';
-import type { Group, House, Ward } from '@/types';
+import type { Group, House, User, Ward } from '@/types';
 import { PROPERTY_TYPES } from '@/types';
 import SuperAdminImport from './SuperAdminImport';
 
@@ -39,7 +39,7 @@ const GROUP_COLORS = ['#10B981','#0EA5E9','#F97316','#8B5CF6','#EC4899','#EF4444
 
 export default function SuperAdminHouseDB() {
   const {
-    houses, wards, groups, users,
+    houses, wards, groups, users, complaints, attendance,
     addHouse, updateHouse, deleteHouse,
     addGroup, updateGroup, deleteGroup,
     addWard, updateWard, deleteWard,
@@ -56,6 +56,9 @@ export default function SuperAdminHouseDB() {
   const [expandedHouseId, setExpandedHouseId] = useState<string | null>(null);
   const [search, setSearch]               = useState('');
   const [globalSearch, setGlobalSearch]   = useState('');
+
+  // ── User profile modal ────────────────────────────────────────────
+  const [selectedSearchUser, setSelectedSearchUser] = useState<User | null>(null);
 
   // ── Modal state ────────────────────────────────────────────────────
   const [showAddHouseModal, setShowAddHouseModal]   = useState(false);
@@ -198,8 +201,7 @@ export default function SuperAdminHouseDB() {
       u.name.toLowerCase().includes(q) ||
       u.email.toLowerCase().includes(q) ||
       (u.mobile || '').includes(q) ||
-      u.id.toLowerCase().includes(q) ||
-      (u.employeeId || '').toLowerCase().includes(q)
+      u.id.toLowerCase().includes(q)
     );
     const wardRes = wards.filter(w =>
       w.name.toLowerCase().includes(q) ||
@@ -692,7 +694,7 @@ export default function SuperAdminHouseDB() {
                       const roleColors: Record<string, string> = { citizen: '#22D3EE', safaikarmi: '#34D399', official: '#FCD34D', admin: '#C084FC' };
                       const rc = roleColors[u.role] ?? '#818CF8';
                       return (
-                        <View key={u.id} style={s.waListRow}>
+                        <TouchableOpacity key={u.id} style={s.waListRow} onPress={() => setSelectedSearchUser(u)} activeOpacity={0.7}>
                           <View style={[s.waListAvatar, { backgroundColor: rc + '22', justifyContent: 'center', alignItems: 'center' }]}>
                             <Text style={{ color: rc, fontSize: 13, fontFamily: 'Inter_700Bold' }}>{u.name[0]?.toUpperCase()}</Text>
                           </View>
@@ -703,7 +705,8 @@ export default function SuperAdminHouseDB() {
                           <View style={{ backgroundColor: rc + '18', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 }}>
                             <Text style={{ color: rc, fontSize: 9, fontFamily: 'Inter_700Bold' }}>{u.role.toUpperCase()}</Text>
                           </View>
-                        </View>
+                          <Feather name="chevron-right" size={13} color={MUTED2} />
+                        </TouchableOpacity>
                       );
                     })}
                   </View>
@@ -1670,6 +1673,101 @@ export default function SuperAdminHouseDB() {
             </View>
           </View>
         </View>
+      </Modal>
+
+      {/* ── User Profile Modal ─────────────────────────────────────── */}
+      <Modal visible={!!selectedSearchUser} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setSelectedSearchUser(null)}>
+        {selectedSearchUser && (() => {
+          const u = selectedSearchUser;
+          const roleColors: Record<string, string> = { citizen: '#22D3EE', safaikarmi: '#34D399', official: '#FCD34D', admin: '#C084FC' };
+          const rc = roleColors[u.role] ?? '#818CF8';
+          const gradColors: [string,string] = u.role === 'citizen' ? ['#0EA5E9','#0284C7'] : u.role === 'safaikarmi' ? ['#10B981','#059669'] : u.role === 'official' ? ['#F59E0B','#D97706'] : ['#7C3AED','#4F46E5'];
+          const ward = wards.find(w => w.id === u.wardId);
+          const userComplaints = complaints.filter(c => c.citizenId === u.id || c.assignedTo === u.id);
+          const userAttendance = attendance.filter(a => a.workerId === u.id);
+          const presentDays = userAttendance.filter(a => a.status === 'present' || a.status === 'half_day').length;
+          const attendancePct = userAttendance.length > 0 ? Math.round((presentDays / userAttendance.length) * 100) : null;
+          const houseCount = houses.filter(h => h.wardId === u.wardId).length;
+          return (
+            <SafeAreaView style={{ flex: 1, backgroundColor: '#060B18' }} edges={['top']}>
+              <LinearGradient colors={[gradColors[0] + '22', '#060B18']} style={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 24 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+                  <Text style={{ color: TEXT, fontSize: 17, fontFamily: 'Inter_700Bold' }}>User Profile</Text>
+                  <TouchableOpacity onPress={() => setSelectedSearchUser(null)} style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.08)', alignItems: 'center', justifyContent: 'center' }}>
+                    <Feather name="x" size={18} color={MUTED} />
+                  </TouchableOpacity>
+                </View>
+                <View style={{ alignItems: 'center', gap: 10 }}>
+                  <LinearGradient colors={gradColors} style={{ width: 72, height: 72, borderRadius: 36, alignItems: 'center', justifyContent: 'center' }}>
+                    <Text style={{ color: '#fff', fontSize: 28, fontFamily: 'Inter_700Bold' }}>{u.name[0].toUpperCase()}</Text>
+                  </LinearGradient>
+                  <Text style={{ color: TEXT, fontSize: 20, fontFamily: 'Inter_700Bold' }}>{u.name}</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    <View style={{ backgroundColor: rc + '18', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 99, borderWidth: 1, borderColor: rc + '40' }}>
+                      <Text style={{ color: rc, fontSize: 11, fontFamily: 'Inter_700Bold' }}>{u.role.toUpperCase()}</Text>
+                    </View>
+                    <View style={{ backgroundColor: u.isActive ? 'rgba(52,211,153,0.12)' : 'rgba(239,68,68,0.12)', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 99 }}>
+                      <Text style={{ color: u.isActive ? '#34D399' : '#EF4444', fontSize: 11, fontFamily: 'Inter_700Bold' }}>{u.isActive ? 'Active' : 'Frozen'}</Text>
+                    </View>
+                  </View>
+                </View>
+              </LinearGradient>
+              <ScrollView contentContainerStyle={{ padding: 16, gap: 12, paddingBottom: 60 }} showsVerticalScrollIndicator={false}>
+
+                {/* Stats row */}
+                <View style={{ flexDirection: 'row', gap: 10 }}>
+                  {[
+                    { label: 'Complaints', value: userComplaints.length, color: '#F97316', icon: 'alert-circle' },
+                    { label: 'Attendance', value: attendancePct != null ? `${attendancePct}%` : '—', color: '#34D399', icon: 'check-square' },
+                    { label: 'Ward Houses', value: ward ? houseCount : '—', color: '#818CF8', icon: 'home' },
+                  ].map(st => (
+                    <View key={st.label} style={{ flex: 1, backgroundColor: st.color + '10', borderRadius: 14, borderWidth: 1, borderColor: st.color + '30', padding: 12, alignItems: 'center', gap: 4 }}>
+                      <Feather name={st.icon as any} size={16} color={st.color} />
+                      <Text style={{ color: st.color, fontSize: 16, fontFamily: 'Inter_700Bold' }}>{String(st.value)}</Text>
+                      <Text style={{ color: MUTED, fontSize: 9, fontFamily: 'Inter_400Regular' }}>{st.label}</Text>
+                    </View>
+                  ))}
+                </View>
+
+                {/* Account details */}
+                <View style={{ backgroundColor: GLASS, borderRadius: 16, borderWidth: 1, borderColor: GLASS_BD, overflow: 'hidden' }}>
+                  {[
+                    { icon: 'hash', label: 'User ID', value: u.id },
+                    { icon: 'mail', label: 'Email', value: u.email },
+                    u.mobile ? { icon: 'phone', label: 'Mobile', value: u.mobile } : null,
+                    ward ? { icon: 'map-pin', label: 'Assigned Ward', value: `Ward ${ward.wardNumber} — ${ward.name}` } : null,
+                    u.address ? { icon: 'home', label: 'Address', value: u.address } : null,
+                    { icon: 'calendar', label: 'Joined', value: u.createdAt ?? '—' },
+                  ].filter(Boolean).map((row, i, arr) => (
+                    <View key={row!.label} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, padding: 13, borderBottomWidth: i < arr.length - 1 ? 1 : 0, borderBottomColor: GLASS_BD }}>
+                      <View style={{ width: 32, height: 32, borderRadius: 10, backgroundColor: rc + '14', alignItems: 'center', justifyContent: 'center' }}>
+                        <Feather name={row!.icon as any} size={13} color={rc} />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ color: MUTED, fontSize: 10, fontFamily: 'Inter_600SemiBold', marginBottom: 1 }}>{row!.label}</Text>
+                        <Text style={{ color: TEXT, fontSize: 13, fontFamily: 'Inter_500Medium' }} numberOfLines={2}>{row!.value}</Text>
+                      </View>
+                    </View>
+                  ))}
+                </View>
+
+                {/* Recent complaints */}
+                {userComplaints.length > 0 && (
+                  <View>
+                    <Text style={{ color: MUTED, fontSize: 10, fontFamily: 'Inter_700Bold', textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 8 }}>Recent Complaints</Text>
+                    {userComplaints.slice(0, 4).map(c => (
+                      <View key={c.id} style={{ flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: GLASS, borderRadius: 12, borderWidth: 1, borderColor: GLASS_BD, padding: 11, marginBottom: 6 }}>
+                        <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: c.status === 'resolved' ? '#34D399' : c.status === 'in_progress' ? '#FBBF24' : '#F97316' }} />
+                        <Text style={{ flex: 1, color: TEXT, fontSize: 12, fontFamily: 'Inter_500Medium' }} numberOfLines={1}>{c.category} — {c.description.slice(0, 40)}</Text>
+                        <Text style={{ color: MUTED, fontSize: 10, fontFamily: 'Inter_400Regular' }}>{c.status}</Text>
+                      </View>
+                    ))}
+                  </View>
+                )}
+              </ScrollView>
+            </SafeAreaView>
+          );
+        })()}
       </Modal>
 
     </SafeAreaView>

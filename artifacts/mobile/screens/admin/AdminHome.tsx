@@ -85,7 +85,6 @@ export default function AdminHome() {
                 <Text style={s.roleBadgeText}>System Administrator</Text>
               </View>
               <Text style={s.heroName}>{user?.name ?? 'Admin'}</Text>
-              <Text style={s.heroEmp}>{user?.employeeId ?? ''}</Text>
             </View>
             <View style={{ alignItems: 'flex-end', gap: 10 }}>
               <View style={s.avatarRing}>

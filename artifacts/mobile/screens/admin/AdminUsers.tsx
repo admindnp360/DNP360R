@@ -86,7 +86,6 @@ export default function AdminUsers() {
   const [editEmail, setEditEmail]     = useState('');
   const [editMobile, setEditMobile]   = useState('');
   const [editAddress, setEditAddress] = useState('');
-  const [editEmpId, setEditEmpId]     = useState('');
   const [editUserId, setEditUserId]   = useState('');
   const [editAvatar, setEditAvatar]   = useState('');
   const [saving, setSaving]           = useState(false);
@@ -118,7 +117,7 @@ export default function AdminUsers() {
     .filter(u => {
       if (!search.trim()) return true;
       const q = search.toLowerCase();
-      return u.name.toLowerCase().includes(q) || u.id.toLowerCase().includes(q) || (u.employeeId ?? '').toLowerCase().includes(q);
+      return u.name.toLowerCase().includes(q) || u.id.toLowerCase().includes(q);
     })
     .filter(u => {
       if (statusFilter === 'active') return u.isActive === true;
@@ -139,7 +138,6 @@ export default function AdminUsers() {
     setEditEmail(u.email);
     setEditMobile(u.mobile ?? '');
     setEditAddress(u.address ?? '');
-    setEditEmpId(u.employeeId ?? '');
     setEditUserId(u.id);
     setEditAvatar(u.avatar ?? '');
     setEditMode(false);
@@ -178,12 +176,12 @@ export default function AdminUsers() {
       await updateUserFull(profileUser.id, effectiveId, {
         name: editName.trim(), email: editEmail.trim(),
         mobile: editMobile.trim() || undefined, address: editAddress.trim() || undefined,
-        employeeId: editEmpId.trim() || undefined, avatar: editAvatar || undefined,
+        avatar: editAvatar || undefined,
       });
       setProfileUser(prev => prev ? {
         ...prev, id: effectiveId, name: editName.trim(), email: editEmail.trim(),
         mobile: editMobile.trim() || undefined, address: editAddress.trim() || undefined,
-        employeeId: editEmpId.trim() || undefined, avatar: editAvatar || undefined,
+        avatar: editAvatar || undefined,
       } : prev);
       setEditMode(false);
       showAlert('Saved', 'Profile updated successfully.', undefined, 'success');
@@ -762,9 +760,6 @@ export default function AdminUsers() {
                       <EditField label="Email Address" icon="mail" value={editEmail} onChange={setEditEmail} caps="none" keyboard="email-address" accentColor={grad[0]} />
                       <EditField label="Mobile Number" icon="phone" value={editMobile} onChange={setEditMobile} caps="none" keyboard="phone-pad" accentColor={grad[0]} />
                       <EditField label="Address" icon="map-pin" value={editAddress} onChange={setEditAddress} caps="sentences" accentColor={grad[0]} multiline />
-                      {profileUser.role !== 'citizen' && (
-                        <EditField label="Employee ID" icon="briefcase" value={editEmpId} onChange={setEditEmpId} caps="characters" accentColor={grad[0]} />
-                      )}
 
                       {isSuperAdmin && (
                         <>
@@ -837,7 +832,6 @@ export default function AdminUsers() {
                     <>
                       <SectionHeading icon="info" label="Account Details" color={grad[0]} />
                       <InfoRow icon="hash"      label="User ID"     value={profileUser.id}             accentColor={grad[0]} mono copyable />
-                      {profileUser.employeeId && <InfoRow icon="briefcase" label="Employee ID" value={profileUser.employeeId} accentColor={grad[0]} mono />}
                       <InfoRow icon="mail"      label="Email"        value={profileUser.email}           accentColor={grad[0]} />
                       {profileUser.mobile  && <InfoRow icon="phone"   label="Mobile"       value={profileUser.mobile}   accentColor={grad[0]} />}
                       {profileUser.address && <InfoRow icon="map-pin" label="Address"      value={profileUser.address}  accentColor={grad[0]} />}

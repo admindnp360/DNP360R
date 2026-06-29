@@ -330,7 +330,7 @@ export default function AdminReports() {
       const entry: HistoryEntry = {
         id: rpt.id, type: rpt.type, label: rpt.label, year: rpt.year,
         month: rpt.month ?? undefined, quarter: rpt.quarter ?? undefined,
-        wardId: rpt.wardId, wardNumber: rpt.wardNumber,
+        wardId: rpt.wardId, wardNumber: rpt.wardNumber ? Number(rpt.wardNumber) : null,
         generatedAt: rpt.generatedAt, rowCount: rpt.rows.length,
       };
       setHistoryMeta(prev => [entry, ...prev.filter(h => h.id !== entry.id)].slice(0, 30));

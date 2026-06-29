@@ -16,7 +16,7 @@ export default function OfficialWorkers() {
   const [search, setSearch] = useState('');
 
   const workers = users.filter(u => u.role === 'safaikarmi' && (
-    !search || u.name.toLowerCase().includes(search.toLowerCase()) || (u.employeeId ?? '').toLowerCase().includes(search.toLowerCase())
+    !search || u.name.toLowerCase().includes(search.toLowerCase()) || u.id.toLowerCase().includes(search.toLowerCase())
   ));
 
   const activeWorkers = workers.filter(w => w.isActive).length;
@@ -70,7 +70,7 @@ export default function OfficialWorkers() {
                   </LinearGradient>
                   <View style={{ flex: 1 }}>
                     <Text style={[styles.name, { color: colors.text }]}>{w.name}</Text>
-                    <Text style={[styles.empId, { color: colors.mutedForeground }]}>{w.employeeId ?? 'N/A'}</Text>
+                    <Text style={[styles.empId, { color: colors.mutedForeground }]}>{w.id}</Text>
                   </View>
                   <View style={[styles.statusBadge, { backgroundColor: markedToday ? '#D1FAE5' : '#FEE2E2' }]}>
                     <Feather name={markedToday ? 'check-circle' : 'clock'} size={11} color={markedToday ? '#059669' : '#DC2626'} />

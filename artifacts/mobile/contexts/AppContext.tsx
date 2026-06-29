@@ -77,7 +77,7 @@ interface AppContextType {
   updateUserFull: (oldId: string, newId: string, updates: Partial<User>) => Promise<void>;
   updateSupportDetails: (updates: Partial<SupportDetails>) => Promise<void>;
   addPasswordResetRequest: (email: string, name: string) => Promise<void>;
-  updatePasswordResetRequest: (id: string, status: 'approved' | 'rejected', adminNote?: string) => Promise<void>;
+  updatePasswordResetRequest: (id: string, status: 'approved' | 'rejected', adminNote?: string, adminDescription?: string) => Promise<void>;
   addImportHistory: (h: Omit<ImportHistory, 'id'>) => Promise<void>;
   deleteImportHistory: (id: string) => Promise<void>;
   getHouseByRegistration: (regNum: string) => House | undefined;
@@ -177,12 +177,12 @@ const SEED_USERS: User[] = [
   { id: 'CT5629N', name: 'Priya Singh',   email: 'priya.singh@gmail.com',     mobile: '9876543220', role: 'citizen',    isActive: true,  createdAt: '2024-02-20' },
   { id: 'CT8834P', name: 'Suresh Yadav',  email: 'suresh.yadav@gmail.com',    mobile: '9876543221', role: 'citizen',    isActive: true,  createdAt: '2024-03-10' },
   { id: 'CT2017K', name: 'Meena Devi',    email: 'meena.devi@gmail.com',      mobile: '9876543222', role: 'citizen',    isActive: true,  createdAt: '2024-04-05' },
-  { id: 'SK1538Q', name: 'Amit Kumar',    email: 'sk1538q.dnp360@gmail.com',  mobile: '9876543211', role: 'safaikarmi', wardId: 'W42', employeeId: 'SK2291', isActive: true,  createdAt: '2023-06-01' },
-  { id: 'SK7291R', name: 'Raju Prasad',   email: 'sk7291r.dnp360@gmail.com',  mobile: '9876543215', role: 'safaikarmi', wardId: 'W1',  employeeId: 'SK2292', isActive: true,  createdAt: '2023-07-01' },
-  { id: 'SK4403S', name: 'Bholu Kumar',   email: 'sk4403s.dnp360@gmail.com',  mobile: '9876543216', role: 'safaikarmi', wardId: 'W3',  employeeId: 'SK2293', isActive: false, createdAt: '2023-08-01' },
-  { id: 'OF7642B', name: 'Rajesh Gupta',  email: 'of7642b.dnp360@gmail.com',  mobile: '9876543212', role: 'official',   wardId: 'W12', employeeId: 'OF4412', isActive: true,  createdAt: '2022-03-10' },
-  { id: 'OF3815C', name: 'Deepak Sinha',  email: 'of3815c.dnp360@gmail.com',  mobile: '9876543217', role: 'official',   wardId: 'W2',  employeeId: 'OF4413', isActive: true,  createdAt: '2022-05-15' },
-  { id: 'AD9305X', name: 'Sandeep Kumar', email: 'ad9305x.dnp360@gmail.com',  mobile: '9876543213', role: 'admin',      employeeId: 'AD9305X', isActive: true,  createdAt: '2021-01-01' },
+  { id: 'SK1538Q', name: 'Amit Kumar',    email: 'sk1538q.dnp360@gmail.com',  mobile: '9876543211', role: 'safaikarmi', wardId: 'W42', isActive: true,  createdAt: '2023-06-01' },
+  { id: 'SK7291R', name: 'Raju Prasad',   email: 'sk7291r.dnp360@gmail.com',  mobile: '9876543215', role: 'safaikarmi', wardId: 'W1',  isActive: true,  createdAt: '2023-07-01' },
+  { id: 'SK4403S', name: 'Bholu Kumar',   email: 'sk4403s.dnp360@gmail.com',  mobile: '9876543216', role: 'safaikarmi', wardId: 'W3',  isActive: false, createdAt: '2023-08-01' },
+  { id: 'OF7642B', name: 'Rajesh Gupta',  email: 'of7642b.dnp360@gmail.com',  mobile: '9876543212', role: 'official',   wardId: 'W12', isActive: true,  createdAt: '2022-03-10' },
+  { id: 'OF3815C', name: 'Deepak Sinha',  email: 'of3815c.dnp360@gmail.com',  mobile: '9876543217', role: 'official',   wardId: 'W2',  isActive: true,  createdAt: '2022-05-15' },
+  { id: 'AD9305X', name: 'Sandeep Kumar', email: 'ad9305x.dnp360@gmail.com',  mobile: '9876543213', role: 'admin',      isActive: true,  createdAt: '2021-01-01' },
 ];
 
 const SEED_KEYS: SecretKey[] = [
@@ -825,11 +825,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     await fsSaveDoc('passwordResetRequests', item);
   }
 
-  async function updatePasswordResetRequest(id: string, status: 'approved' | 'rejected', adminNote?: string) {
+  async function updatePasswordResetRequest(id: string, status: 'approved' | 'rejected', adminNote?: string, adminDescription?: string) {
     const updatedItem = {
       ...passwordResetRequests.find(r => r.id === id)!,
       status,
       ...(adminNote ? { adminNote } : {}),
+      ...(adminDescription ? { adminDescription } : {}),
     };
     setPasswordResetRequests(prev => prev.map(r => r.id === id ? updatedItem : r));
     await fsSaveDoc('passwordResetRequests', updatedItem);

@@ -160,7 +160,6 @@ export default function ProfileScreen() {
     { icon: 'mail',      grad: cfg.iconGrads[0],  label: lang === 'hi' ? 'ईमेल'          : 'Email',         value: user.email },
     ...(user.mobile     ? [{ icon: 'phone',      grad: cfg.iconGrads[1],  label: lang === 'hi' ? 'मोबाइल'        : 'Mobile',        value: user.mobile }]    : []),
     ...(user.address    ? [{ icon: 'map-pin',    grad: cfg.iconGrads[2],  label: lang === 'hi' ? 'पता'            : 'Address',       value: user.address }]   : []),
-    ...(user.employeeId ? [{ icon: 'briefcase',  grad: cfg.iconGrads[0],  label: lang === 'hi' ? 'कर्मचारी आईडी' : 'Employee ID',   value: user.employeeId }]: []),
     ...(user.wardId     ? [{ icon: 'map',        grad: cfg.iconGrads[1],  label: lang === 'hi' ? 'वार्ड'          : 'Assigned Ward', value: `Ward ${user.wardId.replace(/[^0-9]/g, '')}` }] : []),
     { icon: 'calendar', grad: cfg.iconGrads[2],  label: lang === 'hi' ? 'सदस्य बने'        : 'Member Since',  value: user.createdAt ?? '—' },
     { icon: 'hash',     grad: cfg.iconGrads[0],  label: lang === 'hi' ? 'उपयोगकर्ता आईडी' : 'User ID',       value: user.id },
@@ -196,9 +195,6 @@ export default function ProfileScreen() {
           </View>
 
           <Text style={styles.heroName}>{user.name}</Text>
-          {user.employeeId
-            ? <Text style={[styles.heroSub, { color: cfg.accentLight + 'CC' }]}>{user.employeeId}</Text>
-            : null}
           <Text style={[styles.heroEmail, { color: 'rgba(255,255,255,0.5)' }]}>{user.email}</Text>
 
           <View style={styles.heroBadgeRow}>

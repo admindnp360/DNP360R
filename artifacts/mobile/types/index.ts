@@ -7,7 +7,6 @@ export interface User {
   mobile?: string;
   role: UserRole;
   wardId?: string;
-  employeeId?: string;
   avatar?: string;
   address?: string;
   isActive?: boolean;
