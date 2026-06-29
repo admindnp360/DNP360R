@@ -76,6 +76,7 @@ export default function AdminManagement() {
   const [noticeType, setNoticeType]               = useState<'notice'|'announcement'|'alert'>('notice');
   const [noticePriority, setNoticePriority]       = useState<'low'|'medium'|'high'>('medium');
   const [saving, setSaving]                       = useState(false);
+  const [detailNotice, setDetailNotice]           = useState<import('@/types').Notice | null>(null);
 
   const pendingResets = passwordResetRequests.filter(r => r.status === 'pending').length;
   const allResets     = [...passwordResetRequests].sort((a, b) => b.requestedAt.localeCompare(a.requestedAt));
@@ -397,93 +398,90 @@ export default function AdminManagement() {
       )}
 
       {/* ══════════════════════════════════════════════════════════════
-           NOTICES TAB
+           NOTICES TAB  ── compact bar list
          ══════════════════════════════════════════════════════════════ */}
       {tab === 'notices' && (
-        <ScrollView contentContainerStyle={{ paddingBottom: 110 }} showsVerticalScrollIndicator={false}>
-
-          {/* ── Hero banner ── */}
-          <LinearGradient colors={['#0A1A3A','#0E1F4A', '#060B18']} style={s.noticeHero}>
-            <View style={[s.noticeHeroOrb, { left: -30, top: -20 }]} />
-            <View style={[s.noticeHeroOrb, { right: -20, bottom: -30, backgroundColor: 'rgba(14,165,233,0.10)' }]} />
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
-              <LinearGradient colors={['#0EA5E9','#0284C7']} style={s.noticeHeroIcon}>
-                <Feather name="volume-2" size={22} color="#fff" />
+        <View style={{ flex: 1 }}>
+          {/* ── Slim header ── */}
+          <View style={s.ntHeader}>
+            <View style={s.ntHeaderLeft}>
+              <LinearGradient colors={['#0EA5E9','#0284C7']} style={s.ntHeaderIcon}>
+                <Feather name="volume-2" size={14} color="#fff" />
               </LinearGradient>
-              <View style={{ flex: 1 }}>
-                <Text style={s.noticeHeroTitle}>Notices</Text>
-                <Text style={s.noticeHeroSub}>{notices.filter(n => n.isActive).length} active · {notices.length} total</Text>
-              </View>
-              <View style={s.noticeHeroBadge}>
-                <Text style={s.noticeHeroBadgeTxt}>{notices.length}</Text>
+              <View>
+                <Text style={s.ntHeaderTitle}>Notices</Text>
+                <Text style={s.ntHeaderSub}>
+                  {notices.filter(n => n.isActive).length} active · {notices.length} total
+                </Text>
               </View>
             </View>
-            <TouchableOpacity onPress={() => setShowNoticeModal(true)} activeOpacity={0.88} style={{ marginTop: 18 }}>
-              <LinearGradient colors={['#0EA5E9','#0284C7']} style={s.publishBtn}>
-                <Feather name="plus-circle" size={18} color="#fff" />
-                <Text style={s.publishBtnText}>Publish New Notice</Text>
+            <TouchableOpacity onPress={() => setShowNoticeModal(true)} activeOpacity={0.85} style={s.ntAddBtn}>
+              <LinearGradient colors={['#0EA5E9','#0284C7']} style={s.ntAddBtnGrad}>
+                <Feather name="plus" size={14} color="#fff" />
+                <Text style={s.ntAddBtnTxt}>New</Text>
               </LinearGradient>
             </TouchableOpacity>
-          </LinearGradient>
+          </View>
 
-          {/* ── Notice cards ── */}
-          <View style={{ padding: 16, gap: 12 }}>
+          {/* ── Notice bar list ── */}
+          <ScrollView contentContainerStyle={{ padding: 14, gap: 8, paddingBottom: 110 }} showsVerticalScrollIndicator={false}>
             {notices.length === 0 ? (
-              <View style={s.emptyCard}>
+              <View style={[s.emptyCard, { marginTop: 20 }]}>
                 <LinearGradient colors={['rgba(34,211,238,0.18)','rgba(14,165,233,0.08)']} style={s.emptyIconBox}>
                   <Feather name="volume-x" size={26} color="#22D3EE" />
                 </LinearGradient>
                 <Text style={s.emptyTitle}>No Notices Yet</Text>
-                <Text style={s.emptyText}>Tap "Publish" above to create the first one</Text>
+                <Text style={s.emptyText}>Tap "New" above to publish the first one</Text>
               </View>
             ) : notices.map(n => {
-              const pc = PRIORITY[n.priority];
-              const iconName = n.priority === 'high' ? 'alert-triangle' : n.priority === 'medium' ? 'alert-circle' : 'bell';
+              const pc   = PRIORITY[n.priority];
+              const icon = n.priority === 'high' ? 'alert-triangle' : n.priority === 'medium' ? 'alert-circle' : 'bell';
+              const typeColor: Record<string, string> = { notice: '#22D3EE', announcement: '#C084FC', alert: '#FB7185' };
+              const tc = typeColor[n.type] ?? '#22D3EE';
               return (
-                <View key={n.id} style={s.noticeGlassCard}>
-                  <LinearGradient colors={[pc.bg, 'rgba(255,255,255,0.02)']} style={StyleSheet.absoluteFill} />
-                  <View style={[s.noticeAccentBar, { backgroundColor: pc.color }]} />
-                  <View style={s.noticeCardInner}>
-                    {/* Top row */}
-                    <View style={s.noticeTopRow}>
-                      <LinearGradient colors={[pc.color + '33', pc.color + '18']} style={s.noticePriorityIcon}>
-                        <Feather name={iconName as any} size={12} color={pc.color} />
-                      </LinearGradient>
-                      <View style={[s.priorityChip, { backgroundColor: pc.color + '18', borderColor: pc.border }]}>
-                        <Text style={[s.priorityChipTxt, { color: pc.color }]}>{n.priority.toUpperCase()}</Text>
+                <TouchableOpacity
+                  key={n.id}
+                  activeOpacity={0.82}
+                  onPress={() => setDetailNotice(n)}
+                  style={s.ntBar}
+                >
+                  {/* priority accent strip */}
+                  <View style={[s.ntBarStrip, { backgroundColor: pc.color }]} />
+
+                  {/* priority icon circle */}
+                  <View style={[s.ntBarIconWrap, { backgroundColor: pc.color + '20', borderColor: pc.color + '38' }]}>
+                    <Feather name={icon as any} size={13} color={pc.color} />
+                  </View>
+
+                  {/* text block */}
+                  <View style={{ flex: 1, gap: 3 }}>
+                    <Text style={s.ntBarTitle} numberOfLines={1}>{n.title}</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      {/* type badge */}
+                      <View style={[s.ntTypeBadge, { backgroundColor: tc + '18', borderColor: tc + '35' }]}>
+                        <Text style={[s.ntTypeTxt, { color: tc }]}>{n.type}</Text>
                       </View>
-                      <View style={[s.typeChip, { marginLeft: 4 }]}>
-                        <Text style={s.typeChipTxt}>{n.type}</Text>
-                      </View>
-                      <View style={{ flex: 1 }} />
-                      {n.isActive && (
-                        <View style={s.activeDotWrap}>
-                          <View style={s.activeDot} />
-                          <Text style={s.activeTxt}>Live</Text>
-                        </View>
-                      )}
-                      <TouchableOpacity
-                        onPress={() => showAlert('Delete notice?', n.title, [{ text: 'Cancel', style: 'cancel' }, { text: 'Delete', style: 'destructive', onPress: () => deleteNotice(n.id) }], 'error')}
-                        style={s.deleteBtn}
-                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                      >
-                        <Feather name="trash-2" size={13} color="#FB7185" />
-                      </TouchableOpacity>
-                    </View>
-                    {/* Title + content */}
-                    <Text style={s.noticeTitle}>{n.title}</Text>
-                    <Text style={s.noticeContent} numberOfLines={3}>{n.content}</Text>
-                    {/* Footer */}
-                    <View style={s.noticeFooter}>
-                      <Feather name="calendar" size={10} color={MUTED} />
-                      <Text style={s.noticeDate}>{n.createdAt}</Text>
+                      {/* date */}
+                      <Feather name="clock" size={9} color={MUTED} />
+                      <Text style={s.ntBarDate}>{n.createdAt}</Text>
                     </View>
                   </View>
-                </View>
+
+                  {/* right side */}
+                  <View style={{ alignItems: 'flex-end', gap: 5 }}>
+                    {n.isActive && (
+                      <View style={s.ntLiveDot}>
+                        <View style={s.ntLivePulse} />
+                        <Text style={s.ntLiveTxt}>Live</Text>
+                      </View>
+                    )}
+                    <Feather name="chevron-right" size={14} color={MUTED} />
+                  </View>
+                </TouchableOpacity>
               );
             })}
-          </View>
-        </ScrollView>
+          </ScrollView>
+        </View>
       )}
 
       {/* ══════════════════════════════════════════════════════════════
@@ -587,6 +585,99 @@ export default function AdminManagement() {
           <AdminReports />
         </View>
       )}
+
+      {/* ══════════════════════════════════════════════════════════════
+           NOTICE DETAIL MODAL
+         ══════════════════════════════════════════════════════════════ */}
+      <Modal visible={!!detailNotice} animationType="slide" transparent>
+        <View style={s.overlay}>
+          <View style={s.ntDetailSheet}>
+            {detailNotice && (() => {
+              const pc   = PRIORITY[detailNotice.priority];
+              const icon = detailNotice.priority === 'high' ? 'alert-triangle' : detailNotice.priority === 'medium' ? 'alert-circle' : 'bell';
+              const typeColor: Record<string, string> = { notice: '#22D3EE', announcement: '#C084FC', alert: '#FB7185' };
+              const tc = typeColor[detailNotice.type] ?? '#22D3EE';
+              return (
+                <>
+                  {/* drag handle */}
+                  <View style={s.ntDetailHandle} />
+
+                  {/* hero gradient header */}
+                  <LinearGradient
+                    colors={[pc.color + '28', pc.color + '08', 'transparent']}
+                    style={s.ntDetailHero}
+                  >
+                    <View style={[s.ntDetailHeroIcon, { backgroundColor: pc.color + '22', borderColor: pc.color + '45' }]}>
+                      <Feather name={icon as any} size={22} color={pc.color} />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={s.ntDetailTitle} numberOfLines={2}>{detailNotice.title}</Text>
+                      <View style={{ flexDirection: 'row', gap: 6, marginTop: 6, flexWrap: 'wrap' }}>
+                        {/* priority badge */}
+                        <View style={[s.ntDetailBadge, { backgroundColor: pc.bg, borderColor: pc.border }]}>
+                          <View style={[s.ntDetailBadgeDot, { backgroundColor: pc.color }]} />
+                          <Text style={[s.ntDetailBadgeTxt, { color: pc.color }]}>{detailNotice.priority.toUpperCase()}</Text>
+                        </View>
+                        {/* type badge */}
+                        <View style={[s.ntDetailBadge, { backgroundColor: tc + '18', borderColor: tc + '35' }]}>
+                          <Text style={[s.ntDetailBadgeTxt, { color: tc }]}>{detailNotice.type.toUpperCase()}</Text>
+                        </View>
+                        {/* live badge */}
+                        {detailNotice.isActive && (
+                          <View style={[s.ntDetailBadge, { backgroundColor: 'rgba(52,211,153,0.12)', borderColor: 'rgba(52,211,153,0.30)' }]}>
+                            <View style={[s.ntDetailBadgeDot, { backgroundColor: '#34D399' }]} />
+                            <Text style={[s.ntDetailBadgeTxt, { color: '#34D399' }]}>LIVE</Text>
+                          </View>
+                        )}
+                      </View>
+                    </View>
+                  </LinearGradient>
+
+                  {/* divider */}
+                  <View style={s.ntDetailDivider} />
+
+                  {/* content */}
+                  <ScrollView style={{ maxHeight: 220 }} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 4 }}>
+                    <Text style={s.ntDetailContent}>{detailNotice.content}</Text>
+                  </ScrollView>
+
+                  {/* date row */}
+                  <View style={s.ntDetailMeta}>
+                    <Feather name="calendar" size={12} color={MUTED} />
+                    <Text style={s.ntDetailMetaTxt}>Published {detailNotice.createdAt}</Text>
+                  </View>
+
+                  {/* actions */}
+                  <View style={s.ntDetailActions}>
+                    <TouchableOpacity
+                      style={s.ntDetailClose}
+                      onPress={() => setDetailNotice(null)}
+                      activeOpacity={0.8}
+                    >
+                      <Text style={s.ntDetailCloseTxt}>Close</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={s.ntDetailDelete}
+                      activeOpacity={0.85}
+                      onPress={() => showAlert(
+                        'Delete Notice?', detailNotice.title,
+                        [
+                          { text: 'Cancel', style: 'cancel' },
+                          { text: 'Delete', style: 'destructive', onPress: () => { deleteNotice(detailNotice.id); setDetailNotice(null); } },
+                        ],
+                        'error',
+                      )}
+                    >
+                      <Feather name="trash-2" size={14} color="#FB7185" />
+                      <Text style={s.ntDetailDeleteTxt}>Delete</Text>
+                    </TouchableOpacity>
+                  </View>
+                </>
+              );
+            })()}
+          </View>
+        </View>
+      </Modal>
 
       {/* ══════════════════════════════════════════════════════════════
            NEW KEY SUCCESS MODAL
@@ -835,28 +926,48 @@ const s = StyleSheet.create({
   publishBtnIcon: { width: 32, height: 32, borderRadius: 10, backgroundColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center' },
   publishBtnText: { color: '#fff', fontSize: 15, fontFamily: 'Inter_700Bold' },
 
-  // notices hero
-  noticeHero:        { padding: 20, paddingTop: 22, overflow: 'hidden', position: 'relative' },
-  noticeHeroOrb:     { position: 'absolute', width: 140, height: 140, borderRadius: 70, backgroundColor: 'rgba(99,102,241,0.12)' },
-  noticeHeroIcon:    { width: 52, height: 52, borderRadius: 16, justifyContent: 'center', alignItems: 'center' },
-  noticeHeroTitle:   { color: '#F0F4FF', fontSize: 22, fontFamily: 'Inter_700Bold' },
-  noticeHeroSub:     { color: 'rgba(255,255,255,0.55)', fontSize: 12, fontFamily: 'Inter_400Regular', marginTop: 2 },
-  noticeHeroBadge:   { width: 42, height: 42, borderRadius: 21, backgroundColor: 'rgba(14,165,233,0.22)', borderWidth: 1, borderColor: 'rgba(14,165,233,0.40)', justifyContent: 'center', alignItems: 'center' },
-  noticeHeroBadgeTxt:{ color: '#22D3EE', fontSize: 17, fontFamily: 'Inter_700Bold' },
+  // ── NOTICES TAB – slim header ──────────────────────────────────
+  ntHeader:       { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: GLASS_BD, backgroundColor: BG },
+  ntHeaderLeft:   { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  ntHeaderIcon:   { width: 34, height: 34, borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
+  ntHeaderTitle:  { color: TEXT,  fontSize: 15, fontFamily: 'Inter_700Bold' },
+  ntHeaderSub:    { color: MUTED, fontSize: 11, fontFamily: 'Inter_400Regular', marginTop: 1 },
+  ntAddBtn:       { borderRadius: 12, overflow: 'hidden' },
+  ntAddBtnGrad:   { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 14, paddingVertical: 8 },
+  ntAddBtnTxt:    { color: '#fff', fontSize: 13, fontFamily: 'Inter_700Bold' },
 
-  // notice glass card
-  noticeGlassCard:   { borderRadius: 18, borderWidth: 1, borderColor: 'rgba(255,255,255,0.09)', overflow: 'hidden', flexDirection: 'row' },
-  noticeAccentBar:   { width: 4, alignSelf: 'stretch' },
-  noticeCardInner:   { flex: 1, padding: 13, gap: 6 },
-  noticePriorityIcon:{ width: 26, height: 26, borderRadius: 8, justifyContent: 'center', alignItems: 'center' },
-  activeDotWrap:     { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(52,211,153,0.12)', paddingHorizontal: 7, paddingVertical: 3, borderRadius: 99, borderWidth: 1, borderColor: 'rgba(52,211,153,0.28)' },
-  activeDot:         { width: 5, height: 5, borderRadius: 3, backgroundColor: '#34D399' },
-  activeTxt:         { color: '#34D399', fontSize: 9, fontFamily: 'Inter_700Bold' },
+  // ── notice compact bar ──────────────────────────────────────────
+  ntBar:          { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: GLASS, borderRadius: 14, borderWidth: 1, borderColor: GLASS_BD, overflow: 'hidden', paddingRight: 12, paddingVertical: 11 },
+  ntBarStrip:     { width: 4, alignSelf: 'stretch', borderRadius: 2 },
+  ntBarIconWrap:  { width: 34, height: 34, borderRadius: 10, borderWidth: 1, justifyContent: 'center', alignItems: 'center' },
+  ntBarTitle:     { color: TEXT,  fontSize: 13, fontFamily: 'Inter_600SemiBold' },
+  ntBarDate:      { color: MUTED, fontSize: 10, fontFamily: 'Inter_400Regular' },
+  ntTypeBadge:    { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6, borderWidth: 1 },
+  ntTypeTxt:      { fontSize: 9, fontFamily: 'Inter_600SemiBold', textTransform: 'uppercase', letterSpacing: 0.4 },
+  ntLiveDot:      { flexDirection: 'row', alignItems: 'center', gap: 3 },
+  ntLivePulse:    { width: 6, height: 6, borderRadius: 3, backgroundColor: '#34D399' },
+  ntLiveTxt:      { color: '#34D399', fontSize: 9, fontFamily: 'Inter_700Bold' },
 
-  // notice card (keep for backward compat)
-  noticeCard:     { borderRadius: 16, borderWidth: 1, flexDirection: 'row', overflow: 'hidden' },
-  noticeSidebar:  { width: 4 },
-  noticeBody:     { flex: 1, padding: 13, gap: 6 },
+  // ── notice detail bottom sheet ──────────────────────────────────
+  ntDetailSheet:  { backgroundColor: '#0C1428', borderTopLeftRadius: 28, borderTopRightRadius: 28, paddingHorizontal: 20, paddingBottom: 32, paddingTop: 10, gap: 14 },
+  ntDetailHandle: { width: 36, height: 4, borderRadius: 2, backgroundColor: GLASS_BD, alignSelf: 'center', marginBottom: 6 },
+  ntDetailHero:   { flexDirection: 'row', alignItems: 'flex-start', gap: 14, paddingBottom: 4 },
+  ntDetailHeroIcon:{ width: 50, height: 50, borderRadius: 14, borderWidth: 1, justifyContent: 'center', alignItems: 'center' },
+  ntDetailTitle:  { color: TEXT,  fontSize: 18, fontFamily: 'Inter_700Bold', flex: 1, lineHeight: 24 },
+  ntDetailBadge:  { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8, borderWidth: 1 },
+  ntDetailBadgeDot:{ width: 5, height: 5, borderRadius: 3 },
+  ntDetailBadgeTxt:{ fontSize: 9, fontFamily: 'Inter_700Bold', letterSpacing: 0.5 },
+  ntDetailDivider:{ height: 1, backgroundColor: GLASS_BD },
+  ntDetailContent:{ color: 'rgba(240,244,255,0.75)', fontSize: 14, fontFamily: 'Inter_400Regular', lineHeight: 22 },
+  ntDetailMeta:   { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  ntDetailMetaTxt:{ color: MUTED, fontSize: 11, fontFamily: 'Inter_400Regular' },
+  ntDetailActions:{ flexDirection: 'row', gap: 10, marginTop: 4 },
+  ntDetailClose:  { flex: 1, borderRadius: 14, paddingVertical: 13, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: GLASS_BD, backgroundColor: GLASS },
+  ntDetailCloseTxt:{ color: TEXT, fontSize: 14, fontFamily: 'Inter_600SemiBold' },
+  ntDetailDelete: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, borderRadius: 14, paddingVertical: 13, borderWidth: 1, borderColor: 'rgba(251,113,133,0.38)', backgroundColor: 'rgba(251,113,133,0.10)' },
+  ntDetailDeleteTxt:{ color: '#FB7185', fontSize: 14, fontFamily: 'Inter_600SemiBold' },
+
+  // (kept for other tabs)
   noticeTopRow:   { flexDirection: 'row', alignItems: 'center', gap: 6 },
   priorityChip:   { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 7, paddingVertical: 3, borderRadius: 99, borderWidth: 1 },
   priorityChipTxt:{ fontSize: 9, fontFamily: 'Inter_700Bold', letterSpacing: 0.5 },
@@ -867,6 +978,13 @@ const s = StyleSheet.create({
   noticeContent:  { color: MUTED, fontSize: 12, fontFamily: 'Inter_400Regular', lineHeight: 17 },
   noticeFooter:   { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 },
   noticeDate:     { color: MUTED, fontSize: 10, fontFamily: 'Inter_400Regular' },
+  activeDotWrap:  { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(52,211,153,0.12)', paddingHorizontal: 7, paddingVertical: 3, borderRadius: 99, borderWidth: 1, borderColor: 'rgba(52,211,153,0.28)' },
+  activeDot:      { width: 5, height: 5, borderRadius: 3, backgroundColor: '#34D399' },
+  activeTxt:      { color: '#34D399', fontSize: 9, fontFamily: 'Inter_700Bold' },
+  noticeGlassCard:{ borderRadius: 18, borderWidth: 1, borderColor: 'rgba(255,255,255,0.09)', overflow: 'hidden', flexDirection: 'row' },
+  noticeAccentBar:{ width: 4, alignSelf: 'stretch' },
+  noticeCardInner:{ flex: 1, padding: 13, gap: 6 },
+  noticePriorityIcon:{ width: 26, height: 26, borderRadius: 8, justifyContent: 'center', alignItems: 'center' },
 
   // resets
   pendingHeader: { flexDirection: 'row', alignItems: 'center', gap: 8 },
