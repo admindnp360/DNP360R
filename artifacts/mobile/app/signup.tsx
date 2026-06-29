@@ -1,7 +1,9 @@
 import { Feather } from '@expo/vector-icons';
+import * as Google from 'expo-auth-session/providers/google';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import React, { useState } from 'react';
+import * as WebBrowser from 'expo-web-browser';
+import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -18,8 +20,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAlert } from '@/contexts/AlertContext';
 import { useAuth } from '@/contexts/AuthContext';
 
+const IS_WEB = Platform.OS === 'web';
+
 export default function SignUpScreen() {
-  const { register } = useAuth();
+  const { register, loginWithGoogle, loginWithGoogleCredential } = useAuth();
   const { showAlert } = useAlert();
 
   const [name, setName] = useState('');
@@ -31,8 +35,53 @@ export default function SignUpScreen() {
   const [showPw, setShowPw] = useState(false);
   const [showCPw, setShowCPw] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [createdName, setCreatedName] = useState('');
+
+  useEffect(() => { WebBrowser.maybeCompleteAuthSession(); }, []);
+
+  const [googleRequest, googleResponse, googlePromptAsync] = Google.useAuthRequest({
+    webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
+    androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
+    iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
+  });
+
+  useEffect(() => {
+    if (googleResponse?.type === 'success') {
+      const idToken = googleResponse.authentication?.idToken;
+      if (idToken) {
+        setGoogleLoading(true);
+        loginWithGoogleCredential(idToken)
+          .then(ok => {
+            if (ok) router.replace('/(tabs)');
+            else showAlert('Sign-In Failed', 'Google Sign-In failed. Please try again.', undefined, 'error');
+          })
+          .finally(() => setGoogleLoading(false));
+      }
+    } else if (googleResponse?.type === 'error') {
+      showAlert('Sign-In Error', googleResponse.error?.message ?? 'Google Sign-In failed.', undefined, 'error');
+    }
+  }, [googleResponse]);
+
+  async function handleGoogleSignIn() {
+    if (IS_WEB) {
+      setGoogleLoading(true);
+      try {
+        const ok = await loginWithGoogle();
+        if (ok) router.replace('/(tabs)');
+        else showAlert('Sign-In Failed', 'Google Sign-In failed. Ensure your domain is authorised in Firebase Console.', undefined, 'warning');
+      } catch {
+        showAlert('Error', 'Google Sign-In unavailable.', undefined, 'error');
+      } finally { setGoogleLoading(false); }
+    } else {
+      if (!googleRequest) {
+        showAlert('Not Configured', 'Google Sign-In requires EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID to be set.', undefined, 'warning');
+        return;
+      }
+      await googlePromptAsync();
+    }
+  }
 
   async function handleSignUp() {
     if (!name.trim() || !email.trim() || !mobile.trim() || !password) {
@@ -243,9 +292,27 @@ export default function SignUpScreen() {
               )}
             </View>
 
+            <View style={s.orRow}>
+              <View style={s.orLine} />
+              <Text style={s.orTxt}>OR</Text>
+              <View style={s.orLine} />
+            </View>
+
+            <TouchableOpacity
+              onPress={handleGoogleSignIn}
+              disabled={loading || googleLoading}
+              activeOpacity={0.87}
+              style={[s.btnWrap, googleLoading && { opacity: 0.65 }]}
+            >
+              <LinearGradient colors={['#DB4437','#EA4335']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={s.btn}>
+                {googleLoading ? <ActivityIndicator color="#fff" size="small" /> : <Text style={s.googleG}>G</Text>}
+                <Text style={s.btnTxt}>{googleLoading ? 'Opening…' : 'Continue with Google'}</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+
             <TouchableOpacity
               onPress={handleSignUp}
-              disabled={loading}
+              disabled={loading || googleLoading}
               activeOpacity={0.87}
               style={[s.btnWrap, loading && { opacity: 0.65 }]}
             >
@@ -318,6 +385,11 @@ const s = StyleSheet.create({
 
   noteBox: { flexDirection: 'row', gap: 8, backgroundColor: 'rgba(99,102,241,0.08)', borderRadius: 12, padding: 12, borderWidth: 1, borderColor: 'rgba(99,102,241,0.15)', alignItems: 'flex-start' },
   noteTxt: { flex: 1, color: '#818CF8', fontSize: 11, fontFamily: 'Inter_400Regular', lineHeight: 17 },
+
+  orRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  orLine: { flex: 1, height: 1, backgroundColor: 'rgba(255,255,255,0.07)' },
+  orTxt: { color: '#475569', fontSize: 11, fontFamily: 'Inter_500Medium' },
+  googleG: { color: '#fff', fontSize: 17, fontFamily: 'Inter_700Bold' },
 
   version: { textAlign: 'center', color: '#1E2A40', fontSize: 9, fontFamily: 'Inter_400Regular' },
 });

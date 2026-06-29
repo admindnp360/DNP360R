@@ -20,8 +20,6 @@ import {
 import { useAlert } from '@/contexts/AlertContext';
 import { useAuth } from '@/contexts/AuthContext';
 
-WebBrowser.maybeCompleteAuthSession();
-
 const IS_WEB = Platform.OS === 'web';
 
 function DNPLogo() {
@@ -48,6 +46,8 @@ export default function LoginScreen() {
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const codeRef = useRef<TextInput>(null);
+
+  useEffect(() => { WebBrowser.maybeCompleteAuthSession(); }, []);
 
   const [googleRequest, googleResponse, googlePromptAsync] = Google.useAuthRequest({
     webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
