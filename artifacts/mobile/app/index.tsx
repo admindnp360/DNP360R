@@ -30,7 +30,7 @@ export default function SplashScreen() {
           useNativeDriver: true,
         }),
         Animated.timing(glowOpacity, {
-          toValue: 1, duration: 900,
+          toValue: 0.12, duration: 900,
           easing: Easing.out(Easing.quad),
           useNativeDriver: true,
         }),
