@@ -5,7 +5,7 @@ import * as Sharing from 'expo-sharing';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import * as XLSX from 'xlsx';
 import {
-  ActivityIndicator, Pressable, ScrollView, StyleSheet,
+  ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet,
   Text, TouchableOpacity, View,
 } from 'react-native';
 import { collection, doc, getDocs, limit, orderBy, query, setDoc } from 'firebase/firestore';
@@ -19,7 +19,7 @@ import type {
 type HistoryEntry = {
   id: string; type: ReportType; label: string; year: number; month?: number;
   quarter?: number; wardId: string | null; wardNumber?: number | null;
-  generatedAt: string; rowCount: number;
+  generatedAt: string; rowCount: number; generatedBy: 'auto' | 'manual';
 };
 
 // ── Design tokens ─────────────────────────────────────────────────────
@@ -89,6 +89,8 @@ export default function AdminReports() {
   const [reportHistory, setReportHistory] = useState<GeneratedReport[]>([]);
   const [historyMeta, setHistoryMeta]     = useState<HistoryEntry[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
+  const [showHistory, setShowHistory]     = useState(false);
+  const [historyFilter, setHistoryFilter] = useState<'all' | 'auto' | 'manual'>('all');
 
   // ── Load history from Firestore on mount ──────────────────────────
   useEffect(() => {
@@ -332,6 +334,7 @@ export default function AdminReports() {
         month: rpt.month ?? undefined, quarter: rpt.quarter ?? undefined,
         wardId: rpt.wardId, wardNumber: rpt.wardNumber ? Number(rpt.wardNumber) : null,
         generatedAt: rpt.generatedAt, rowCount: rpt.rows.length,
+        generatedBy: silent ? 'auto' : 'manual',
       };
       setHistoryMeta(prev => [entry, ...prev.filter(h => h.id !== entry.id)].slice(0, 30));
       try { await setDoc(doc(db, 'reportHistory', rpt.id), entry); } catch { /* silent */ }
@@ -419,8 +422,8 @@ export default function AdminReports() {
       contentContainerStyle={{ paddingBottom: 120 }}
       showsVerticalScrollIndicator={false}
     >
-      {/* Report type tabs */}
-      <View style={s.tabRow}>
+      {/* Report type tabs + History button */}
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.tabRow}>
         {REPORT_TABS.map(t => {
           const active = tab === t.key;
           return (
@@ -437,7 +440,21 @@ export default function AdminReports() {
             </TouchableOpacity>
           );
         })}
-      </View>
+        {/* History pill */}
+        <TouchableOpacity
+          style={[s.tabPill, { borderColor: '#F59E0B40', backgroundColor: '#F59E0B10', minWidth: 100 }]}
+          onPress={() => setShowHistory(true)}
+          activeOpacity={0.7}
+        >
+          <Feather name="clock" size={14} color="#F59E0B" />
+          <Text style={[s.tabLabel, { color: '#F59E0B', fontFamily: 'Inter_700Bold' }]}>History</Text>
+          {historyMeta.length > 0 && (
+            <View style={{ backgroundColor: '#F59E0B', borderRadius: 8, paddingHorizontal: 5, paddingVertical: 1 }}>
+              <Text style={{ color: '#000', fontSize: 9, fontFamily: 'Inter_700Bold' }}>{historyMeta.length}</Text>
+            </View>
+          )}
+        </TouchableOpacity>
+      </ScrollView>
 
       {/* Config panel */}
       <View style={s.configCard}>
@@ -538,51 +555,99 @@ export default function AdminReports() {
         </TouchableOpacity>
       </View>
 
-      {/* ── Report History ─────────────────────────────────────────── */}
-      {(historyMeta.length > 0 || historyLoading) && (
-        <View style={{ marginTop: 14, paddingHorizontal: 14 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 10 }}>
-            <Feather name="clock" size={11} color={MUTED} />
-            <Text style={{ color: MUTED, fontSize: 10, fontFamily: 'Inter_600SemiBold', letterSpacing: 0.6, textTransform: 'uppercase', flex: 1 }}>Report History</Text>
-            {historyLoading && <ActivityIndicator size={10} color={MUTED} />}
-            <Text style={{ color: MUTED, fontSize: 9, fontFamily: 'Inter_400Regular' }}>{historyMeta.length} saved</Text>
+      {/* ── History Modal ───────────────────────────────────────────── */}
+      <Modal visible={showHistory} transparent animationType="slide" onRequestClose={() => setShowHistory(false)}>
+        <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)' }} onPress={() => setShowHistory(false)} />
+        <View style={s.histModal}>
+          {/* Modal header */}
+          <View style={s.histHeader}>
+            <Feather name="clock" size={16} color="#F59E0B" />
+            <Text style={s.histHeaderTxt}>Report History</Text>
+            {historyLoading && <ActivityIndicator size={12} color={MUTED} style={{ marginLeft: 4 }} />}
+            <View style={{ flex: 1 }} />
+            <TouchableOpacity onPress={() => setShowHistory(false)} style={{ padding: 4 }}>
+              <Feather name="x" size={18} color={MUTED} />
+            </TouchableOpacity>
           </View>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingRight: 4 }}>
-            {historyMeta.map(r => {
-              const isActive = report?.id === r.id;
-              const color = r.type === 'monthly' ? '#0EA5E9' : r.type === 'quarterly' ? '#818CF8' : '#34D399';
-              const icon = r.type === 'monthly' ? 'calendar' : r.type === 'quarterly' ? 'bar-chart-2' : 'trending-up';
-              const rptFromMemory = reportHistory.find(h => h.id === r.id);
-              return (
-                <TouchableOpacity
-                  key={r.id}
-                  onPress={() => { if (rptFromMemory) setReport(rptFromMemory); else showAlert('Reload Required', 'Please regenerate this report — only current-session reports can be viewed.', undefined, 'info'); }}
-                  style={{
-                    backgroundColor: isActive ? color + '1A' : GLASS,
-                    borderRadius: 12, borderWidth: 1,
-                    borderColor: isActive ? color + '55' : 'rgba(255,255,255,0.10)',
-                    paddingHorizontal: 12, paddingVertical: 10, gap: 4, minWidth: 140,
-                  }}
-                  activeOpacity={0.75}
-                >
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
-                    <Feather name={icon as any} size={11} color={color} />
-                    <Text style={{ color, fontSize: 11, fontFamily: 'Inter_700Bold' }} numberOfLines={1}>{r.label}</Text>
-                    {rptFromMemory && <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: color, marginLeft: 'auto' }} />}
-                  </View>
-                  <Text style={{ color: MUTED, fontSize: 10, fontFamily: 'Inter_400Regular' }}>
-                    {new Date(r.generatedAt).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
-                  </Text>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                    <Feather name="home" size={9} color={MUTED} />
-                    <Text style={{ color: MUTED, fontSize: 9, fontFamily: 'Inter_400Regular' }}>{r.rowCount} houses</Text>
-                  </View>
-                </TouchableOpacity>
+
+          {/* Category filter tabs */}
+          <View style={s.histFilterRow}>
+            {(['all', 'auto', 'manual'] as const).map(f => (
+              <TouchableOpacity
+                key={f}
+                style={[s.histFilterPill, historyFilter === f && { backgroundColor: '#F59E0B20', borderColor: '#F59E0B55' }]}
+                onPress={() => setHistoryFilter(f)}
+              >
+                <Feather
+                  name={f === 'auto' ? 'zap' : f === 'manual' ? 'user' : 'list'}
+                  size={11}
+                  color={historyFilter === f ? '#F59E0B' : MUTED}
+                />
+                <Text style={[s.histFilterTxt, historyFilter === f && { color: '#F59E0B' }]}>
+                  {f === 'all' ? 'All' : f === 'auto' ? 'Auto-Generated' : 'Manual'}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 14, gap: 0 }} showsVerticalScrollIndicator={false}>
+            {/* Auto-Generated section */}
+            {(historyFilter === 'all' || historyFilter === 'auto') && (() => {
+              const list = historyMeta.filter(r => r.generatedBy === 'auto');
+              if (list.length === 0 && historyFilter === 'auto') return (
+                <View style={s.histEmpty}>
+                  <Feather name="zap" size={20} color={MUTED} />
+                  <Text style={s.histEmptyTxt}>No auto-generated reports yet</Text>
+                </View>
               );
-            })}
+              if (list.length === 0) return null;
+              return (
+                <View style={{ marginBottom: 16 }}>
+                  <View style={s.histCatHeader}>
+                    <Feather name="zap" size={12} color="#22D3EE" />
+                    <Text style={[s.histCatLabel, { color: '#22D3EE' }]}>Auto-Generated</Text>
+                    <View style={[s.histCatBadge, { backgroundColor: '#22D3EE20' }]}>
+                      <Text style={[s.histCatBadgeTxt, { color: '#22D3EE' }]}>{list.length}</Text>
+                    </View>
+                  </View>
+                  {list.map((r, i) => <HistoryCard key={r.id} r={r} isActive={report?.id === r.id} inMemory={!!reportHistory.find(h => h.id === r.id)} onPress={() => { const m = reportHistory.find(h => h.id === r.id); if (m) { setReport(m); setShowHistory(false); } else { showAlert('Reload Required', 'Please regenerate — only current-session reports can be re-viewed.', undefined, 'info'); setShowHistory(false); } }} last={i === list.length - 1} />)}
+                </View>
+              );
+            })()}
+
+            {/* Manually Generated section */}
+            {(historyFilter === 'all' || historyFilter === 'manual') && (() => {
+              const manualList = historyMeta.filter(r => r.generatedBy === 'manual' || !(r as any).generatedBy);
+              if (manualList.length === 0 && historyFilter === 'manual') return (
+                <View style={s.histEmpty}>
+                  <Feather name="user" size={20} color={MUTED} />
+                  <Text style={s.histEmptyTxt}>No manual reports yet</Text>
+                </View>
+              );
+              if (manualList.length === 0) return null;
+              return (
+                <View style={{ marginBottom: 16 }}>
+                  <View style={s.histCatHeader}>
+                    <Feather name="user" size={12} color="#A78BFA" />
+                    <Text style={[s.histCatLabel, { color: '#A78BFA' }]}>Manually Generated</Text>
+                    <View style={[s.histCatBadge, { backgroundColor: '#A78BFA20' }]}>
+                      <Text style={[s.histCatBadgeTxt, { color: '#A78BFA' }]}>{manualList.length}</Text>
+                    </View>
+                  </View>
+                  {manualList.map((r, i) => <HistoryCard key={r.id} r={r} isActive={report?.id === r.id} inMemory={!!reportHistory.find(h => h.id === r.id)} onPress={() => { const m = reportHistory.find(h => h.id === r.id); if (m) { setReport(m); setShowHistory(false); } else { showAlert('Reload Required', 'Please regenerate — only current-session reports can be re-viewed.', undefined, 'info'); setShowHistory(false); } }} last={i === manualList.length - 1} />)}
+                </View>
+              );
+            })()}
+
+            {historyMeta.length === 0 && !historyLoading && (
+              <View style={s.histEmpty}>
+                <Feather name="file-text" size={28} color={MUTED} />
+                <Text style={s.histEmptyTxt}>No reports generated yet</Text>
+              </View>
+            )}
           </ScrollView>
         </View>
-      )}
+      </Modal>
 
       {/* Report table */}
       {report && (
@@ -797,10 +862,66 @@ export default function AdminReports() {
   );
 }
 
+// ── HistoryCard sub-component ───────────────────────────────────────
+function HistoryCard({ r, isActive, inMemory, onPress, last }: {
+  r: HistoryEntry; isActive: boolean; inMemory: boolean; onPress: () => void; last: boolean;
+}) {
+  const color = r.type === 'monthly' ? '#0EA5E9' : r.type === 'quarterly' ? '#818CF8' : '#34D399';
+  const icon  = r.type === 'monthly' ? 'calendar' : r.type === 'quarterly' ? 'bar-chart-2' : 'trending-up';
+  return (
+    <TouchableOpacity
+      onPress={onPress}
+      style={[s.histCard, isActive && s.histCardActive, last && { marginBottom: 0 }]}
+      activeOpacity={0.75}
+    >
+      <View style={[s.histCardIcon, { backgroundColor: color + '18' }]}>
+        <Feather name={icon as any} size={16} color={color} />
+      </View>
+      <View style={{ flex: 1 }}>
+        <Text style={s.histCardLabel} numberOfLines={1}>{r.label}</Text>
+        <Text style={s.histCardSub}>
+          {new Date(r.generatedAt).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+        </Text>
+        <View style={s.histCardMeta}>
+          <Feather name="home" size={9} color="rgba(255,255,255,0.30)" />
+          <Text style={{ color: 'rgba(255,255,255,0.35)', fontSize: 9, fontFamily: 'Inter_400Regular' }}>{r.rowCount} houses</Text>
+        </View>
+      </View>
+      <View style={{ alignItems: 'flex-end', gap: 6 }}>
+        {inMemory && (
+          <View style={{ backgroundColor: color + '20', borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 }}>
+            <Text style={{ color, fontSize: 9, fontFamily: 'Inter_700Bold' }}>VIEW</Text>
+          </View>
+        )}
+        <Feather name="chevron-right" size={14} color={inMemory ? color : 'rgba(255,255,255,0.20)'} />
+      </View>
+    </TouchableOpacity>
+  );
+}
+
 const s = StyleSheet.create({
   tabRow: { flexDirection: 'row', paddingHorizontal: 12, paddingVertical: 10, gap: 8 },
-  tabPill: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 9, borderRadius: 12, borderWidth: 1, borderColor: 'transparent', backgroundColor: GLASS },
+  tabPill: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 9, paddingHorizontal: 14, borderRadius: 12, borderWidth: 1, borderColor: 'transparent', backgroundColor: GLASS, minWidth: 90 },
   tabLabel: { fontSize: 12 },
+
+  histModal: { backgroundColor: '#0D1226', borderTopLeftRadius: 24, borderTopRightRadius: 24, height: '72%', borderTopWidth: 1, borderTopColor: 'rgba(245,158,11,0.25)' },
+  histHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 18, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.07)' },
+  histHeaderTxt: { color: '#F0F4FF', fontSize: 15, fontFamily: 'Inter_700Bold' },
+  histFilterRow: { flexDirection: 'row', gap: 8, paddingHorizontal: 14, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.05)' },
+  histFilterPill: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, borderWidth: 1, borderColor: 'rgba(255,255,255,0.10)', backgroundColor: GLASS },
+  histFilterTxt: { fontSize: 11, fontFamily: 'Inter_600SemiBold', color: MUTED },
+  histCatHeader: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 10 },
+  histCatLabel: { fontSize: 11, fontFamily: 'Inter_700Bold', letterSpacing: 0.4, flex: 1 },
+  histCatBadge: { borderRadius: 8, paddingHorizontal: 7, paddingVertical: 2 },
+  histCatBadgeTxt: { fontSize: 10, fontFamily: 'Inter_700Bold' },
+  histCard: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 12, borderRadius: 14, borderWidth: 1, borderColor: 'rgba(255,255,255,0.09)', backgroundColor: GLASS, marginBottom: 8 },
+  histCardActive: { borderColor: 'rgba(245,158,11,0.40)', backgroundColor: 'rgba(245,158,11,0.07)' },
+  histCardIcon: { width: 36, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  histCardLabel: { fontSize: 12, fontFamily: 'Inter_700Bold', color: '#F0F4FF' },
+  histCardSub: { fontSize: 10, fontFamily: 'Inter_400Regular', color: MUTED, marginTop: 2 },
+  histCardMeta: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 },
+  histEmpty: { alignItems: 'center', justifyContent: 'center', padding: 40, gap: 10 },
+  histEmptyTxt: { color: MUTED, fontSize: 12, fontFamily: 'Inter_400Regular' },
 
   configCard: { marginHorizontal: 14, borderRadius: 18, borderWidth: 1, borderColor: GLASS_BD, padding: 10, overflow: 'hidden' },
   cfgLabel: { fontSize: 10, fontFamily: 'Inter_700Bold', color: MUTED, letterSpacing: 0.6, textTransform: 'uppercase', marginBottom: 5 },
