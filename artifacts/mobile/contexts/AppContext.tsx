@@ -524,13 +524,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }
 
   async function addHouse(h: Omit<House, 'id'>) {
-    const item: House = { ...h, id: uid(), createdAt: today() };
+    // Use registrationNumber as the Firestore document ID so it is human-readable
+    const item: House = { ...h, id: h.registrationNumber, createdAt: today() };
     setHouses(prev => [...prev, item]);
     await _fsWrite('houses', item);
   }
 
   async function addMultipleHouses(newHouses: Omit<House, 'id'>[]) {
-    const items: House[] = newHouses.map(h => ({ ...h, id: uid(), createdAt: today() }));
+    const items: House[] = newHouses.map(h => ({ ...h, id: h.registrationNumber, createdAt: today() }));
     setHouses(prev => [...prev, ...items]);
     const b = writeBatch(db);
     for (const item of items) {

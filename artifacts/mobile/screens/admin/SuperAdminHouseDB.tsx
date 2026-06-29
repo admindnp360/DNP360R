@@ -87,6 +87,23 @@ export default function SuperAdminHouseDB() {
   const [selectionMode, setSelectionMode]       = useState(false);
   const [selectedHouseIds, setSelectedHouseIds] = useState<string[]>([]);
 
+  // ── Search result selection ────────────────────────────────────────
+  const [searchSelMode, setSearchSelMode]       = useState(false);
+  const [selectedSearchIds, setSelectedSearchIds] = useState<string[]>([]);
+  function exitSearchSel() { setSearchSelMode(false); setSelectedSearchIds([]); }
+  function toggleSearchSel(id: string) { setSelectedSearchIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]); }
+  async function handleDeleteSearchSelected() {
+    showAlert('Delete Houses?', `Permanently delete ${selectedSearchIds.length} house(s)?`, [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Delete', style: 'destructive', onPress: async () => {
+          setSaving(true);
+          try { await Promise.all(selectedSearchIds.map(id => deleteHouse(id))); exitSearchSel(); setGlobalSearch(''); showAlert('Deleted', `${selectedSearchIds.length} house(s) deleted.`, undefined, 'success'); }
+          finally { setSaving(false); }
+        },
+      },
+    ], 'error');
+  }
+
   // ── Ward selection ─────────────────────────────────────────────────
   const [wardSelMode, setWardSelMode]       = useState(false);
   const [selectedWardIds, setSelectedWardIds] = useState<string[]>([]);
@@ -166,18 +183,31 @@ export default function SuperAdminHouseDB() {
   const activeHouses    = useMemo(() => houses.filter(h => h.isActive).length, [houses]);
   const ungroupedHouses = useMemo(() => houses.filter(h => !h.groupId).length, [houses]);
 
-  // ── Global search across all wards ────────────────────────────────
+  // ── Universal search across all data ──────────────────────────────
   const globalResults = useMemo(() => {
     const q = globalSearch.trim().toLowerCase();
-    if (q.length < 2) return [];
-    return houses.filter(h =>
+    if (q.length < 2) return { houses: [], users: [], wards: [] };
+    const houseRes = houses.filter(h =>
       h.registrationNumber.toLowerCase().includes(q) ||
       h.ownerName.toLowerCase().includes(q) ||
       (h.fatherOrHusband || '').toLowerCase().includes(q) ||
       h.address.toLowerCase().includes(q) ||
       (h.mobile || '').includes(q)
     );
-  }, [houses, globalSearch]);
+    const userRes = users.filter(u =>
+      u.name.toLowerCase().includes(q) ||
+      u.email.toLowerCase().includes(q) ||
+      (u.mobile || '').includes(q) ||
+      u.id.toLowerCase().includes(q) ||
+      (u.employeeId || '').toLowerCase().includes(q)
+    );
+    const wardRes = wards.filter(w =>
+      w.name.toLowerCase().includes(q) ||
+      w.wardNumber.toLowerCase().includes(q) ||
+      (w.area || '').toLowerCase().includes(q)
+    );
+    return { houses: houseRes, users: userRes, wards: wardRes };
+  }, [houses, users, wards, globalSearch]);
 
   // ── DB Tab – navigation helpers ───────────────────────────────────
   function goToGroups(ward: Ward) { setSelectedWard(ward); setView('groups'); setSearch(''); setGlobalSearch(''); exitWardSel(); exitGroupSel(); }
@@ -508,7 +538,7 @@ export default function SuperAdminHouseDB() {
           <Feather name="search" size={14} color={MUTED} />
           <TextInput
             style={[s.waSearchIn, { color: TEXT }]}
-            placeholder={view === 'wards' ? 'Search all houses — name, reg no, mobile…' : 'Search houses…'}
+            placeholder={view === 'wards' ? 'Search houses, users, wards — name, reg no, mobile…' : 'Search houses…'}
             placeholderTextColor={MUTED}
             value={view === 'wards' ? globalSearch : search}
             onChangeText={view === 'wards' ? setGlobalSearch : setSearch}
@@ -548,30 +578,129 @@ export default function SuperAdminHouseDB() {
           <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
             {globalSearch.trim().length >= 2 ? (
               <View>
+                {/* Search selection bar */}
+                {searchSelMode && (
+                  <View style={s.selBar}>
+                    <TouchableOpacity onPress={exitSearchSel} style={s.selBarCancel}>
+                      <Feather name="x" size={14} color={MUTED} />
+                    </TouchableOpacity>
+                    <Text style={[s.selBarCount, { color: TEXT }]}>{selectedSearchIds.length} selected</Text>
+                    <TouchableOpacity
+                      onPress={() => selectedSearchIds.length === globalResults.houses.length ? setSelectedSearchIds([]) : setSelectedSearchIds(globalResults.houses.map(h => h.id))}
+                      style={[s.selAction, { backgroundColor: 'rgba(99,102,241,0.12)', borderColor: 'rgba(99,102,241,0.28)' }]}
+                    >
+                      <Feather name={selectedSearchIds.length === globalResults.houses.length ? 'check-square' : 'square'} size={12} color="#818CF8" />
+                      <Text style={[s.selActionText, { color: '#818CF8' }]}>{selectedSearchIds.length === globalResults.houses.length ? 'Deselect All' : 'Select All'}</Text>
+                    </TouchableOpacity>
+                    <View style={{ flex: 1 }} />
+                    <TouchableOpacity style={[s.selAction, { backgroundColor: 'rgba(239,68,68,0.12)', borderColor: 'rgba(239,68,68,0.28)' }]} onPress={handleDeleteSearchSelected} disabled={selectedSearchIds.length === 0 || saving}>
+                      <Feather name="trash-2" size={12} color="#EF4444" />
+                      <Text style={[s.selActionText, { color: '#EF4444' }]}>Delete</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+
+                {/* Total results count */}
                 <View style={s.waSecHdr}>
-                  <Text style={s.waSecTxt}>{globalResults.length} result{globalResults.length !== 1 ? 's' : ''}</Text>
+                  <Text style={s.waSecTxt}>{globalResults.houses.length + globalResults.users.length + globalResults.wards.length} result{globalResults.houses.length + globalResults.users.length + globalResults.wards.length !== 1 ? 's' : ''}</Text>
+                  {!searchSelMode && globalResults.houses.length > 0 && <Text style={[s.waSecTxt, { fontFamily: 'Inter_400Regular', color: MUTED, textTransform: 'none' }]}>Long-press house to select</Text>}
                 </View>
-                {globalResults.length === 0 ? (
+
+                {globalResults.houses.length === 0 && globalResults.users.length === 0 && globalResults.wards.length === 0 ? (
                   <View style={s.waEmpty}>
                     <Feather name="search" size={30} color={MUTED2} />
-                    <Text style={[s.waEmptyT, { color: TEXT }]}>No houses found</Text>
+                    <Text style={[s.waEmptyT, { color: TEXT }]}>Nothing found</Text>
                     <Text style={[s.waEmptyS, { color: MUTED }]}>Try a different search term</Text>
                   </View>
-                ) : globalResults.map(h => (
-                  <TouchableOpacity key={h.id} style={s.waListRow} onPress={() => setDetailHouse(h)} activeOpacity={0.7}>
-                    <LinearGradient colors={['#4F46E5','#7C3AED']} style={s.waListAvatar}>
-                      <Feather name="home" size={13} color="#fff" />
-                    </LinearGradient>
-                    <View style={{ flex: 1 }}>
-                      <Text style={[s.waRowName, { color: TEXT }]} numberOfLines={1}>{h.ownerName}</Text>
-                      <Text style={[s.waRowSub, { color: MUTED }]} numberOfLines={1}>
-                        {h.registrationNumber} · W{h.wardNumber}{h.groupName ? ` · ${h.groupName}` : ''}
-                      </Text>
+                ) : null}
+
+                {/* Houses */}
+                {globalResults.houses.length > 0 && (
+                  <View>
+                    <View style={[s.waSecHdr, { paddingVertical: 5, paddingHorizontal: 14 }]}>
+                      <Feather name="home" size={11} color="#818CF8" />
+                      <Text style={[s.waSecTxt, { color: '#818CF8', fontSize: 10 }]}>Houses ({globalResults.houses.length})</Text>
                     </View>
-                    <Feather name="chevron-right" size={14} color={MUTED2} />
-                    <View style={s.waSep} />
-                  </TouchableOpacity>
-                ))}
+                    {globalResults.houses.map(h => {
+                      const isSel = selectedSearchIds.includes(h.id);
+                      return (
+                        <TouchableOpacity
+                          key={h.id}
+                          style={[s.waListRow, isSel && { backgroundColor: 'rgba(99,102,241,0.07)' }]}
+                          onPress={() => searchSelMode ? toggleSearchSel(h.id) : setDetailHouse(h)}
+                          onLongPress={() => { if (!searchSelMode) setSearchSelMode(true); toggleSearchSel(h.id); }}
+                          activeOpacity={0.7}
+                        >
+                          {searchSelMode ? (
+                            <View style={[s.checkbox, { borderColor: isSel ? '#6366F1' : GLASS_BD, backgroundColor: isSel ? '#6366F1' : 'transparent' }]}>
+                              {isSel && <Feather name="check" size={10} color="#fff" />}
+                            </View>
+                          ) : (
+                            <LinearGradient colors={['#4F46E5','#7C3AED']} style={s.waListAvatar}>
+                              <Feather name="home" size={13} color="#fff" />
+                            </LinearGradient>
+                          )}
+                          <View style={{ flex: 1 }}>
+                            <Text style={[s.waRowName, { color: '#818CF8' }]} numberOfLines={1}>{h.registrationNumber}</Text>
+                            <Text style={[s.waRowSub, { color: TEXT }]} numberOfLines={1}>{h.ownerName}</Text>
+                            <Text style={[s.waRowSub, { color: MUTED, fontSize: 10 }]} numberOfLines={1}>W{h.wardNumber}{h.groupName ? ` · ${h.groupName}` : ''} · {h.address}</Text>
+                          </View>
+                          {!searchSelMode && <Feather name="chevron-right" size={14} color={MUTED2} />}
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                )}
+
+                {/* Users */}
+                {globalResults.users.length > 0 && (
+                  <View>
+                    <View style={[s.waSecHdr, { paddingVertical: 5, paddingHorizontal: 14 }]}>
+                      <Feather name="users" size={11} color="#34D399" />
+                      <Text style={[s.waSecTxt, { color: '#34D399', fontSize: 10 }]}>Users ({globalResults.users.length})</Text>
+                    </View>
+                    {globalResults.users.map(u => {
+                      const roleColors: Record<string, string> = { citizen: '#22D3EE', safaikarmi: '#34D399', official: '#FCD34D', admin: '#C084FC' };
+                      const rc = roleColors[u.role] ?? '#818CF8';
+                      return (
+                        <View key={u.id} style={s.waListRow}>
+                          <View style={[s.waListAvatar, { backgroundColor: rc + '22', justifyContent: 'center', alignItems: 'center' }]}>
+                            <Text style={{ color: rc, fontSize: 13, fontFamily: 'Inter_700Bold' }}>{u.name[0]?.toUpperCase()}</Text>
+                          </View>
+                          <View style={{ flex: 1 }}>
+                            <Text style={[s.waRowName, { color: TEXT }]} numberOfLines={1}>{u.name}</Text>
+                            <Text style={[s.waRowSub, { color: MUTED }]} numberOfLines={1}>{u.id} · {u.email}</Text>
+                          </View>
+                          <View style={{ backgroundColor: rc + '18', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 }}>
+                            <Text style={{ color: rc, fontSize: 9, fontFamily: 'Inter_700Bold' }}>{u.role.toUpperCase()}</Text>
+                          </View>
+                        </View>
+                      );
+                    })}
+                  </View>
+                )}
+
+                {/* Wards */}
+                {globalResults.wards.length > 0 && (
+                  <View>
+                    <View style={[s.waSecHdr, { paddingVertical: 5, paddingHorizontal: 14 }]}>
+                      <Feather name="map" size={11} color="#F97316" />
+                      <Text style={[s.waSecTxt, { color: '#F97316', fontSize: 10 }]}>Wards ({globalResults.wards.length})</Text>
+                    </View>
+                    {globalResults.wards.map(w => (
+                      <TouchableOpacity key={w.id} style={s.waListRow} onPress={() => { setGlobalSearch(''); goToGroups(w); }} activeOpacity={0.7}>
+                        <LinearGradient colors={['#F97316','#EA580C']} style={s.waListAvatar}>
+                          <Text style={{ color: '#fff', fontSize: 11, fontFamily: 'Inter_700Bold' }}>W{w.wardNumber}</Text>
+                        </LinearGradient>
+                        <View style={{ flex: 1 }}>
+                          <Text style={[s.waRowName, { color: TEXT }]} numberOfLines={1}>{w.name}</Text>
+                          <Text style={[s.waRowSub, { color: MUTED }]} numberOfLines={1}>{w.area} · {houses.filter(h => h.wardId === w.id).length} houses</Text>
+                        </View>
+                        <Feather name="chevron-right" size={14} color={MUTED2} />
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                )}
               </View>
             ) : (
               <View>
@@ -888,41 +1017,123 @@ export default function SuperAdminHouseDB() {
         </SafeAreaView>
       </Modal>
 
-      {/* Edit House Modal */}
+      {/* Edit House Modal — Redesigned */}
       <Modal visible={showEditHouseModal} animationType="slide" presentationStyle="pageSheet">
-        <SafeAreaView style={{ flex: 1, backgroundColor: BG }}>
+        <SafeAreaView style={{ flex: 1, backgroundColor: '#080E22' }}>
+          {/* Header */}
           <LinearGradient colors={['#0EA5E9','#0284C7']} style={s.modalHdr}>
-            <Text style={s.modalTitle}>Edit House</Text>
-            <Pressable onPress={() => setShowEditHouseModal(false)} style={s.closeBtn}><Feather name="x" size={19} color="#fff" /></Pressable>
+            <View style={{ flex: 1 }}>
+              <Text style={s.modalTitle}>Edit House</Text>
+              {editingHouse && (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}>
+                  <Feather name="hash" size={10} color="rgba(255,255,255,0.65)" />
+                  <Text style={{ color: 'rgba(255,255,255,0.65)', fontSize: 11, fontFamily: 'Inter_500Medium' }}>{editingHouse.registrationNumber}</Text>
+                </View>
+              )}
+            </View>
+            <Pressable onPress={() => setShowEditHouseModal(false)} style={s.closeBtn}>
+              <Feather name="x" size={19} color="#fff" />
+            </Pressable>
           </LinearGradient>
-          <ScrollView contentContainerStyle={{ padding: 20, gap: 14 }}>
-            {[
-              { label: 'Owner Name *', key: 'ownerName', placeholder: 'Ram Prasad' },
-              { label: 'Father / Husband Name', key: 'fatherOrHusband', placeholder: 'Shiv Prasad' },
-              { label: 'Mobile', key: 'mobile', placeholder: '9876543210', keyboard: 'phone-pad' },
-              { label: 'Address *', key: 'address', placeholder: 'Ward 1, Near Temple…' },
-            ].map(f => (
-              <View key={f.key}>
-                <Text style={[s.fieldLabel, { color: MUTED }]}>{f.label}</Text>
-                <TextInput
-                  style={[s.fieldInput, { backgroundColor: GLASS, borderColor: GLASS_BD, color: TEXT }]}
-                  placeholder={f.placeholder} placeholderTextColor={MUTED2}
-                  value={(houseForm as any)[f.key]}
-                  onChangeText={v => setHouseForm(p => ({ ...p, [f.key]: v }))}
-                  keyboardType={f.keyboard as any}
-                />
+
+          <ScrollView contentContainerStyle={{ padding: 16, gap: 18, paddingBottom: 40 }}>
+
+            {/* Reg number – read only card */}
+            {editingHouse && (
+              <View style={{ backgroundColor: 'rgba(14,165,233,0.09)', borderRadius: 16, borderWidth: 1, borderColor: 'rgba(14,165,233,0.26)', padding: 14, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                <LinearGradient colors={['#0EA5E9','#0284C7']} style={{ width: 42, height: 42, borderRadius: 12, justifyContent: 'center', alignItems: 'center' }}>
+                  <Feather name="home" size={18} color="#fff" />
+                </LinearGradient>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ color: MUTED, fontSize: 10, fontFamily: 'Inter_500Medium', marginBottom: 3 }}>Registration Number</Text>
+                  <Text style={{ color: '#22D3EE', fontSize: 17, fontFamily: 'Inter_700Bold', letterSpacing: 1 }}>{editingHouse.registrationNumber}</Text>
+                </View>
+                <View style={{ backgroundColor: 'rgba(34,211,238,0.14)', paddingHorizontal: 7, paddingVertical: 3, borderRadius: 7, borderWidth: 1, borderColor: 'rgba(34,211,238,0.28)' }}>
+                  <Text style={{ color: '#22D3EE', fontSize: 8, fontFamily: 'Inter_700Bold', letterSpacing: 0.8 }}>READ-ONLY</Text>
+                </View>
               </View>
-            ))}
-            <Text style={[s.fieldLabel, { color: MUTED }]}>Property Type</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
-              {PROPERTY_TYPES.map(pt => (
-                <TouchableOpacity key={pt} style={[s.typePill, houseForm.propertyType === pt && { backgroundColor: '#0EA5E9', borderColor: '#0EA5E9' }, { borderColor: GLASS_BD }]} onPress={() => setHouseForm(p => ({ ...p, propertyType: pt }))}>
-                  <Text style={[s.typePillText, { color: houseForm.propertyType === pt ? '#fff' : MUTED }]}>{pt}</Text>
-                </TouchableOpacity>
+            )}
+
+            {/* Owner Details */}
+            <View style={{ gap: 10 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7 }}>
+                <LinearGradient colors={['#6366F1','#4F46E5']} style={{ width: 22, height: 22, borderRadius: 7, justifyContent: 'center', alignItems: 'center' }}>
+                  <Feather name="user" size={11} color="#fff" />
+                </LinearGradient>
+                <Text style={{ color: TEXT, fontSize: 13, fontFamily: 'Inter_700Bold' }}>Owner Details</Text>
+              </View>
+              {[
+                { label: 'Owner Name *', key: 'ownerName', placeholder: 'Ram Prasad', icon: 'user' },
+                { label: 'Father / Husband Name', key: 'fatherOrHusband', placeholder: 'Shiv Prasad', icon: 'users' },
+                { label: 'Mobile Number', key: 'mobile', placeholder: '9876543210', icon: 'phone', keyboard: 'phone-pad' },
+              ].map(f => (
+                <View key={f.key} style={{ backgroundColor: GLASS, borderRadius: 14, borderWidth: 1, borderColor: GLASS_BD, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 13, gap: 10 }}>
+                  <Feather name={f.icon as any} size={15} color={MUTED} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ color: MUTED, fontSize: 9, fontFamily: 'Inter_600SemiBold', marginTop: 10, textTransform: 'uppercase', letterSpacing: 0.4 }}>{f.label}</Text>
+                    <TextInput
+                      style={{ color: TEXT, fontSize: 14, fontFamily: 'Inter_500Medium', paddingVertical: 9 }}
+                      placeholder={f.placeholder} placeholderTextColor={MUTED2}
+                      value={(houseForm as any)[f.key]}
+                      onChangeText={v => setHouseForm(p => ({ ...p, [f.key]: v }))}
+                      keyboardType={f.keyboard as any}
+                    />
+                  </View>
+                </View>
               ))}
-            </ScrollView>
-            <TouchableOpacity onPress={handleSaveEditHouse} disabled={saving} activeOpacity={0.85}>
-              <LinearGradient colors={['#0EA5E9','#0284C7']} style={s.saveBtn}>
+            </View>
+
+            {/* Address */}
+            <View style={{ gap: 10 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7 }}>
+                <LinearGradient colors={['#0EA5E9','#0284C7']} style={{ width: 22, height: 22, borderRadius: 7, justifyContent: 'center', alignItems: 'center' }}>
+                  <Feather name="map-pin" size={11} color="#fff" />
+                </LinearGradient>
+                <Text style={{ color: TEXT, fontSize: 13, fontFamily: 'Inter_700Bold' }}>Location</Text>
+              </View>
+              <View style={{ backgroundColor: GLASS, borderRadius: 14, borderWidth: 1, borderColor: GLASS_BD, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 13, gap: 10 }}>
+                <Feather name="map-pin" size={15} color={MUTED} />
+                <View style={{ flex: 1 }}>
+                  <Text style={{ color: MUTED, fontSize: 9, fontFamily: 'Inter_600SemiBold', marginTop: 10, textTransform: 'uppercase', letterSpacing: 0.4 }}>Address *</Text>
+                  <TextInput
+                    style={{ color: TEXT, fontSize: 14, fontFamily: 'Inter_500Medium', paddingVertical: 9 }}
+                    placeholder="Ward 1, Near Temple, Daudnagar…" placeholderTextColor={MUTED2}
+                    value={houseForm.address}
+                    onChangeText={v => setHouseForm(p => ({ ...p, address: v }))}
+                    multiline
+                  />
+                </View>
+              </View>
+            </View>
+
+            {/* Property Type */}
+            <View style={{ gap: 10 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7 }}>
+                <LinearGradient colors={['#10B981','#059669']} style={{ width: 22, height: 22, borderRadius: 7, justifyContent: 'center', alignItems: 'center' }}>
+                  <Feather name="tag" size={11} color="#fff" />
+                </LinearGradient>
+                <Text style={{ color: TEXT, fontSize: 13, fontFamily: 'Inter_700Bold' }}>Property Type</Text>
+              </View>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+                {PROPERTY_TYPES.map(pt => (
+                  <TouchableOpacity
+                    key={pt}
+                    style={[
+                      s.typePill,
+                      { borderColor: houseForm.propertyType === pt ? '#0EA5E9' : GLASS_BD },
+                      houseForm.propertyType === pt && { backgroundColor: 'rgba(14,165,233,0.16)' },
+                    ]}
+                    onPress={() => setHouseForm(p => ({ ...p, propertyType: pt }))}
+                  >
+                    <Text style={[s.typePillText, { color: houseForm.propertyType === pt ? '#22D3EE' : MUTED }]}>{pt}</Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
+
+            <TouchableOpacity onPress={handleSaveEditHouse} disabled={saving} activeOpacity={0.85} style={saving ? { opacity: 0.6 } : {}}>
+              <LinearGradient colors={['#0EA5E9','#0284C7']} style={[s.saveBtn, { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }]}>
+                <Feather name="check" size={16} color="#fff" />
                 <Text style={s.saveBtnText}>{saving ? 'Saving…' : 'Save Changes'}</Text>
               </LinearGradient>
             </TouchableOpacity>

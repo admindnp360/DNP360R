@@ -51,7 +51,7 @@ const ROLE_CONFIG: Record<string, {
 };
 
 export default function ProfileScreen() {
-  const { user, logout, updateProfile } = useAuth();
+  const { user, logout, updateProfile, deleteAccount } = useAuth();
   const { showAlert } = useAlert();
   const {
     supportDetails, complaints, users, notices,
@@ -132,6 +132,28 @@ export default function ProfileScreen() {
       { text: 'Cancel', style: 'cancel' },
       { text: 'Sign Out', style: 'destructive', onPress: async () => { await logout(); router.replace('/login'); } },
     ], 'warning');
+  }
+
+  async function handleDeleteAccount() {
+    showAlert(
+      lang === 'hi' ? 'खाता स्थायी रूप से हटाएं?' : 'Delete Account Permanently?',
+      lang === 'hi'
+        ? 'यह कार्य पूर्ववत नहीं किया जा सकता। आपका सारा डेटा हट जाएगा।'
+        : 'This cannot be undone. All your data will be permanently removed.',
+      [
+        { text: lang === 'hi' ? 'रद्द करें' : 'Cancel', style: 'cancel' },
+        {
+          text: lang === 'hi' ? 'हटाएं' : 'Delete Account',
+          style: 'destructive',
+          onPress: async () => {
+            const result = await deleteAccount();
+            if (result.success) { router.replace('/login'); }
+            else { showAlert('Error', result.error ?? 'Could not delete account.', undefined, 'error'); }
+          },
+        },
+      ],
+      'error',
+    );
   }
 
   const INFO_ROWS = [
@@ -336,6 +358,26 @@ export default function ProfileScreen() {
               <Feather name="chevron-right" size={16} color="#DC2626" />
             </LinearGradient>
           </TouchableOpacity>
+
+          {/* ── DELETE ACCOUNT (citizen only) ── */}
+          {user.role === 'citizen' && (
+            <TouchableOpacity onPress={handleDeleteAccount} activeOpacity={0.85} style={[styles.logoutWrap, { marginTop: -8 }]}>
+              <View style={[styles.logoutBtn, { backgroundColor: 'rgba(239,68,68,0.07)', borderWidth: 1, borderColor: 'rgba(239,68,68,0.20)', borderRadius: 16 }]}>
+                <View style={[styles.logoutIcon, { backgroundColor: 'rgba(239,68,68,0.12)' }]}>
+                  <Feather name="trash-2" size={17} color="#EF4444" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.logoutText, { color: '#EF4444', fontSize: 14 }]}>
+                    {lang === 'hi' ? 'खाता स्थायी रूप से हटाएं' : 'Delete Account Permanently'}
+                  </Text>
+                  <Text style={{ color: 'rgba(239,68,68,0.55)', fontSize: 10, fontFamily: 'Inter_400Regular', marginTop: 1 }}>
+                    {lang === 'hi' ? 'यह पूर्ववत नहीं होगा' : 'This action cannot be undone'}
+                  </Text>
+                </View>
+                <Feather name="chevron-right" size={16} color="#EF4444" />
+              </View>
+            </TouchableOpacity>
+          )}
 
           <Text style={[styles.footer, { color: colors.mutedForeground }]}>
             DNP360 · Nagar Parishad Daudnagar · Bihar, India

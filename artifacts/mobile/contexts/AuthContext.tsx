@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   GoogleAuthProvider,
   createUserWithEmailAndPassword,
+  deleteUser as firebaseDeleteUser,
   onAuthStateChanged,
   signInAnonymously,
   signInWithEmailAndPassword,
@@ -38,6 +39,7 @@ interface AuthContextType {
   resetUserPassword: (email: string, newPassword: string) => Promise<boolean>;
   updateSecretKey?: (userId: string, newCode: string) => Promise<boolean>;
   changePassword: (currentPwd: string, newPwd: string) => Promise<{ success: boolean; error?: string }>;
+  deleteAccount: () => Promise<{ success: boolean; error?: string }>;
 }
 
 const SUPER_ADMIN: User & { password: string; secretCode: string; mobile: string } = {
@@ -212,7 +214,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     try {
       const cred = await signInWithEmailAndPassword(firebaseAuth, emailToUse, password);
-      let profile: User | null = await getUserFromFirestore(cred.user.uid);
+      // Check UID→CITI mapping first (for citizens who registered via app)
+      let profile: User | null = null;
+      try {
+        const mappingSnap = await getDoc(doc(db, 'uidMapping', cred.user.uid));
+        if (mappingSnap.exists()) {
+          const appId = mappingSnap.data().appId as string;
+          profile = await getUserFromFirestore(appId);
+        }
+      } catch {}
+      if (!profile) profile = await getUserFromFirestore(cred.user.uid);
       if (!profile) {
         const stored = await AsyncStorage.getItem('dnp360_user').catch(() => null);
         if (stored) { try { profile = JSON.parse(stored); } catch {} }
@@ -390,8 +401,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     try {
       const cred = await createUserWithEmailAndPassword(firebaseAuth, normalEmail, password);
+      // Generate a human-readable CITI-style ID (e.g. CITI4821A)
+      const citiId = genUserId('citizen');
       const newUser: User = {
-        id: cred.user.uid,
+        id: citiId,
         name: name.trim(),
         email: normalEmail,
         mobile: mobile.trim(),
@@ -400,10 +413,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         isActive: true,
         createdAt: today(),
       };
-      await saveUserToFirestore(cred.user.uid, newUser);
+      // Save user doc under the CITI ID so AppContext picks it up via onSnapshot
+      await setDoc(doc(db, 'users', citiId), {
+        name: newUser.name, email: newUser.email, mobile: newUser.mobile,
+        role: 'citizen', address: newUser.address ?? null, isActive: true,
+        createdAt: newUser.createdAt, _updatedAt: serverTimestamp(),
+      });
+      // Save mapping firebase UID → CITI ID for subsequent logins
+      await setDoc(doc(db, 'uidMapping', cred.user.uid), {
+        appId: citiId, _updatedAt: serverTimestamp(),
+      });
       await setDoc(doc(db, 'usersByMobile', mobile.trim()), {
-        email: normalEmail,
-        _updatedAt: serverTimestamp(),
+        email: normalEmail, appId: citiId, _updatedAt: serverTimestamp(),
       });
       setUser(newUser);
       await AsyncStorage.setItem('dnp360_user', JSON.stringify(newUser));
@@ -413,6 +434,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (code === 'auth/email-already-in-use') return { success: false, error: 'This email is already registered.' };
       if (code === 'auth/weak-password') return { success: false, error: 'Password must be at least 6 characters.' };
       return { success: false, error: 'Registration failed. Please try again.' };
+    }
+  }
+
+  async function deleteAccount(): Promise<{ success: boolean; error?: string }> {
+    if (!user || user.role !== 'citizen') return { success: false, error: 'Only citizen accounts can be self-deleted.' };
+    try {
+      // Remove Firestore user document
+      await deleteDoc(doc(db, 'users', user.id)).catch(() => {});
+      // Remove mobile mapping
+      if (user.mobile) await deleteDoc(doc(db, 'usersByMobile', user.mobile)).catch(() => {});
+      // Delete Firebase Auth account
+      const fbUser = firebaseAuth.currentUser;
+      if (fbUser) await firebaseDeleteUser(fbUser).catch(() => {});
+      // Clear local session
+      setUser(null);
+      await AsyncStorage.removeItem('dnp360_user');
+      return { success: true };
+    } catch (e: any) {
+      return { success: false, error: e?.message ?? 'Failed to delete account.' };
     }
   }
 
@@ -479,7 +519,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, loginWithUserId, loginWithGoogle, register, logout, updateProfile, resetUserPassword, updateSecretKey, changePassword }}>
+    <AuthContext.Provider value={{ user, isLoading, login, loginWithUserId, loginWithGoogle, register, logout, updateProfile, resetUserPassword, updateSecretKey, changePassword, deleteAccount }}>
       {children}
     </AuthContext.Provider>
   );

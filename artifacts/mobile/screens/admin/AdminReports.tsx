@@ -78,6 +78,7 @@ export default function AdminReports() {
   const [generating, setGenerating] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [autoGenDone, setAutoGenDone] = useState(false);
+  const [reportHistory, setReportHistory] = useState<GeneratedReport[]>([]);
 
   // ── Auto-generate on last day at 9 PM IST ─────────────────────────
   useEffect(() => {
@@ -300,10 +301,12 @@ export default function AdminReports() {
     try {
       await new Promise(r => setTimeout(r, 300));
       let rpt: GeneratedReport;
-      if (tab === 'monthly')   rpt = buildMonthlyReport(selYear, selMonth, selWardId);
+      if (tab === 'monthly')        rpt = buildMonthlyReport(selYear, selMonth, selWardId);
       else if (tab === 'quarterly') rpt = buildQuarterlyReport(selYear, selQuarter, selWardId);
-      else                      rpt = buildYearlyReport(selYear, selWardId);
+      else                          rpt = buildYearlyReport(selYear, selWardId);
       setReport(rpt);
+      // Push to history (keep last 20, deduplicate by id)
+      setReportHistory(prev => [rpt, ...prev.filter(r => r.id !== rpt.id)].slice(0, 20));
       if (!silent) showAlert('Report Ready', rpt.label, undefined, 'success');
     } finally { setGenerating(false); }
   }
@@ -506,6 +509,43 @@ export default function AdminReports() {
           </LinearGradient>
         </TouchableOpacity>
       </View>
+
+      {/* ── Report History ─────────────────────────────────────────── */}
+      {reportHistory.length > 0 && (
+        <View style={{ marginTop: 14, paddingLeft: 14 }}>
+          <Text style={{ color: MUTED, fontSize: 10, fontFamily: 'Inter_600SemiBold', letterSpacing: 0.6, textTransform: 'uppercase', marginBottom: 8 }}>Recent Reports</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingRight: 14 }}>
+            {reportHistory.map(r => {
+              const isActive = report?.id === r.id;
+              const color = r.type === 'monthly' ? '#0EA5E9' : r.type === 'quarterly' ? '#818CF8' : '#34D399';
+              const icon = r.type === 'monthly' ? 'calendar' : r.type === 'quarterly' ? 'bar-chart-2' : 'trending-up';
+              return (
+                <TouchableOpacity
+                  key={r.id}
+                  onPress={() => setReport(r)}
+                  style={{
+                    backgroundColor: isActive ? color + '1A' : GLASS,
+                    borderRadius: 12, borderWidth: 1,
+                    borderColor: isActive ? color + '44' : 'rgba(255,255,255,0.10)',
+                    paddingHorizontal: 12, paddingVertical: 9, gap: 3,
+                    minWidth: 130,
+                  }}
+                  activeOpacity={0.75}
+                >
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+                    <Feather name={icon as any} size={11} color={color} />
+                    <Text style={{ color, fontSize: 11, fontFamily: 'Inter_700Bold' }} numberOfLines={1}>{r.label}</Text>
+                  </View>
+                  <Text style={{ color: MUTED, fontSize: 10, fontFamily: 'Inter_400Regular' }}>
+                    {new Date(r.generatedAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+                  </Text>
+                  <Text style={{ color: MUTED, fontSize: 10, fontFamily: 'Inter_400Regular' }}>{r.rows.length} houses</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        </View>
+      )}
 
       {/* Report table */}
       {report && (
