@@ -4,6 +4,7 @@ import { router } from 'expo-router';
 import React, { useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Image,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -21,53 +22,10 @@ const IS_WEB = Platform.OS === 'web';
 
 function DNPLogo() {
   return (
-    <View style={lg.wrap}>
-      <LinearGradient
-        colors={['#0A1628', '#122360', '#0D4A7A']}
-        start={{ x: 0.1, y: 0 }}
-        end={{ x: 0.9, y: 1 }}
-        style={lg.badge}
-      >
-        <View style={lg.topAccentRow}>
-          {[0,1,2,3,4].map(i => (
-            <View key={i} style={[lg.accentDot, { opacity: 0.4 + i * 0.12 }]} />
-          ))}
-        </View>
-
-        <View style={lg.letterRow}>
-          <Text style={lg.dLetter}>D</Text>
-          <View style={lg.npStack}>
-            <Text style={lg.npTop}>N</Text>
-            <Text style={lg.npBot}>P</Text>
-          </View>
-        </View>
-
-        <View style={lg.rulerRow}>
-          <View style={lg.rulerTick} />
-          <View style={lg.rulerLine} />
-          <View style={lg.rulerCenter}>
-            <View style={lg.rulerDiamond} />
-          </View>
-          <View style={lg.rulerLine} />
-          <View style={lg.rulerTick} />
-        </View>
-
-        <Text style={lg.threeSixty}>360°</Text>
-
-        <View style={lg.bottomDots}>
-          {[0,1,2].map(i => (
-            <View key={i} style={lg.bottomDot} />
-          ))}
-        </View>
-
-        <View style={[lg.cornerDecor, { top: 8, left: 8 }]} />
-        <View style={[lg.cornerDecor, { top: 8, right: 8 }]} />
-        <View style={[lg.cornerDecor, { bottom: 8, left: 8 }]} />
-        <View style={[lg.cornerDecor, { bottom: 8, right: 8 }]} />
-      </LinearGradient>
-
-      <View style={lg.glowBelow} />
-    </View>
+    <Image
+      source={require('../assets/images/dnp360-logo.png')}
+      style={{ width: 220, height: 110, resizeMode: 'contain' }}
+    />
   );
 }
 

@@ -8,6 +8,7 @@ import {
   Image, Modal, Pressable, ScrollView, StyleSheet,
   Switch, Text, TextInput, TouchableOpacity, View,
 } from 'react-native';
+
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAlert } from '@/contexts/AlertContext';
 import { useAppData } from '@/contexts/AppContext';
@@ -350,9 +351,9 @@ export default function AdminProfile() {
 
             {/* Top — logo row */}
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14, padding: 16, paddingBottom: 12 }}>
-              <LinearGradient colors={['#6366F1','#8B5CF6','#EC4899']} style={s.appIconWrap}>
-                <Feather name="shield" size={22} color="#fff" />
-              </LinearGradient>
+              <View style={[s.appIconWrap, { backgroundColor: '#070B1A', justifyContent: 'center', alignItems: 'center' }]}>
+                <Image source={require('../assets/images/dnp360-logo.png')} style={{ width: 52, height: 36, resizeMode: 'contain' }} />
+              </View>
               <View style={{ flex: 1 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 8 }}>
                   <Text style={{ color: TEXT, fontSize: 22, fontFamily: 'Inter_700Bold', letterSpacing: 0.5 }}>DNP360</Text>

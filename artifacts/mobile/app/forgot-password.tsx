@@ -4,6 +4,7 @@ import { router } from 'expo-router';
 import React, { useState } from 'react';
 import {
   ActivityIndicator,
+  Image,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -123,7 +124,7 @@ export default function ForgotPasswordScreen() {
             <Feather name="arrow-left" size={17} color="#FBBF24" />
           </View>
         </Pressable>
-        <Text style={s.topTitle}>Reset Password</Text>
+        <Image source={require('../assets/images/dnp360-logo.png')} style={{ width: 110, height: 44, resizeMode: 'contain' }} />
         <View style={{ width: 42 }} />
       </View>
 
