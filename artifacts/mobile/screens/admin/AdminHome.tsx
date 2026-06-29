@@ -22,7 +22,7 @@ export default function AdminHome() {
   const { complaints, houses, wards, users, notices, secretKeys, passwordResetRequests } = useAppData();
   const { t } = useLanguage();
 
-  const [houseSearch, setHouseSearch] = useState('');
+  const [globalSearch, setGlobalSearch] = useState('');
 
   const citizens  = users.filter(u => u.role === 'citizen');
   const workers   = users.filter(u => u.role === 'safaikarmi');
@@ -32,12 +32,25 @@ export default function AdminHome() {
   const rate      = complaints.length > 0 ? Math.round((resolved / complaints.length) * 100) : 0;
   const pendingResets = passwordResetRequests.filter(r => r.status === 'pending').length;
 
-  const trimmed = houseSearch.trim().toLowerCase();
+  const trimmed = globalSearch.trim().toLowerCase();
   const houseResults = trimmed.length >= 2 ? houses.filter(h =>
+    h.registrationNumber?.toLowerCase().includes(trimmed) ||
     h.ownerName?.toLowerCase().includes(trimmed) ||
     h.mobile?.toLowerCase().includes(trimmed) ||
-    h.registrationNumber?.toLowerCase().includes(trimmed)
+    h.address?.toLowerCase().includes(trimmed)
   ) : [];
+  const userResults = trimmed.length >= 2 ? users.filter(u =>
+    u.name?.toLowerCase().includes(trimmed) ||
+    u.id?.toLowerCase().includes(trimmed) ||
+    u.mobile?.toLowerCase().includes(trimmed) ||
+    u.email?.toLowerCase().includes(trimmed)
+  ) : [];
+  const wardResults = trimmed.length >= 2 ? wards.filter(w =>
+    w.name?.toLowerCase().includes(trimmed) ||
+    String(w.wardNumber).includes(trimmed) ||
+    w.area?.toLowerCase().includes(trimmed)
+  ) : [];
+  const totalResults = houseResults.length + userResults.length + wardResults.length;
 
   const STATS = [
     { label: 'Citizens',    value: citizens.length,                       icon: 'users',      color: '#818CF8', glow: 'rgba(99,102,241,0.14)',  tab: '/(tabs)/action' },
@@ -113,52 +126,100 @@ export default function AdminHome() {
             </TouchableOpacity>
           )}
 
-          {/* ── HOUSE SEARCH ── */}
+          {/* ── GLOBAL SEARCH ── */}
           <View style={s.searchCard}>
             <View style={s.searchBar}>
               <Feather name="search" size={15} color={MUTED} />
               <TextInput
                 style={s.searchInput}
-                placeholder="Search houses — name, mobile, reg no…"
+                placeholder="Search houses, users, wards…"
                 placeholderTextColor={MUTED}
-                value={houseSearch}
-                onChangeText={setHouseSearch}
+                value={globalSearch}
+                onChangeText={setGlobalSearch}
               />
-              {houseSearch.length > 0 && (
-                <TouchableOpacity onPress={() => setHouseSearch('')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              {globalSearch.length > 0 && (
+                <TouchableOpacity onPress={() => setGlobalSearch('')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
                   <Feather name="x-circle" size={14} color={MUTED} />
                 </TouchableOpacity>
               )}
             </View>
-            {houseResults.length > 0 && (
+            {trimmed.length >= 2 && totalResults > 0 && (
               <View style={s.searchResults}>
-                <Text style={s.searchResultsLabel}>{houseResults.length} house{houseResults.length !== 1 ? 's' : ''} found</Text>
-                {houseResults.slice(0, 8).map(h => (
-                  <TouchableOpacity
-                    key={h.id}
-                    style={s.searchResultRow}
-                    onPress={() => router.push('/(tabs)/tertiary')}
-                    activeOpacity={0.75}
-                  >
-                    <LinearGradient colors={['#4F46E5','#7C3AED']} style={s.searchResultAvatar}>
-                      <Feather name="home" size={12} color="#fff" />
-                    </LinearGradient>
-                    <View style={{ flex: 1 }}>
-                      <Text style={s.searchResultName} numberOfLines={1}>{h.ownerName}</Text>
-                      <Text style={s.searchResultSub} numberOfLines={1}>{h.registrationNumber} · W{h.wardNumber}{h.mobile ? ` · ${h.mobile}` : ''}</Text>
+                <Text style={s.searchResultsLabel}>{totalResults} result{totalResults !== 1 ? 's' : ''} found</Text>
+
+                {/* Houses */}
+                {houseResults.length > 0 && (
+                  <>
+                    <View style={s.searchSecHdr}>
+                      <Feather name="home" size={10} color="#818CF8" />
+                      <Text style={[s.searchSecTxt, { color: '#818CF8' }]}>Houses ({houseResults.length})</Text>
                     </View>
-                    <Feather name="chevron-right" size={13} color={MUTED} />
-                  </TouchableOpacity>
-                ))}
-                {houseResults.length > 8 && (
-                  <Text style={s.searchResultMore}>+{houseResults.length - 8} more — go to House DB</Text>
+                    {houseResults.slice(0, 5).map(h => (
+                      <TouchableOpacity key={h.id} style={s.searchResultRow} onPress={() => router.push('/(tabs)/tertiary')} activeOpacity={0.75}>
+                        <LinearGradient colors={['#4F46E5','#7C3AED']} style={s.searchResultAvatar}>
+                          <Feather name="home" size={12} color="#fff" />
+                        </LinearGradient>
+                        <View style={{ flex: 1 }}>
+                          <Text style={[s.searchResultName, { color: '#818CF8' }]} numberOfLines={1}>{h.registrationNumber}</Text>
+                          <Text style={s.searchResultSub} numberOfLines={1}>{h.ownerName} · W{h.wardNumber}{h.mobile ? ` · ${h.mobile}` : ''}</Text>
+                        </View>
+                        <Feather name="chevron-right" size={13} color={MUTED} />
+                      </TouchableOpacity>
+                    ))}
+                    {houseResults.length > 5 && <Text style={s.searchResultMore}>+{houseResults.length - 5} more houses</Text>}
+                  </>
+                )}
+
+                {/* Users */}
+                {userResults.length > 0 && (
+                  <>
+                    <View style={s.searchSecHdr}>
+                      <Feather name="users" size={10} color="#34D399" />
+                      <Text style={[s.searchSecTxt, { color: '#34D399' }]}>Users ({userResults.length})</Text>
+                    </View>
+                    {userResults.slice(0, 5).map(u => (
+                      <TouchableOpacity key={u.id} style={s.searchResultRow} onPress={() => router.push('/(tabs)/action')} activeOpacity={0.75}>
+                        <LinearGradient colors={['#10B981','#059669']} style={s.searchResultAvatar}>
+                          <Feather name="user" size={12} color="#fff" />
+                        </LinearGradient>
+                        <View style={{ flex: 1 }}>
+                          <Text style={s.searchResultName} numberOfLines={1}>{u.name}</Text>
+                          <Text style={s.searchResultSub} numberOfLines={1}>{u.id} · {u.role}</Text>
+                        </View>
+                        <Feather name="chevron-right" size={13} color={MUTED} />
+                      </TouchableOpacity>
+                    ))}
+                    {userResults.length > 5 && <Text style={s.searchResultMore}>+{userResults.length - 5} more users</Text>}
+                  </>
+                )}
+
+                {/* Wards */}
+                {wardResults.length > 0 && (
+                  <>
+                    <View style={s.searchSecHdr}>
+                      <Feather name="map-pin" size={10} color="#22D3EE" />
+                      <Text style={[s.searchSecTxt, { color: '#22D3EE' }]}>Wards ({wardResults.length})</Text>
+                    </View>
+                    {wardResults.slice(0, 4).map(w => (
+                      <TouchableOpacity key={w.id} style={s.searchResultRow} onPress={() => router.push('/(tabs)/tertiary')} activeOpacity={0.75}>
+                        <LinearGradient colors={['#0EA5E9','#2563EB']} style={s.searchResultAvatar}>
+                          <Feather name="map" size={12} color="#fff" />
+                        </LinearGradient>
+                        <View style={{ flex: 1 }}>
+                          <Text style={s.searchResultName} numberOfLines={1}>Ward {w.wardNumber} — {w.name}</Text>
+                          <Text style={s.searchResultSub} numberOfLines={1}>{w.area}</Text>
+                        </View>
+                        <Feather name="chevron-right" size={13} color={MUTED} />
+                      </TouchableOpacity>
+                    ))}
+                  </>
                 )}
               </View>
             )}
-            {trimmed.length >= 2 && houseResults.length === 0 && (
+            {trimmed.length >= 2 && totalResults === 0 && (
               <View style={s.searchEmpty}>
                 <Feather name="search" size={18} color={MUTED} />
-                <Text style={s.searchEmptyTxt}>No houses found</Text>
+                <Text style={s.searchEmptyTxt}>Nothing found</Text>
               </View>
             )}
           </View>
@@ -373,6 +434,8 @@ const s = StyleSheet.create({
   searchInput:        { flex: 1, fontSize: 13, fontFamily: 'Inter_400Regular', color: TEXT, padding: 0 },
   searchResults:      { borderTopWidth: 1, borderTopColor: GLASS_BD, paddingHorizontal: 4, paddingBottom: 8 },
   searchResultsLabel: { color: MUTED, fontSize: 10, fontFamily: 'Inter_700Bold', textTransform: 'uppercase', letterSpacing: 0.5, paddingHorizontal: 10, paddingVertical: 8 },
+  searchSecHdr:       { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingTop: 8, paddingBottom: 3 },
+  searchSecTxt:       { fontSize: 10, fontFamily: 'Inter_700Bold', textTransform: 'uppercase', letterSpacing: 0.4 },
   searchResultRow:    { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 10, paddingVertical: 10 },
   searchResultAvatar: { width: 34, height: 34, borderRadius: 17, justifyContent: 'center', alignItems: 'center' },
   searchResultName:   { color: TEXT, fontSize: 13, fontFamily: 'Inter_700Bold' },
