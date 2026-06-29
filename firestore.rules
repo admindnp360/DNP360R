@@ -118,5 +118,17 @@ service cloud.firestore {
       allow write: if isSignedIn();
     }
 
+    // ── Report History ─────────────────────────────────────────────────────────
+    match /reportHistory/{histId} {
+      allow write: if isSignedIn();
+      allow delete: if isSignedIn();
+    }
+
+    // ── Activity Logs ──────────────────────────────────────────────────────────
+    match /activityLogs/{logId} {
+      allow write: if isSignedIn();
+      allow delete: if isSignedIn();
+    }
+
   }
 }

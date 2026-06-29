@@ -9,7 +9,7 @@ import {
   ActivityIndicator, Modal, Platform, Pressable, ScrollView, StyleSheet,
   Text, TouchableOpacity, View,
 } from 'react-native';
-import { collection, doc, getDocs, limit, orderBy, query, setDoc } from 'firebase/firestore';
+import { collection, deleteDoc, doc, getDocs, limit, orderBy, query, setDoc, writeBatch } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAlert } from '@/contexts/AlertContext';
 import { useAppData } from '@/contexts/AppContext';
@@ -74,7 +74,7 @@ function shouldAutoGenerate(year: number, month: number): boolean {
 
 // ── Main Component ─────────────────────────────────────────────────────
 export default function AdminReports() {
-  const { houses, wards, houseVisits } = useAppData();
+  const { houses, wards, houseVisits, attendance, users } = useAppData();
   const { showAlert } = useAlert();
 
   const now = new Date();
@@ -93,6 +93,8 @@ export default function AdminReports() {
   const [historyLoading, setHistoryLoading] = useState(false);
   const [showHistory, setShowHistory]     = useState(false);
   const [historyFilter, setHistoryFilter] = useState<'all' | 'auto' | 'manual'>('all');
+  const [selIds, setSelIds]               = useState<Set<string>>(new Set());
+  const [deleting, setDeleting]           = useState(false);
 
   // ── Load history from Firestore on mount ──────────────────────────
   useEffect(() => {
@@ -339,9 +341,28 @@ export default function AdminReports() {
         generatedBy: silent ? 'auto' : 'manual',
       };
       setHistoryMeta(prev => [entry, ...prev.filter(h => h.id !== entry.id)].slice(0, 30));
-      try { await setDoc(doc(db, 'reportHistory', rpt.id), entry); } catch { /* silent */ }
+      await setDoc(doc(db, 'reportHistory', rpt.id), entry).catch(e => console.warn('reportHistory save failed:', e));
       if (!silent) showAlert('Report Ready', rpt.label, undefined, 'success');
     } finally { setGenerating(false); }
+  }
+
+  // ── Delete history entries ─────────────────────────────────────────
+  async function deleteSelected(ids: string[]) {
+    setDeleting(true);
+    try {
+      const batch = writeBatch(db);
+      ids.forEach(id => batch.delete(doc(db, 'reportHistory', id)));
+      await batch.commit();
+      setHistoryMeta(prev => prev.filter(h => !ids.includes(h.id)));
+      setReportHistory(prev => prev.filter(r => !ids.includes(r.id)));
+      setSelIds(new Set());
+      showAlert('Deleted', `${ids.length} report${ids.length > 1 ? 's' : ''} removed.`, undefined, 'success');
+    } catch (e: any) { showAlert('Delete Failed', e?.message ?? 'Unknown error', undefined, 'error'); }
+    finally { setDeleting(false); }
+  }
+
+  function toggleSel(id: string) {
+    setSelIds(prev => { const s = new Set(prev); s.has(id) ? s.delete(id) : s.add(id); return s; });
   }
 
   // ── Export to Excel (.xlsx) ────────────────────────────────────────
@@ -685,19 +706,62 @@ export default function AdminReports() {
       </View>
 
       {/* ── History Modal ───────────────────────────────────────────── */}
-      <Modal visible={showHistory} transparent animationType="slide" onRequestClose={() => setShowHistory(false)}>
-        <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)' }} onPress={() => setShowHistory(false)} />
+      <Modal visible={showHistory} transparent animationType="slide" onRequestClose={() => { setShowHistory(false); setSelIds(new Set()); }}>
+        <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)' }} onPress={() => { setShowHistory(false); setSelIds(new Set()); }} />
         <View style={s.histModal}>
           {/* Modal header */}
           <View style={s.histHeader}>
             <Feather name="clock" size={16} color="#F59E0B" />
-            <Text style={s.histHeaderTxt}>Report History</Text>
+            <Text style={s.histHeaderTxt}>
+              {selIds.size > 0 ? `${selIds.size} selected` : 'Report History'}
+            </Text>
             {historyLoading && <ActivityIndicator size={12} color={MUTED} style={{ marginLeft: 4 }} />}
             <View style={{ flex: 1 }} />
-            <TouchableOpacity onPress={() => setShowHistory(false)} style={{ padding: 4 }}>
+            {/* Select-all / deselect */}
+            {historyMeta.length > 0 && (
+              <TouchableOpacity
+                onPress={() => setSelIds(selIds.size === historyMeta.length ? new Set() : new Set(historyMeta.map(h => h.id)))}
+                style={{ padding: 6 }}
+              >
+                <Feather name={selIds.size === historyMeta.length ? 'check-square' : 'square'} size={16} color="#F59E0B" />
+              </TouchableOpacity>
+            )}
+            {/* Delete selected */}
+            {selIds.size > 0 && (
+              <TouchableOpacity
+                onPress={() => showAlert('Delete Reports', `Delete ${selIds.size} report${selIds.size > 1 ? 's' : ''}? This cannot be undone.`, [
+                  { text: 'Cancel', style: 'cancel' },
+                  { text: 'Delete', style: 'destructive', onPress: () => deleteSelected([...selIds]) },
+                ], 'warning')}
+                style={{ padding: 6, marginLeft: 4 }}
+                disabled={deleting}
+              >
+                {deleting ? <ActivityIndicator size={16} color="#FB7185" /> : <Feather name="trash-2" size={16} color="#FB7185" />}
+              </TouchableOpacity>
+            )}
+            {/* Delete all */}
+            {selIds.size === 0 && historyMeta.length > 0 && (
+              <TouchableOpacity
+                onPress={() => showAlert('Clear All History', `Delete all ${historyMeta.length} history records? This cannot be undone.`, [
+                  { text: 'Cancel', style: 'cancel' },
+                  { text: 'Delete All', style: 'destructive', onPress: () => deleteSelected(historyMeta.map(h => h.id)) },
+                ], 'warning')}
+                style={{ padding: 6, marginLeft: 4 }}
+              >
+                <Feather name="trash" size={15} color={MUTED} />
+              </TouchableOpacity>
+            )}
+            <TouchableOpacity onPress={() => { setShowHistory(false); setSelIds(new Set()); }} style={{ padding: 4, marginLeft: 4 }}>
               <Feather name="x" size={18} color={MUTED} />
             </TouchableOpacity>
           </View>
+
+          {/* Long-press hint */}
+          {selIds.size === 0 && historyMeta.length > 0 && (
+            <View style={{ paddingHorizontal: 14, paddingVertical: 6, backgroundColor: 'rgba(245,158,11,0.06)', borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.04)' }}>
+              <Text style={{ color: MUTED, fontSize: 10, fontFamily: 'Inter_400Regular' }}>Long-press any report to select for deletion</Text>
+            </View>
+          )}
 
           {/* Category filter tabs */}
           <View style={s.histFilterRow}>
@@ -707,39 +771,28 @@ export default function AdminReports() {
                 style={[s.histFilterPill, historyFilter === f && { backgroundColor: '#F59E0B20', borderColor: '#F59E0B55' }]}
                 onPress={() => setHistoryFilter(f)}
               >
-                <Feather
-                  name={f === 'auto' ? 'zap' : f === 'manual' ? 'user' : 'list'}
-                  size={11}
-                  color={historyFilter === f ? '#F59E0B' : MUTED}
-                />
+                <Feather name={f === 'auto' ? 'zap' : f === 'manual' ? 'user' : 'list'} size={11} color={historyFilter === f ? '#F59E0B' : MUTED} />
                 <Text style={[s.histFilterTxt, historyFilter === f && { color: '#F59E0B' }]}>
-                  {f === 'all' ? 'All' : f === 'auto' ? 'Auto-Generated' : 'Manual'}
+                  {f === 'all' ? 'All' : f === 'auto' ? 'Auto' : 'Manual'}
                 </Text>
               </TouchableOpacity>
             ))}
           </View>
 
-          <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 14, gap: 0 }} showsVerticalScrollIndicator={false}>
+          <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 14 }} showsVerticalScrollIndicator={false}>
             {/* Auto-Generated section */}
             {(historyFilter === 'all' || historyFilter === 'auto') && (() => {
               const list = historyMeta.filter(r => r.generatedBy === 'auto');
-              if (list.length === 0 && historyFilter === 'auto') return (
-                <View style={s.histEmpty}>
-                  <Feather name="zap" size={20} color={MUTED} />
-                  <Text style={s.histEmptyTxt}>No auto-generated reports yet</Text>
-                </View>
-              );
+              if (list.length === 0 && historyFilter === 'auto') return <View style={s.histEmpty}><Feather name="zap" size={20} color={MUTED} /><Text style={s.histEmptyTxt}>No auto-generated reports yet</Text></View>;
               if (list.length === 0) return null;
               return (
                 <View style={{ marginBottom: 16 }}>
                   <View style={s.histCatHeader}>
                     <Feather name="zap" size={12} color="#22D3EE" />
                     <Text style={[s.histCatLabel, { color: '#22D3EE' }]}>Auto-Generated</Text>
-                    <View style={[s.histCatBadge, { backgroundColor: '#22D3EE20' }]}>
-                      <Text style={[s.histCatBadgeTxt, { color: '#22D3EE' }]}>{list.length}</Text>
-                    </View>
+                    <View style={[s.histCatBadge, { backgroundColor: '#22D3EE20' }]}><Text style={[s.histCatBadgeTxt, { color: '#22D3EE' }]}>{list.length}</Text></View>
                   </View>
-                  {list.map((r, i) => { const mem = reportHistory.find(h => h.id === r.id); return <HistoryCard key={r.id} r={r} isActive={report?.id === r.id} inMemory={!!mem} onPress={() => { if (mem) { setReport(mem); setShowHistory(false); } else { showAlert('Reload Required', 'Please regenerate — only current-session reports can be re-viewed.', undefined, 'info'); setShowHistory(false); } }} onExportPDF={mem ? () => { handleExportPDF(mem); } : undefined} last={i === list.length - 1} />; })}
+                  {list.map((r, i) => { const mem = reportHistory.find(h => h.id === r.id); return <HistoryCard key={r.id} r={r} isActive={report?.id === r.id} inMemory={!!mem} selected={selIds.has(r.id)} onPress={() => { if (selIds.size > 0) { toggleSel(r.id); return; } if (mem) { setReport(mem); setShowHistory(false); setSelIds(new Set()); } else { showAlert('Reload Required', 'Please regenerate this report.', undefined, 'info'); } }} onLongPress={() => toggleSel(r.id)} onExportPDF={mem ? () => handleExportPDF(mem) : undefined} last={i === list.length - 1} />; })}
                 </View>
               );
             })()}
@@ -747,23 +800,16 @@ export default function AdminReports() {
             {/* Manually Generated section */}
             {(historyFilter === 'all' || historyFilter === 'manual') && (() => {
               const manualList = historyMeta.filter(r => r.generatedBy === 'manual' || !(r as any).generatedBy);
-              if (manualList.length === 0 && historyFilter === 'manual') return (
-                <View style={s.histEmpty}>
-                  <Feather name="user" size={20} color={MUTED} />
-                  <Text style={s.histEmptyTxt}>No manual reports yet</Text>
-                </View>
-              );
+              if (manualList.length === 0 && historyFilter === 'manual') return <View style={s.histEmpty}><Feather name="user" size={20} color={MUTED} /><Text style={s.histEmptyTxt}>No manual reports yet</Text></View>;
               if (manualList.length === 0) return null;
               return (
                 <View style={{ marginBottom: 16 }}>
                   <View style={s.histCatHeader}>
                     <Feather name="user" size={12} color="#A78BFA" />
                     <Text style={[s.histCatLabel, { color: '#A78BFA' }]}>Manually Generated</Text>
-                    <View style={[s.histCatBadge, { backgroundColor: '#A78BFA20' }]}>
-                      <Text style={[s.histCatBadgeTxt, { color: '#A78BFA' }]}>{manualList.length}</Text>
-                    </View>
+                    <View style={[s.histCatBadge, { backgroundColor: '#A78BFA20' }]}><Text style={[s.histCatBadgeTxt, { color: '#A78BFA' }]}>{manualList.length}</Text></View>
                   </View>
-                  {manualList.map((r, i) => { const mem = reportHistory.find(h => h.id === r.id); return <HistoryCard key={r.id} r={r} isActive={report?.id === r.id} inMemory={!!mem} onPress={() => { if (mem) { setReport(mem); setShowHistory(false); } else { showAlert('Reload Required', 'Please regenerate — only current-session reports can be re-viewed.', undefined, 'info'); setShowHistory(false); } }} onExportPDF={mem ? () => { handleExportPDF(mem); } : undefined} last={i === manualList.length - 1} />; })}
+                  {manualList.map((r, i) => { const mem = reportHistory.find(h => h.id === r.id); return <HistoryCard key={r.id} r={r} isActive={report?.id === r.id} inMemory={!!mem} selected={selIds.has(r.id)} onPress={() => { if (selIds.size > 0) { toggleSel(r.id); return; } if (mem) { setReport(mem); setShowHistory(false); setSelIds(new Set()); } else { showAlert('Reload Required', 'Please regenerate this report.', undefined, 'info'); } }} onLongPress={() => toggleSel(r.id)} onExportPDF={mem ? () => handleExportPDF(mem) : undefined} last={i === manualList.length - 1} />; })}
                 </View>
               );
             })()}
@@ -1043,16 +1089,18 @@ function WardChart({ rows }: { rows: import('@/types').HouseCollectionRow[] }) {
 }
 
 // ── HistoryCard sub-component ───────────────────────────────────────
-function HistoryCard({ r, isActive, inMemory, onPress, onExportPDF, last }: {
-  r: HistoryEntry; isActive: boolean; inMemory: boolean; onPress: () => void;
-  onExportPDF?: () => void; last: boolean;
+function HistoryCard({ r, isActive, inMemory, selected, onPress, onLongPress, onExportPDF, last }: {
+  r: HistoryEntry; isActive: boolean; inMemory: boolean; selected?: boolean; onPress: () => void;
+  onLongPress?: () => void; onExportPDF?: () => void; last: boolean;
 }) {
   const color = r.type === 'monthly' ? '#0EA5E9' : r.type === 'quarterly' ? '#818CF8' : '#34D399';
   const icon  = r.type === 'monthly' ? 'calendar' : r.type === 'quarterly' ? 'bar-chart-2' : 'trending-up';
   return (
     <TouchableOpacity
       onPress={onPress}
-      style={[s.histCard, isActive && s.histCardActive, last && { marginBottom: 0 }]}
+      onLongPress={onLongPress}
+      delayLongPress={400}
+      style={[s.histCard, isActive && s.histCardActive, selected && { borderColor: '#FB718590', backgroundColor: '#FB71850E' }, last && { marginBottom: 0 }]}
       activeOpacity={0.75}
     >
       <View style={[s.histCardIcon, { backgroundColor: color + '18' }]}>
