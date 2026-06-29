@@ -2,6 +2,7 @@ import { Feather } from '@expo/vector-icons';
 import * as FileSystem from 'expo-file-system/legacy';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Sharing from 'expo-sharing';
+import { useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator, Animated, Modal, Pressable, ScrollView, StyleSheet,
@@ -50,7 +51,8 @@ export default function SuperAdminHouseDB() {
   const { showAlert } = useAlert();
 
   // ── Navigation state ──────────────────────────────────────────────
-  const [view, setView]                   = useState<View_>('wards');
+  const { view: initView } = useLocalSearchParams<{ view?: string }>();
+  const [view, setView]                   = useState<View_>((initView as View_) || 'wards');
   const [selectedWard, setSelectedWard]   = useState<Ward | null>(null);
   const [selectedGroup, setSelectedGroup] = useState<Group | null>(null);
   const [expandedHouseId, setExpandedHouseId] = useState<string | null>(null);

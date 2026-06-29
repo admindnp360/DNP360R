@@ -2,6 +2,7 @@ import { Feather } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
 import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useLocalSearchParams } from 'expo-router';
 import React, { useState } from 'react';
 import {
   Image, Modal, Pressable, ScrollView, StyleSheet,
@@ -45,9 +46,10 @@ export default function AdminUsers() {
   const isSuperAdmin = !!(currentUser as any)?.isSuperAdmin;
 
   const TABS = isSuperAdmin ? ALL_TABS : ALL_TABS.filter(t => t.key !== 'citizen');
+  const { tab: initTab } = useLocalSearchParams<{ tab?: string }>();
 
   const [search, setSearch]             = useState('');
-  const [activeTab, setActiveTab]       = useState<RoleTab>('all');
+  const [activeTab, setActiveTab]       = useState<RoleTab>((initTab as RoleTab) || 'all');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'frozen'>('all');
 
   // ── Bulk selection ─────────────────────────────────────────────

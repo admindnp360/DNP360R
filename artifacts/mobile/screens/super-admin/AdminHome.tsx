@@ -227,17 +227,17 @@ export default function AdminHome() {
           <Text style={s.sectionTitle}>System Overview</Text>
           <View style={s.grid}>
             {[
-              { label: 'Citizens',    value: citizens.length,   icon: 'users',      color: '#818CF8', tab: TAB_USERS   },
-              { label: 'Workers',     value: workers.length,    icon: 'user-check', color: '#34D399', tab: TAB_USERS   },
-              { label: 'Officials',   value: officials.length,  icon: 'briefcase',  color: '#FCD34D', tab: TAB_USERS   },
-              { label: 'Houses',      value: activeHouses,      icon: 'home',       color: '#22D3EE', tab: TAB_HOUSEDB },
-              { label: 'Wards',       value: wards.length,      icon: 'map',        color: '#C084FC', tab: TAB_HOUSEDB },
-              { label: 'Keys',        value: secretKeys.length, icon: 'key',        color: '#F472B6', tab: TAB_MANAGE  },
+              { label: 'Citizens',  value: citizens.length,   icon: 'users',      color: '#818CF8', route: `${TAB_USERS}?tab=citizen`      },
+              { label: 'Workers',   value: workers.length,    icon: 'user-check', color: '#34D399', route: `${TAB_USERS}?tab=safaikarmi`   },
+              { label: 'Officials', value: officials.length,  icon: 'briefcase',  color: '#FCD34D', route: `${TAB_USERS}?tab=official`     },
+              { label: 'Houses',    value: activeHouses,      icon: 'home',       color: '#22D3EE', route: `${TAB_HOUSEDB}?view=houses`    },
+              { label: 'Wards',     value: wards.length,      icon: 'map',        color: '#C084FC', route: `${TAB_HOUSEDB}?view=wards`     },
+              { label: 'Keys',      value: secretKeys.length, icon: 'key',        color: '#F472B6', route: `${TAB_MANAGE}?tab=genkey`      },
             ].map(stat => (
               <TouchableOpacity
                 key={stat.label}
                 style={[s.statCard, { borderColor: stat.color + '28' }]}
-                onPress={() => router.push(stat.tab as any)}
+                onPress={() => router.push(stat.route as any)}
                 activeOpacity={0.75}
               >
                 <LinearGradient colors={[stat.color + '22', stat.color + '0A']} style={StyleSheet.absoluteFill} />
@@ -250,58 +250,16 @@ export default function AdminHome() {
             ))}
           </View>
 
-          {/* ── WARD HEALTH ── */}
-          <View style={s.sectionRow}>
-            <Text style={s.sectionTitle}>Ward Health</Text>
-            <TouchableOpacity onPress={() => router.push(TAB_HOUSEDB)} activeOpacity={0.7}>
-              <Text style={s.seeAll}>Manage →</Text>
-            </TouchableOpacity>
-          </View>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10, paddingRight: 4 }}>
-            {wards.map(ward => {
-              const wp  = complaints.filter(c => c.wardId === ward.id && c.status !== 'resolved').length;
-              const ww  = users.filter(u => u.role === 'safaikarmi' && (ward.assignedWorkers ?? []).includes(u.id));
-              const hlt = wp === 0 ? 'good' : wp <= 2 ? 'warn' : 'bad';
-              const hC  = hlt === 'good' ? '#34D399' : hlt === 'warn' ? '#FBBF24' : '#FB7185';
-              const hLbl = hlt === 'good' ? 'Healthy' : hlt === 'warn' ? 'Warning' : 'Critical';
-              return (
-                <TouchableOpacity key={ward.id} style={[s.wardCard, { borderColor: hC + '30' }]} onPress={() => router.push(TAB_HOUSEDB)} activeOpacity={0.8}>
-                  <LinearGradient colors={[hC + '14', hC + '05']} style={StyleSheet.absoluteFill} />
-                  <View style={s.wardTop}>
-                    <Text style={[s.wardNum, { color: hC }]}>W{ward.wardNumber}</Text>
-                    <View style={[s.healthPill, { backgroundColor: hC + '20' }]}>
-                      <View style={[s.healthDot, { backgroundColor: hC }]} />
-                      <Text style={[s.healthLbl, { color: hC }]}>{hLbl}</Text>
-                    </View>
-                  </View>
-                  <Text style={s.wardName} numberOfLines={1}>{ward.name}</Text>
-                  <Text style={s.wardArea} numberOfLines={1}>{ward.area}</Text>
-                  <View style={[s.wardDivider, { borderTopColor: hC + '20' }]} />
-                  <View style={s.wardStatRow}>
-                    <Feather name="alert-circle" size={10} color={wp > 0 ? '#FB7185' : MUTED} />
-                    <Text style={[s.wardStatTxt, { color: wp > 0 ? '#FB7185' : MUTED }]}>{wp} pending</Text>
-                    <Feather name="user" size={10} color={ww.length > 0 ? '#34D399' : MUTED} style={{ marginLeft: 6 }} />
-                    <Text style={[s.wardStatTxt, { color: ww.length > 0 ? '#34D399' : MUTED }]}>{ww.length} SK</Text>
-                  </View>
-                  <View style={s.wardStatRow}>
-                    <Feather name="home" size={10} color={MUTED} />
-                    <Text style={[s.wardStatTxt, { color: MUTED }]}>{houses.filter(h => h.wardId === ward.id).length} houses</Text>
-                  </View>
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
-
           {/* ── QUICK ACCESS ── */}
           <Text style={s.sectionTitle}>Quick Access</Text>
           <View style={s.card}>
             {[
-              { icon: 'users',    label: 'Manage Users',    sub: `${users.length} total accounts`,                                                                color: '#818CF8', tab: TAB_USERS   },
-              { icon: 'database', label: 'House Database',  sub: `${activeHouses} active · ${wards.length} wards`,                                               color: '#22D3EE', tab: TAB_HOUSEDB },
-              { icon: 'settings', label: 'Admin Manage',    sub: `${notices.filter(n => n.isActive).length} notices · ${secretKeys.filter(k=>k.isActive).length} keys`, color: '#C084FC', tab: TAB_MANAGE  },
-              { icon: 'lock',     label: 'Password Resets', sub: pendingResets > 0 ? `${pendingResets} pending review` : 'No pending requests',                  color: pendingResets > 0 ? '#FB7185' : '#34D399', tab: TAB_MANAGE },
+              { icon: 'users',    label: 'Manage Users',    sub: `${users.length} total accounts`,                                                                color: '#818CF8', route: TAB_USERS                    },
+              { icon: 'database', label: 'House Database',  sub: `${activeHouses} active · ${wards.length} wards`,                                               color: '#22D3EE', route: `${TAB_HOUSEDB}?view=houses`  },
+              { icon: 'settings', label: 'Admin Manage',    sub: `${notices.filter(n => n.isActive).length} notices · ${secretKeys.filter(k=>k.isActive).length} keys`, color: '#C084FC', route: TAB_MANAGE             },
+              { icon: 'lock',     label: 'Password Resets', sub: pendingResets > 0 ? `${pendingResets} pending review` : 'No pending requests',                  color: pendingResets > 0 ? '#FB7185' : '#34D399', route: `${TAB_MANAGE}?tab=resets` },
             ].map((item, i, arr) => (
-              <TouchableOpacity key={item.label} style={[s.qaRow, i < arr.length - 1 && s.qaDiv]} onPress={() => router.push(item.tab as any)} activeOpacity={0.74}>
+              <TouchableOpacity key={item.label} style={[s.qaRow, i < arr.length - 1 && s.qaDiv]} onPress={() => router.push(item.route as any)} activeOpacity={0.74}>
                 <View style={[s.iconBox, { backgroundColor: item.color + '16', width: 36, height: 36, borderRadius: 11 }]}>
                   <Feather name={item.icon as any} size={15} color={item.color} />
                 </View>
@@ -316,7 +274,7 @@ export default function AdminHome() {
 
           {/* ── ACTIVE NOTICES BANNER ── */}
           {notices.filter(n => n.isActive).length > 0 && (
-            <TouchableOpacity style={s.noticeBanner} onPress={() => router.push(TAB_MANAGE)} activeOpacity={0.82}>
+            <TouchableOpacity style={s.noticeBanner} onPress={() => router.push(`${TAB_MANAGE}?tab=notices` as any)} activeOpacity={0.82}>
               <LinearGradient colors={['rgba(34,211,238,0.14)', 'rgba(34,211,238,0.05)']} style={s.noticeBannerInner} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
                 <View style={[s.iconBox, { backgroundColor: 'rgba(34,211,238,0.16)', width: 36, height: 36, borderRadius: 11 }]}>
                   <Feather name="volume-2" size={14} color="#22D3EE" />
