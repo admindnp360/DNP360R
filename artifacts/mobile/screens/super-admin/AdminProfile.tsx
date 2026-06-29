@@ -82,7 +82,7 @@ export default function AdminProfile() {
   const pendingResets= passwordResetRequests.filter(r => r.status === 'pending').length;
   const activeKeys   = secretKeys.filter(k => k.isActive).length;
 
-  const photoUri = editPhoto ?? user.avatar ?? user.photo;
+  const photoUri = editPhoto ?? user.avatar ?? (user as any).photo;
 
   // ── Handlers ───────────────────────────────────────────────────────
   function openEdit() {
@@ -283,7 +283,7 @@ export default function AdminProfile() {
             {[
               { icon: 'mail',     g: ['#6366F1','#8B5CF6'] as const, label: 'Email',        value: user.email },
               { icon: 'phone',    g: ['#10B981','#059669'] as const, label: 'Mobile',       value: user.mobile ?? 'Not set' },
-              { icon: 'hash',     g: ['#0EA5E9','#2563EB'] as const, label: 'User ID',      value: (user.role === 'superadmin') ? 'SUPERADMIN' : (user.id ?? '—') },
+              { icon: 'hash',     g: ['#0EA5E9','#2563EB'] as const, label: 'User ID',      value: !!(user as any).isSuperAdmin ? 'SUPERADMIN' : (user.id ?? '—') },
               { icon: 'calendar', g: ['#EC4899','#DB2777'] as const, label: 'Member Since', value: (user as any).createdAt ?? '—' },
             ].map((row, i, arr) => (
               <View key={row.label} style={[s.listRow, i < arr.length - 1 && s.rowDiv]}>
@@ -465,8 +465,8 @@ export default function AdminProfile() {
                 <LinearGradient colors={['rgba(99,102,241,0.5)','rgba(139,92,246,0.2)','transparent']} style={m.avatarPickRing} />
                 {editPhoto
                   ? <Image source={{ uri: editPhoto }} style={m.avatarPickImg} />
-                  : user.avatar || user.photo
-                    ? <Image source={{ uri: user.avatar ?? user.photo }} style={m.avatarPickImg} />
+                  : user.avatar || (user as any).photo
+                    ? <Image source={{ uri: user.avatar ?? (user as any).photo }} style={m.avatarPickImg} />
                     : (
                       <LinearGradient colors={['#6366F1','#8B5CF6','#EC4899']} style={m.avatarPickImg}>
                         <Text style={{ color: '#fff', fontSize: 32, fontFamily: 'Inter_700Bold' }}>{user.name[0].toUpperCase()}</Text>
