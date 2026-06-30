@@ -335,8 +335,10 @@ export default function AdminReports() {
       setReportHistory(prev => [rpt, ...prev.filter(r => r.id !== rpt.id)].slice(0, 20));
       const entry: HistoryEntry = {
         id: rpt.id, type: rpt.type, label: rpt.label, year: rpt.year,
-        month: rpt.month ?? undefined, quarter: rpt.quarter ?? undefined,
-        wardId: rpt.wardId, wardNumber: rpt.wardNumber ? Number(rpt.wardNumber) : null,
+        ...(rpt.month    != null ? { month: rpt.month }       : {}),
+        ...(rpt.quarter  != null ? { quarter: rpt.quarter }   : {}),
+        wardId: rpt.wardId ?? null,
+        wardNumber: rpt.wardNumber ? Number(rpt.wardNumber) : null,
         generatedAt: rpt.generatedAt, rowCount: rpt.rows.length,
         generatedBy: silent ? 'auto' : 'manual',
       };
@@ -510,6 +512,67 @@ export default function AdminReports() {
           <td style="padding:4px 8px;font-size:10px;font-weight:700;color:${clr};white-space:nowrap">${pct}%</td></tr>`;
       }).join('');
 
+      // Attendance vs Collection chart for PDF
+      const inRangePDF = (dateStr: string) => {
+        const d = new Date(dateStr);
+        if (isNaN(d.getTime())) return false;
+        const y = d.getFullYear(), m = d.getMonth() + 1;
+        if (y !== rpt.year) return false;
+        if (rpt.type === 'monthly') return m === rpt.month;
+        if (rpt.type === 'quarterly' && rpt.quarter) {
+          const qs = (rpt.quarter - 1) * 3 + 1;
+          return m >= qs && m <= qs + 2;
+        }
+        return true;
+      };
+      const attBars = wards
+        .filter(w => w.wardNumber)
+        .map(w => {
+          const wn = Number(w.wardNumber);
+          const workerIds = w.assignedWorkers ?? [];
+          const filtered = attendance.filter(a => workerIds.includes(a.workerId) && inRangePDF(a.date));
+          const present  = filtered.filter(a => a.status === 'present' || a.status === 'half_day').length;
+          const attPct   = filtered.length > 0 ? Math.round((present / filtered.length) * 100) : null;
+          const wardRows = rpt.rows.filter(r => r.wardNo === wn);
+          const totP     = wardRows.reduce((s, r) => s + r.totalPresent, 0);
+          const totD     = wardRows.reduce((s, r) => s + r.totalDays, 0);
+          const colPct   = totD > 0 ? Math.round((totP / totD) * 100) : null;
+          if (attPct === null && colPct === null) return '';
+          const aClr = attPct == null ? '#9ca3af' : attPct >= 80 ? '#16a34a' : attPct >= 50 ? '#d97706' : '#dc2626';
+          const cClr = '#6366f1';
+          const workers  = users.filter(u => u.role === 'safaikarmi' && workerIds.includes(u.id)).length;
+          const gap      = attPct != null && colPct != null ? colPct - attPct : null;
+          const note     = gap != null && gap < -15
+            ? `<span style="color:#d97706;font-size:8px"> ⚠ Collection ${Math.abs(gap)}% below attendance</span>`
+            : (attPct != null && attPct < 60
+                ? `<span style="color:#dc2626;font-size:8px"> ⚠ Low worker attendance</span>`
+                : '');
+          return `<tr>
+            <td style="padding:3px 8px;font-size:10px;white-space:nowrap;vertical-align:middle">Ward ${wn}</td>
+            <td style="padding:3px 8px;width:100%;vertical-align:middle">
+              <div style="margin-bottom:3px">
+                <div style="display:flex;align-items:center;gap:4px;margin-bottom:2px">
+                  <span style="font-size:8px;color:#555;width:66px">Attendance</span>
+                  <div style="flex:1;background:#e5e7eb;border-radius:3px;height:10px">
+                    <div style="background:${aClr};width:${attPct ?? 0}%;height:10px;border-radius:3px"></div>
+                  </div>
+                  <span style="font-size:9px;font-weight:700;color:${aClr};width:32px;text-align:right">${attPct != null ? attPct + '%' : '—'}</span>
+                  <span style="font-size:8px;color:#9ca3af">(${workers}w)</span>
+                </div>
+                <div style="display:flex;align-items:center;gap:4px">
+                  <span style="font-size:8px;color:#555;width:66px">Collection</span>
+                  <div style="flex:1;background:#e5e7eb;border-radius:3px;height:10px">
+                    <div style="background:${cClr};width:${colPct ?? 0}%;height:10px;border-radius:3px"></div>
+                  </div>
+                  <span style="font-size:9px;font-weight:700;color:${cClr};width:32px;text-align:right">${colPct != null ? colPct + '%' : '—'}</span>
+                  <span style="font-size:8px;color:transparent">(0w)</span>
+                </div>
+              </div>
+              ${note}
+            </td>
+          </tr>`;
+        }).filter(Boolean).join('');
+
       const html = `<!DOCTYPE html><html><head><meta charset="utf-8">
       <style>
         @page{size:A4 landscape;margin:12mm}
@@ -539,6 +602,15 @@ export default function AdminReports() {
           <div class="scard" style="background:#ede9fe"><div class="sv" style="color:#7c3aed">${avgPct}</div><div class="sl">Avg %</div></div>
         </div>
         ${wardBars ? `<h2>Ward-wise Collection Performance</h2><table class="ward">${wardBars}</table>` : ''}
+        ${attBars ? `<h2>Attendance vs Collection by Ward</h2>
+        <div style="font-size:8px;color:#666;margin-bottom:6px">Safai Karmi attendance rate alongside collection rate — spot absenteeism-driven gaps</div>
+        <div style="display:flex;gap:14px;margin-bottom:8px;font-size:8px">
+          <span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#16a34a;margin-right:3px"></span>Attendance (≥80%)</span>
+          <span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#d97706;margin-right:3px"></span>50–79%</span>
+          <span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#dc2626;margin-right:3px"></span>&lt;50%</span>
+          <span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#6366f1;margin-right:3px"></span>Collection</span>
+        </div>
+        <table class="ward">${attBars}</table>` : ''}
         <h2>Collection Details</h2>
         <div class="legend">
           <span><span class="ldot" style="background:#22c55e"></span>P = Collected</span>
