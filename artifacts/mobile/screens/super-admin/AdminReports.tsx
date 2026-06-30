@@ -102,6 +102,7 @@ export default function AdminReports() {
   const [savingRecipients, setSavingRecipients]       = useState(false);
   const [recipientDraft, setRecipientDraft]           = useState<string[]>([]);
   const [countdown, setCountdown]                     = useState('');
+  const [pdfFileUri, setPdfFileUri]                   = useState<string | null>(null);
 
   // ── Live countdown to next auto-generate ──────────────────────────
   useEffect(() => {
@@ -412,13 +413,25 @@ export default function AdminReports() {
   // ── Normal share (native share sheet) ─────────────────────────────
   async function handleNormalShare(rpt: GeneratedReport = report!) {
     if (!rpt) return;
-    const totP = rpt.rows.reduce((a, r) => a + r.totalPresent, 0);
-    const totN = rpt.rows.reduce((a, r) => a + r.totalAbsent, 0);
-    const totAll = totP + totN;
-    const avg = totAll > 0 ? ((totP / totAll) * 100).toFixed(1) + '%' : '—';
-    const msg = `📊 DNP360 Report — ${rpt.label}\n\n🏠 Houses: ${rpt.rows.length}\n✅ Collected: ${totP}\n❌ Missed: ${totN}\n📈 Avg: ${avg}\n\n📅 Generated: ${new Date(rpt.generatedAt).toLocaleString('en-IN')}\n\nNagar Parishad Daudnagar`;
-    try { await Share.share({ message: msg, title: `DNP360 — ${rpt.label}` }); } catch { /* user cancelled */ }
     setShowShareMenu(false);
+    if (pdfFileUri) {
+      // Share the actual PDF file via native share sheet (WhatsApp, Email, Drive, etc.)
+      try {
+        await Sharing.shareAsync(pdfFileUri, {
+          mimeType: 'application/pdf',
+          dialogTitle: `Share: ${rpt.label}`,
+          UTI: 'com.adobe.pdf',
+        });
+      } catch { /* user cancelled */ }
+    } else {
+      // Fallback: text share
+      const totP = rpt.rows.reduce((a, r) => a + r.totalPresent, 0);
+      const totN = rpt.rows.reduce((a, r) => a + r.totalAbsent, 0);
+      const totAll = totP + totN;
+      const avg = totAll > 0 ? ((totP / totAll) * 100).toFixed(1) + '%' : '—';
+      const msg = `📊 DNP360 Report — ${rpt.label}\n\n🏠 Houses: ${rpt.rows.length}\n✅ Collected: ${totP}\n❌ Missed: ${totN}\n📈 Avg: ${avg}\n\n📅 Generated: ${new Date(rpt.generatedAt).toLocaleString('en-IN')}\n\nNagar Parishad Daudnagar`;
+      try { await Share.share({ message: msg, title: `DNP360 — ${rpt.label}` }); } catch { /* user cancelled */ }
+    }
   }
 
   // ── Save report recipients to Firestore ───────────────────────────
@@ -902,7 +915,15 @@ ${watermarkTag}
         if (w) { w.document.write(html); w.document.close(); w.focus(); w.print(); }
         else showAlert('Popup Blocked', 'Please allow popups to export PDF.', undefined, 'info');
       } else {
-        await Print.printAsync({ html });
+        // Save PDF to file so it can be shared via WhatsApp / Email / Drive etc.
+        const { uri } = await Print.printToFileAsync({ html, base64: false });
+        // Move to a named file in cache dir
+        const fname = `DNP360_${rpt.id}_${new Date().toISOString().slice(0,10)}.pdf`;
+        const dest = FileSystem.cacheDirectory + fname;
+        await FileSystem.moveAsync({ from: uri, to: dest });
+        setPdfFileUri(dest);
+        // Open share modal so user can choose WhatsApp, Email, Print, etc.
+        setShowShareMenu(true);
       }
     } catch (e: any) { showAlert('PDF Failed', e?.message ?? 'Unknown error', undefined, 'error'); }
     finally { setExportingPDF(false); }
@@ -1186,23 +1207,54 @@ ${watermarkTag}
       <Modal visible={showShareMenu} transparent animationType="fade" onRequestClose={() => setShowShareMenu(false)}>
         <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', justifyContent: 'flex-end' }} onPress={() => setShowShareMenu(false)}>
           <Pressable onPress={e => e.stopPropagation()}>
-            <View style={{ backgroundColor: '#0D1226', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, paddingBottom: 32, borderTopWidth: 1, borderTopColor: 'rgba(99,102,241,0.25)' }}>
-              <Text style={{ color: TEXT, fontSize: 14, fontFamily: 'Inter_700Bold', marginBottom: 16 }}>Share Report</Text>
-              {/* Normal share */}
+            <View style={{ backgroundColor: '#0D1226', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, paddingBottom: 36, borderTopWidth: 1, borderTopColor: 'rgba(99,102,241,0.25)' }}>
+              {/* Header */}
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
+                <Feather name="file-text" size={15} color="#22D3EE" />
+                <Text style={{ color: TEXT, fontSize: 14, fontFamily: 'Inter_700Bold', marginLeft: 8, flex: 1 }}>PDF Ready — Share Report</Text>
+                <TouchableOpacity onPress={() => setShowShareMenu(false)}><Feather name="x" size={18} color={MUTED} /></TouchableOpacity>
+              </View>
+              <Text style={{ color: MUTED, fontSize: 10, fontFamily: 'Inter_400Regular', marginBottom: 16 }}>
+                {report?.label ?? ''} · Choose how to share
+              </Text>
+
+              {/* Share PDF (WhatsApp / Email / Drive etc.) */}
               <TouchableOpacity
                 onPress={() => report && handleNormalShare(report)}
+                activeOpacity={0.8}
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 14, backgroundColor: 'rgba(34,197,94,0.10)', borderRadius: 14, padding: 14, marginBottom: 10, borderWidth: 1, borderColor: 'rgba(34,197,94,0.25)' }}
+              >
+                <View style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: '#22C55E18', justifyContent: 'center', alignItems: 'center' }}>
+                  <Feather name="share-2" size={18} color="#22C55E" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ color: TEXT, fontSize: 13, fontFamily: 'Inter_700Bold' }}>Share PDF</Text>
+                  <Text style={{ color: MUTED, fontSize: 10, fontFamily: 'Inter_400Regular', marginTop: 2 }}>WhatsApp · Email · Drive · Telegram & more</Text>
+                </View>
+                <Feather name="chevron-right" size={14} color={MUTED} />
+              </TouchableOpacity>
+
+              {/* Print / View */}
+              <TouchableOpacity
+                onPress={async () => {
+                  setShowShareMenu(false);
+                  if (pdfFileUri) {
+                    try { await Print.printAsync({ uri: pdfFileUri }); } catch { /* cancelled */ }
+                  }
+                }}
                 activeOpacity={0.8}
                 style={{ flexDirection: 'row', alignItems: 'center', gap: 14, backgroundColor: 'rgba(99,102,241,0.10)', borderRadius: 14, padding: 14, marginBottom: 10, borderWidth: 1, borderColor: 'rgba(99,102,241,0.25)' }}
               >
                 <View style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: '#6366F118', justifyContent: 'center', alignItems: 'center' }}>
-                  <Feather name="share-2" size={18} color="#818CF8" />
+                  <Feather name="printer" size={18} color="#818CF8" />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={{ color: TEXT, fontSize: 13, fontFamily: 'Inter_700Bold' }}>Normal Share</Text>
-                  <Text style={{ color: MUTED, fontSize: 10, fontFamily: 'Inter_400Regular', marginTop: 2 }}>Share via WhatsApp, SMS, email & more</Text>
+                  <Text style={{ color: TEXT, fontSize: 13, fontFamily: 'Inter_700Bold' }}>Print / View PDF</Text>
+                  <Text style={{ color: MUTED, fontSize: 10, fontFamily: 'Inter_400Regular', marginTop: 2 }}>Open in system print dialog</Text>
                 </View>
                 <Feather name="chevron-right" size={14} color={MUTED} />
               </TouchableOpacity>
+
               {/* Auto-recipients share */}
               <TouchableOpacity
                 onPress={() => { setShowShareMenu(false); setShowRecipientsModal(true); }}
@@ -1213,11 +1265,11 @@ ${watermarkTag}
                   <Feather name="zap" size={18} color="#F59E0B" />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={{ color: TEXT, fontSize: 13, fontFamily: 'Inter_700Bold' }}>Auto-Send Recipients</Text>
+                  <Text style={{ color: TEXT, fontSize: 13, fontFamily: 'Inter_700Bold' }}>Send to Recipients</Text>
                   <Text style={{ color: MUTED, fontSize: 10, fontFamily: 'Inter_400Regular', marginTop: 2 }}>
                     {reportRecipients.length > 0
-                      ? `${reportRecipients.length} official${reportRecipients.length !== 1 ? 's' : ''} set — receive every auto-report`
-                      : 'Pick officials who receive auto-generated reports'}
+                      ? `${reportRecipients.length} official${reportRecipients.length !== 1 ? 's' : ''} registered — send PDF via WhatsApp`
+                      : 'Pick officials who receive reports via WhatsApp'}
                   </Text>
                 </View>
                 <Feather name="chevron-right" size={14} color={MUTED} />
@@ -1283,6 +1335,39 @@ ${watermarkTag}
               <Text style={{ color: MUTED, fontSize: 10, fontFamily: 'Inter_400Regular', textAlign: 'center' }}>
                 {recipientDraft.length} recipient{recipientDraft.length !== 1 ? 's' : ''} selected
               </Text>
+            )}
+            {/* Send PDF to WhatsApp for each selected recipient */}
+            {pdfFileUri && recipientDraft.length > 0 && (
+              <TouchableOpacity
+                onPress={async () => {
+                  const { Linking } = await import('react-native');
+                  const selectedUsers = users.filter(u => recipientDraft.includes(u.id) && (u.mobile || u.email));
+                  if (selectedUsers.length === 0) {
+                    showAlert('No Contacts', 'Selected recipients have no mobile numbers registered.', undefined, 'info');
+                    return;
+                  }
+                  // Share PDF via native sheet first (works for all sharing)
+                  try {
+                    await Sharing.shareAsync(pdfFileUri, { mimeType: 'application/pdf', dialogTitle: 'Send Report PDF', UTI: 'com.adobe.pdf' });
+                  } catch { /* cancelled */ }
+                  // Also try WhatsApp for those with phone numbers
+                  for (const u of selectedUsers) {
+                    if (u.mobile) {
+                      const phone = u.mobile.replace(/\D/g, '');
+                      const fullPhone = phone.startsWith('91') ? phone : `91${phone}`;
+                      const msg = encodeURIComponent(`📊 DNP360 Report\n${report?.label ?? ''}\n\nPlease find the attached PDF report from Nagar Parishad Daudnagar.\n\n— DNP360 System`);
+                      const waUrl = `whatsapp://send?phone=${fullPhone}&text=${msg}`;
+                      const canOpen = await Linking.canOpenURL(waUrl);
+                      if (canOpen) { await Linking.openURL(waUrl); break; } // open for first one (subsequent ones need user to go back)
+                    }
+                  }
+                }}
+                activeOpacity={0.85}
+                style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8, paddingVertical: 13, borderRadius: 14, backgroundColor: '#25D366', borderWidth: 0 }}
+              >
+                <Feather name="smartphone" size={14} color="#000" />
+                <Text style={{ color: '#000', fontSize: 13, fontFamily: 'Inter_700Bold' }}>Send PDF via WhatsApp</Text>
+              </TouchableOpacity>
             )}
             <TouchableOpacity
               onPress={() => { saveReportRecipients(recipientDraft); setShowRecipientsModal(false); }}
