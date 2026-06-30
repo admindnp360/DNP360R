@@ -59,18 +59,15 @@ function getStatusColor(s: CollectionStatus) {
 }
 
 // IST check: last day of month, after 9 PM IST
-function shouldAutoGenerate(year: number, month: number): boolean {
-  const now = new Date();
-  // IST = UTC+5:30
-  const istOffset = 5.5 * 60 * 60 * 1000;
-  const istNow = new Date(now.getTime() + istOffset);
-  const lastDay = daysInMonth(month, year);
-  return (
-    istNow.getFullYear() === year &&
-    istNow.getMonth() + 1 === month &&
-    istNow.getDate() === lastDay &&
-    istNow.getHours() >= 21
-  );
+// IMPORTANT: istNow is built by adding IST offset to UTC epoch, so use getUTC* methods
+function shouldAutoGenerate(): boolean {
+  const istNow = new Date(Date.now() + 5.5 * 60 * 60 * 1000);
+  const y      = istNow.getUTCFullYear();
+  const m      = istNow.getUTCMonth() + 1;
+  const d      = istNow.getUTCDate();
+  const h      = istNow.getUTCHours();
+  const lastDay = daysInMonth(m, y);
+  return d === lastDay && h >= 21;
 }
 
 // ── Main Component ─────────────────────────────────────────────────────
@@ -88,7 +85,7 @@ export default function AdminReports() {
   const [generating, setGenerating] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [exportingPDF, setExportingPDF] = useState(false);
-  const [autoGenDone, setAutoGenDone] = useState(false);
+
   const [reportHistory, setReportHistory] = useState<GeneratedReport[]>([]);
   const [historyMeta, setHistoryMeta]     = useState<HistoryEntry[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
@@ -105,9 +102,10 @@ export default function AdminReports() {
   const [pdfFileUri, setPdfFileUri]                   = useState<string | null>(null);
   const [loadingHistoryId, setLoadingHistoryId]       = useState<string | null>(null);
 
-  // ── Live countdown to next auto-generate ──────────────────────────
+  // ── Live countdown + auto-generate trigger (every second) ────────
+  const autoGenDoneRef = React.useRef(false);
   useEffect(() => {
-    function calcCountdown() {
+    function tick() {
       const now = new Date();
       const istNow = new Date(now.getTime() + 5.5 * 60 * 60 * 1000);
       const y = istNow.getUTCFullYear();
@@ -117,7 +115,15 @@ export default function AdminReports() {
       const target = new Date(Date.UTC(y, m - 1, lastD, 15, 30, 0));
       const diff = target.getTime() - now.getTime();
       const MNAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-      if (diff <= 0) { setCountdown(`${lastD} ${MNAMES[m-1]} · Generating...`); return; }
+      if (diff <= 0) {
+        setCountdown(`${lastD} ${MNAMES[m-1]} · Generating...`);
+        // Trigger auto-generate once when the window opens (9 PM IST on last day)
+        if (!autoGenDoneRef.current && shouldAutoGenerate()) {
+          autoGenDoneRef.current = true;
+          handleGenerate(true);
+        }
+        return;
+      }
       const days  = Math.floor(diff / 86400000);
       const hours = Math.floor((diff % 86400000) / 3600000);
       const mins  = Math.floor((diff % 3600000) / 60000);
@@ -125,8 +131,8 @@ export default function AdminReports() {
       const parts = [days > 0 ? `${days}d` : null, `${String(hours).padStart(2,'0')}h`, `${String(mins).padStart(2,'0')}m`, `${String(secs).padStart(2,'0')}s`].filter(Boolean).join(' ');
       setCountdown(`${lastD} ${MNAMES[m-1]} · 9:00 PM IST · ${parts} left`);
     }
-    calcCountdown();
-    const timer = setInterval(calcCountdown, 1000);
+    tick();
+    const timer = setInterval(tick, 1000);
     return () => clearInterval(timer);
   }, []);
 
@@ -148,13 +154,6 @@ export default function AdminReports() {
     })();
   }, []);
 
-  // ── Auto-generate on last day at 9 PM IST ─────────────────────────
-  useEffect(() => {
-    if (tab === 'monthly' && !autoGenDone && shouldAutoGenerate(selYear, selMonth)) {
-      setAutoGenDone(true);
-      handleGenerate(true);
-    }
-  }, [tab, selYear, selMonth]);
 
   // ── Core: build HouseCollectionRow list ───────────────────────────
   const buildRows = useCallback((
