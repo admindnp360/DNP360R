@@ -10,7 +10,7 @@ import {
   ActivityIndicator, Modal, Platform, Pressable, ScrollView, Share, StyleSheet,
   Text, TouchableOpacity, View,
 } from 'react-native';
-import { collection, doc, getDocs, limit, orderBy, query, setDoc, writeBatch } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, limit, orderBy, query, setDoc, writeBatch } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAlert } from '@/contexts/AlertContext';
 import { useAppData } from '@/contexts/AppContext';
@@ -103,6 +103,7 @@ export default function AdminReports() {
   const [recipientDraft, setRecipientDraft]           = useState<string[]>([]);
   const [countdown, setCountdown]                     = useState('');
   const [pdfFileUri, setPdfFileUri]                   = useState<string | null>(null);
+  const [loadingHistoryId, setLoadingHistoryId]       = useState<string | null>(null);
 
   // ── Live countdown to next auto-generate ──────────────────────────
   useEffect(() => {
@@ -385,7 +386,11 @@ export default function AdminReports() {
       // Strip any undefined values before Firestore write
       const safeEntry = JSON.parse(JSON.stringify(entry)) as HistoryEntry;
       setHistoryMeta(prev => [safeEntry, ...prev.filter(h => h.id !== safeEntry.id)].slice(0, 30));
+      // Save metadata to history list
       await setDoc(doc(db, 'reportHistory', rpt.id), safeEntry).catch(e => console.warn('reportHistory save failed:', e));
+      // Save full report data (with rows) so history tap can load it
+      const safeReport = JSON.parse(JSON.stringify(rpt)) as GeneratedReport;
+      await setDoc(doc(db, 'reportData', rpt.id), safeReport).catch(e => console.warn('reportData save failed:', e));
       if (silent) sendToRecipients(rpt, reportRecipients);
       if (!silent) showAlert('Report Ready', rpt.label, undefined, 'success');
     } finally { setGenerating(false); }
@@ -408,6 +413,28 @@ export default function AdminReports() {
 
   function toggleSel(id: string) {
     setSelIds(prev => { const s = new Set(prev); s.has(id) ? s.delete(id) : s.add(id); return s; });
+  }
+
+  // ── Load full report from Firestore and open PDF ───────────────────
+  async function loadAndViewPDF(id: string) {
+    setLoadingHistoryId(id);
+    try {
+      const snap = await getDoc(doc(db, 'reportData', id));
+      if (!snap.exists()) {
+        showAlert('Not Found', 'Full report data not saved. Please regenerate this report to save its data.', undefined, 'error');
+        return;
+      }
+      const rpt = snap.data() as GeneratedReport;
+      // Cache in memory
+      setReportHistory(prev => [rpt, ...prev.filter(r => r.id !== rpt.id)]);
+      setReport(rpt);
+      setShowHistory(false);
+      await handleExportPDF(rpt);
+    } catch (e: any) {
+      showAlert('Load Failed', e?.message ?? 'Unknown error', undefined, 'error');
+    } finally {
+      setLoadingHistoryId(null);
+    }
   }
 
   // ── Normal share (native share sheet) ─────────────────────────────
@@ -1171,7 +1198,7 @@ ${watermarkTag}
                     <Text style={[s.histCatLabel, { color: '#22D3EE' }]}>Auto-Generated</Text>
                     <View style={[s.histCatBadge, { backgroundColor: '#22D3EE20' }]}><Text style={[s.histCatBadgeTxt, { color: '#22D3EE' }]}>{list.length}</Text></View>
                   </View>
-                  {list.map((r, i) => { const mem = reportHistory.find(h => h.id === r.id); return <HistoryCard key={r.id} r={r} isActive={report?.id === r.id} inMemory={!!mem} selected={selIds.has(r.id)} onPress={() => { if (selIds.size > 0) { toggleSel(r.id); return; } if (mem) { setReport(mem); setShowHistory(false); setSelIds(new Set()); } else { showAlert('Reload Required', 'Please regenerate this report.', undefined, 'info'); } }} onLongPress={() => toggleSel(r.id)} onExportPDF={mem ? () => handleExportPDF(mem) : undefined} last={i === list.length - 1} />; })}
+                  {list.map((r, i) => { const mem = reportHistory.find(h => h.id === r.id); return <HistoryCard key={r.id} r={r} isActive={report?.id === r.id} inMemory={!!mem} selected={selIds.has(r.id)} loadingPDF={loadingHistoryId === r.id} onPress={() => { if (selIds.size > 0) { toggleSel(r.id); return; } if (mem) { setReport(mem); setShowHistory(false); setSelIds(new Set()); } else { loadAndViewPDF(r.id); } }} onLongPress={() => toggleSel(r.id)} onExportPDF={mem ? () => handleExportPDF(mem) : () => loadAndViewPDF(r.id)} last={i === list.length - 1} />; })}
                 </View>
               );
             })()}
@@ -1188,7 +1215,7 @@ ${watermarkTag}
                     <Text style={[s.histCatLabel, { color: '#A78BFA' }]}>Manually Generated</Text>
                     <View style={[s.histCatBadge, { backgroundColor: '#A78BFA20' }]}><Text style={[s.histCatBadgeTxt, { color: '#A78BFA' }]}>{manualList.length}</Text></View>
                   </View>
-                  {manualList.map((r, i) => { const mem = reportHistory.find(h => h.id === r.id); return <HistoryCard key={r.id} r={r} isActive={report?.id === r.id} inMemory={!!mem} selected={selIds.has(r.id)} onPress={() => { if (selIds.size > 0) { toggleSel(r.id); return; } if (mem) { setReport(mem); setShowHistory(false); setSelIds(new Set()); } else { showAlert('Reload Required', 'Please regenerate this report.', undefined, 'info'); } }} onLongPress={() => toggleSel(r.id)} onExportPDF={mem ? () => handleExportPDF(mem) : undefined} last={i === manualList.length - 1} />; })}
+                  {manualList.map((r, i) => { const mem = reportHistory.find(h => h.id === r.id); return <HistoryCard key={r.id} r={r} isActive={report?.id === r.id} inMemory={!!mem} selected={selIds.has(r.id)} loadingPDF={loadingHistoryId === r.id} onPress={() => { if (selIds.size > 0) { toggleSel(r.id); return; } if (mem) { setReport(mem); setShowHistory(false); setSelIds(new Set()); } else { loadAndViewPDF(r.id); } }} onLongPress={() => toggleSel(r.id)} onExportPDF={mem ? () => handleExportPDF(mem) : () => loadAndViewPDF(r.id)} last={i === manualList.length - 1} />; })}
                 </View>
               );
             })()}
@@ -1810,9 +1837,9 @@ function WardChart({ rows }: { rows: import('@/types').HouseCollectionRow[] }) {
 }
 
 // ── HistoryCard sub-component ───────────────────────────────────────
-function HistoryCard({ r, isActive, inMemory, selected, onPress, onLongPress, onExportPDF, last }: {
-  r: HistoryEntry; isActive: boolean; inMemory: boolean; selected?: boolean; onPress: () => void;
-  onLongPress?: () => void; onExportPDF?: () => void; last: boolean;
+function HistoryCard({ r, isActive, inMemory, selected, loadingPDF, onPress, onLongPress, onExportPDF, last }: {
+  r: HistoryEntry; isActive: boolean; inMemory: boolean; selected?: boolean; loadingPDF?: boolean;
+  onPress: () => void; onLongPress?: () => void; onExportPDF?: () => void; last: boolean;
 }) {
   const color = r.type === 'monthly' ? '#0EA5E9' : r.type === 'quarterly' ? '#818CF8' : '#34D399';
   const icon  = r.type === 'monthly' ? 'calendar' : r.type === 'quarterly' ? 'bar-chart-2' : 'trending-up';
@@ -1838,14 +1865,20 @@ function HistoryCard({ r, isActive, inMemory, selected, onPress, onLongPress, on
         </View>
       </View>
       <View style={{ alignItems: 'flex-end', gap: 6 }}>
-        {inMemory && onExportPDF && (
+        {/* PDF button — always visible; shows loader when fetching from Firestore */}
+        {onExportPDF && (
           <TouchableOpacity
             onPress={e => { e.stopPropagation?.(); onExportPDF(); }}
+            disabled={loadingPDF}
             style={{ backgroundColor: '#EF444420', borderRadius: 6, paddingHorizontal: 7, paddingVertical: 3, flexDirection: 'row', alignItems: 'center', gap: 3 }}
             activeOpacity={0.7}
           >
-            <Feather name="file-text" size={9} color="#EF4444" />
-            <Text style={{ color: '#EF4444', fontSize: 9, fontFamily: 'Inter_700Bold' }}>PDF</Text>
+            {loadingPDF
+              ? <ActivityIndicator size={9} color="#EF4444" />
+              : <Feather name="file-text" size={9} color="#EF4444" />}
+            <Text style={{ color: '#EF4444', fontSize: 9, fontFamily: 'Inter_700Bold' }}>
+              {loadingPDF ? 'Loading…' : 'PDF'}
+            </Text>
           </TouchableOpacity>
         )}
         {inMemory && (
