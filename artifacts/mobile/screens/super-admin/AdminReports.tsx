@@ -1,4 +1,5 @@
 import { Feather } from '@expo/vector-icons';
+import { Asset } from 'expo-asset';
 import * as FileSystem from 'expo-file-system/legacy';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Print from 'expo-print';
@@ -24,12 +25,12 @@ type HistoryEntry = {
 };
 
 // ── Design tokens ─────────────────────────────────────────────────────
-const BG       = '#060B18';
+const BG       = '#04081A';
 const GLASS    = 'rgba(255,255,255,0.06)';
 const GLASS_HI = 'rgba(255,255,255,0.10)';
-const GLASS_BD = 'rgba(255,255,255,0.10)';
+const GLASS_BD = 'rgba(255,255,255,0.12)';
 const TEXT     = '#F0F4FF';
-const MUTED    = 'rgba(255,255,255,0.42)';
+const MUTED    = '#64748B';
 
 const MONTH_NAMES = [
   'January','February','March','April','May','June',
@@ -531,6 +532,17 @@ export default function AdminReports() {
     }
     setExportingPDF(true);
     try {
+      // ── Load logo as base64 for PDF ────────────────────────────────
+      let logoDataUri = '';
+      try {
+        const asset = Asset.fromModule(require('../../assets/dnp360-logo.png'));
+        await asset.downloadAsync();
+        if (asset.localUri) {
+          const b64 = await FileSystem.readAsStringAsync(asset.localUri, { encoding: FileSystem.EncodingType.Base64 });
+          logoDataUri = `data:image/png;base64,${b64}`;
+        }
+      } catch { /* fallback to text if logo load fails */ }
+
       // ── Core stats ─────────────────────────────────────────────────
       const totP   = rpt.rows.reduce((a, r) => a + r.totalPresent, 0);
       const totN   = rpt.rows.reduce((a, r) => a + r.totalAbsent, 0);
@@ -712,17 +724,29 @@ export default function AdminReports() {
       }).join('');
 
       // ── Full HTML ─────────────────────────────────────────────────
+      const logoImgTag = logoDataUri
+        ? `<img src="${logoDataUri}" style="height:52px;width:auto;object-fit:contain;mix-blend-mode:multiply" />`
+        : `<div style="font-size:22px;font-weight:900;color:#1e3a8a;letter-spacing:3px">DNP360</div>`;
+      const watermarkTag = logoDataUri
+        ? `<div style="position:fixed;top:50%;left:50%;transform:translate(-50%,-50%) rotate(-25deg);opacity:0.06;pointer-events:none;z-index:0">
+             <img src="${logoDataUri}" style="width:480px;height:auto;mix-blend-mode:multiply" />
+           </div>`
+        : '';
+
       const html = `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
 <style>
   @page{size:A4;margin:10mm}
   *{box-sizing:border-box;margin:0;padding:0}
-  body{font-family:Arial,Helvetica,sans-serif;background:#fff;color:#0f172a;font-size:9px;line-height:1.4}
+  body{font-family:Arial,Helvetica,sans-serif;background:#fff;color:#0f172a;font-size:9px;line-height:1.4;position:relative}
 
   /* ── Header ── */
-  .hdr{border:2px solid #1e3a8a;border-radius:8px;padding:10px 16px;margin-bottom:8px;text-align:center;background:linear-gradient(135deg,#eff6ff,#dbeafe)}
-  .hdr-logo{font-size:20px;font-weight:900;color:#1e3a8a;letter-spacing:3px}
-  .hdr-sub{font-size:10px;font-weight:700;color:#1e40af;margin-top:1px}
-  .hdr-tag{font-size:7.5px;color:#64748b;margin-top:2px}
+  .hdr{border:2px solid #1e3a8a;border-radius:8px;padding:8px 16px;margin-bottom:8px;background:linear-gradient(135deg,#eff6ff,#dbeafe);display:flex;align-items:center;gap:14px}
+  .hdr-logo-wrap{flex-shrink:0}
+  .hdr-text{flex:1;text-align:center}
+  .hdr-title{font-size:13px;font-weight:900;color:#1e3a8a;letter-spacing:0.5px;line-height:1.2}
+  .hdr-sub{font-size:9.5px;font-weight:700;color:#1e40af;margin-top:1px}
+  .hdr-tag{font-size:7px;color:#64748b;margin-top:2px}
+  .hdr-badge{background:#1e3a8a;color:#fff;font-size:7px;font-weight:700;padding:2px 8px;border-radius:12px;display:inline-block;margin-top:3px;letter-spacing:0.5px}
 
   /* ── Info box ── */
   .info{border:1px solid #bfdbfe;border-radius:5px;padding:7px 12px;margin-bottom:8px;background:#f0f9ff;display:grid;grid-template-columns:1fr 1fr;gap:2px 20px}
@@ -739,12 +763,12 @@ export default function AdminReports() {
 
   /* ── Chart grid ── */
   .cgrid{display:flex;gap:6px;margin-bottom:8px}
-  .cbox{flex:1;border:1px solid #e2e8f0;border-radius:6px;padding:7px}
+  .cbox{flex:1;border:1px solid #e2e8f0;border-radius:6px;padding:7px;position:relative;z-index:1}
   .ct{font-size:7.5px;font-weight:700;color:#1e3a8a;border-bottom:1px solid #f1f5f9;padding-bottom:3px;margin-bottom:5px;text-transform:uppercase;letter-spacing:0.4px}
 
   /* ── Section headers ── */
-  .sh{background:linear-gradient(90deg,#1e3a8a,#1e40af);color:#fff;padding:5px 10px;font-size:9px;font-weight:700;border-radius:4px 4px 0 0;margin-top:8px;display:flex;align-items:center;gap:4px}
-  table{border-collapse:collapse;width:100%}
+  .sh{background:linear-gradient(90deg,#1e3a8a,#1e40af);color:#fff;padding:5px 10px;font-size:9px;font-weight:700;border-radius:4px 4px 0 0;margin-top:8px;display:flex;align-items:center;gap:4px;position:relative;z-index:1}
+  table{border-collapse:collapse;width:100%;position:relative;z-index:1}
   th{background:#dbeafe;color:#1e3a8a;padding:4px 6px;text-align:center;font-size:8px;font-weight:700;border:1px solid #bfdbfe}
   td{padding:3px 5px;text-align:center;font-size:7.5px;border:1px solid #e2e8f0}
   tr:nth-child(even) td{background:#f8fafc}
@@ -755,17 +779,24 @@ export default function AdminReports() {
   table.dt td{padding:2px 3px;font-size:7px}
 
   /* ── Footer ── */
-  .ftr{margin-top:10px;padding-top:5px;border-top:2px solid #dbeafe;display:flex;justify-content:space-between;align-items:center}
+  .ftr{margin-top:10px;padding-top:5px;border-top:2px solid #dbeafe;display:flex;justify-content:space-between;align-items:center;position:relative;z-index:1}
   .ftr-l{font-size:7px;color:#475569}
   .ftr-r{font-size:7px;color:#1e3a8a;font-weight:700}
 </style>
 </head><body>
 
+${watermarkTag}
+
 <!-- ══ HEADER ══ -->
 <div class="hdr">
-  <div class="hdr-logo">🏛 DNP360</div>
-  <div class="hdr-sub">NAGAR PARISHAD, DAUDNAGAR</div>
-  <div class="hdr-tag">Garbage Collection Management System · Bihar, India</div>
+  <div class="hdr-logo-wrap">${logoImgTag}</div>
+  <div class="hdr-text">
+    <div class="hdr-title">NAGAR PARISHAD, DAUDNAGAR</div>
+    <div class="hdr-sub">DNP360 — Smart Governance System</div>
+    <div class="hdr-tag">Garbage Collection Management · Bihar, India</div>
+    <div class="hdr-badge">OFFICIAL REPORT</div>
+  </div>
+  <div class="hdr-logo-wrap">${logoImgTag}</div>
 </div>
 
 <!-- ══ REPORT INFO BOX ══ -->

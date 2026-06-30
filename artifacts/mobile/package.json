@@ -58,6 +58,7 @@
     "zod-validation-error": "^3.4.0"
   },
   "dependencies": {
+    "expo-asset": "~12.0.13",
     "expo-auth-session": "^56.0.14",
     "expo-camera": "^17.0.10",
     "expo-clipboard": "~8.0.8",
