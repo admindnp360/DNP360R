@@ -9,7 +9,7 @@ import {
   ActivityIndicator, Modal, Platform, Pressable, ScrollView, StyleSheet,
   Text, TouchableOpacity, View,
 } from 'react-native';
-import { collection, deleteDoc, doc, getDocs, limit, orderBy, query, setDoc, writeBatch } from 'firebase/firestore';
+import { collection, doc, getDocs, limit, orderBy, query, setDoc, writeBatch } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAlert } from '@/contexts/AlertContext';
 import { useAppData } from '@/contexts/AppContext';
@@ -895,6 +895,20 @@ export default function AdminReports() {
           {/* Ward-wise bar chart */}
           {report.rows.length > 0 && <WardChart rows={report.rows} />}
 
+          {/* Attendance analytics */}
+          {report.rows.length > 0 && (
+            <WardAttendanceChart
+              rows={report.rows}
+              attendance={attendance}
+              users={users}
+              wards={wards}
+              year={report.year}
+              month={report.month}
+              quarter={report.quarter}
+              type={report.type}
+            />
+          )}
+
           {/* Table */}
           {report.type === 'monthly' && (
             <ScrollView horizontal showsHorizontalScrollIndicator style={s.tableWrap}>
@@ -1039,6 +1053,145 @@ export default function AdminReports() {
         </View>
       )}
     </ScrollView>
+  );
+}
+
+// ── WardAttendanceChart sub-component ──────────────────────────────
+function WardAttendanceChart({
+  rows, attendance, users, wards, year, month, quarter, type,
+}: {
+  rows: import('@/types').HouseCollectionRow[];
+  attendance: import('@/types').Attendance[];
+  users: import('@/types').User[];
+  wards: import('@/types').Ward[];
+  year: number;
+  month?: number;
+  quarter?: number;
+  type: ReportType;
+}) {
+  // Determine date range for this report
+  const inRange = (dateStr: string) => {
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return false;
+    const y = d.getFullYear(), m = d.getMonth() + 1;
+    if (y !== year) return false;
+    if (type === 'monthly') return m === month;
+    if (type === 'quarterly' && quarter) {
+      const qStart = (quarter - 1) * 3 + 1;
+      return m >= qStart && m <= qStart + 2;
+    }
+    return true; // yearly
+  };
+
+  // Workers per ward (from wards.assignedWorkers)
+  const wardEntries = wards
+    .filter(w => w.wardNumber)
+    .map(w => {
+      const wn = Number(w.wardNumber);
+      const workerIds = w.assignedWorkers ?? [];
+      const safaikarmis = users.filter(u => u.role === 'safaikarmi' && workerIds.includes(u.id));
+      const filtered = attendance.filter(a => workerIds.includes(a.workerId) && inRange(a.date));
+      const present = filtered.filter(a => a.status === 'present' || a.status === 'half_day').length;
+      const attPct = filtered.length > 0 ? (present / filtered.length) * 100 : null;
+
+      // Collection rate from rows
+      const wardRows = rows.filter(r => r.wardNo === wn);
+      const totP = wardRows.reduce((s, r) => s + r.totalPresent, 0);
+      const totD = wardRows.reduce((s, r) => s + r.totalDays, 0);
+      const colPct = totD > 0 ? (totP / totD) * 100 : null;
+
+      return { wn, attPct, colPct, workerCount: safaikarmis.length, sampleSize: filtered.length };
+    })
+    .filter(e => e.colPct !== null || e.attPct !== null)
+    .sort((a, b) => a.wn - b.wn);
+
+  if (wardEntries.length < 2) return null;
+
+  const maxPct = 100;
+
+  return (
+    <View style={{ marginBottom: 14, borderRadius: 14, borderWidth: 1, borderColor: 'rgba(255,255,255,0.09)', backgroundColor: 'rgba(255,255,255,0.04)', padding: 12 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+        <Feather name="user-check" size={13} color="#34D399" />
+        <Text style={{ color: '#F0F4FF', fontSize: 12, fontFamily: 'Inter_700Bold' }}>Attendance vs Collection by Ward</Text>
+      </View>
+      <Text style={{ color: MUTED, fontSize: 10, fontFamily: 'Inter_400Regular', marginBottom: 10 }}>
+        Safai Karmi attendance rate alongside collection rate — spot absenteeism-driven gaps
+      </Text>
+
+      {/* Legend */}
+      <View style={{ flexDirection: 'row', gap: 14, marginBottom: 10 }}>
+        {[['#34D399', 'Attendance'], ['#818CF8', 'Collection']].map(([c, l]) => (
+          <View key={l} style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+            <View style={{ width: 10, height: 6, borderRadius: 3, backgroundColor: c }} />
+            <Text style={{ color: MUTED, fontSize: 9, fontFamily: 'Inter_400Regular' }}>{l}</Text>
+          </View>
+        ))}
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+          <View style={{ width: 10, height: 6, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.15)' }} />
+          <Text style={{ color: MUTED, fontSize: 9, fontFamily: 'Inter_400Regular' }}>No data</Text>
+        </View>
+      </View>
+
+      {wardEntries.map(({ wn, attPct, colPct, workerCount, sampleSize }) => {
+        const attClr = attPct == null ? 'rgba(255,255,255,0.15)' : attPct >= 80 ? '#34D399' : attPct >= 50 ? '#FBBF24' : '#FB7185';
+        const colClr = '#818CF8';
+        const attW = attPct != null ? (attPct / maxPct) * 100 : 0;
+        const colW = colPct != null ? (colPct / maxPct) * 100 : 0;
+        const gap = attPct != null && colPct != null ? colPct - attPct : null;
+        return (
+          <View key={wn} style={{ marginBottom: 9 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 3 }}>
+              <Text style={{ color: MUTED, fontSize: 9, fontFamily: 'Inter_600SemiBold', width: 36 }}>W{wn}</Text>
+              <View style={{ flex: 1 }}>
+                {/* Attendance bar */}
+                <View style={{ height: 9, backgroundColor: 'rgba(255,255,255,0.07)', borderRadius: 5, overflow: 'hidden', marginBottom: 3 }}>
+                  <View style={{ width: `${attW}%`, height: 9, backgroundColor: attPct == null ? 'rgba(255,255,255,0.12)' : attClr, borderRadius: 5, opacity: attPct == null ? 0.5 : 1 }} />
+                </View>
+                {/* Collection bar */}
+                <View style={{ height: 9, backgroundColor: 'rgba(255,255,255,0.07)', borderRadius: 5, overflow: 'hidden' }}>
+                  <View style={{ width: `${colW}%`, height: 9, backgroundColor: colPct == null ? 'rgba(255,255,255,0.12)' : colClr, borderRadius: 5, opacity: colPct == null ? 0.5 : 1 }} />
+                </View>
+              </View>
+              <View style={{ width: 72, alignItems: 'flex-end', gap: 3 }}>
+                <Text style={{ color: attPct == null ? MUTED : attClr, fontSize: 9, fontFamily: 'Inter_700Bold' }}>
+                  {attPct == null ? `—  (${workerCount}w)` : `${attPct.toFixed(0)}%  (${workerCount}w)`}
+                </Text>
+                <Text style={{ color: colPct == null ? MUTED : colClr, fontSize: 9, fontFamily: 'Inter_700Bold' }}>
+                  {colPct == null ? '—' : `${colPct.toFixed(0)}%`}
+                </Text>
+              </View>
+            </View>
+            {/* Gap insight */}
+            {gap != null && gap < -15 && (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginLeft: 36 }}>
+                <Feather name="alert-circle" size={9} color="#FBBF24" />
+                <Text style={{ color: '#FBBF24', fontSize: 8, fontFamily: 'Inter_400Regular' }}>
+                  Collection {Math.abs(gap).toFixed(0)}% below attendance — check house visit logs
+                </Text>
+              </View>
+            )}
+            {gap != null && attPct! < 60 && (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginLeft: 36 }}>
+                <Feather name="user-x" size={9} color="#FB7185" />
+                <Text style={{ color: '#FB7185', fontSize: 8, fontFamily: 'Inter_400Regular' }}>
+                  Low worker attendance — possible cause of missed collections
+                </Text>
+              </View>
+            )}
+          </View>
+        );
+      })}
+
+      <View style={{ flexDirection: 'row', gap: 12, marginTop: 2 }}>
+        {[['#34D399','≥80%'],['#FBBF24','50–79%'],['#FB7185','<50%']].map(([c,l]) => (
+          <View key={l} style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+            <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: c }} />
+            <Text style={{ color: 'rgba(255,255,255,0.40)', fontSize: 8, fontFamily: 'Inter_400Regular' }}>{l} Attendance</Text>
+          </View>
+        ))}
+      </View>
+    </View>
   );
 }
 
