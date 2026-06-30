@@ -548,7 +548,7 @@ export default function AdminReports() {
       // ── Load logo as base64 for PDF ────────────────────────────────
       let logoDataUri = '';
       try {
-        const asset = Asset.fromModule(require('../../assets/dnp360-logo.png'));
+        const asset = Asset.fromModule(require('../../assets/dnp360-logo-transparent.png'));
         await asset.downloadAsync();
         if (asset.localUri) {
           const b64 = await FileSystem.readAsStringAsync(asset.localUri, { encoding: FileSystem.EncodingType.Base64 });
@@ -738,11 +738,11 @@ export default function AdminReports() {
 
       // ── Full HTML ─────────────────────────────────────────────────
       const logoImgTag = logoDataUri
-        ? `<img src="${logoDataUri}" style="height:52px;width:auto;object-fit:contain;mix-blend-mode:multiply" />`
+        ? `<img src="${logoDataUri}" style="height:52px;width:auto;object-fit:contain" />`
         : `<div style="font-size:22px;font-weight:900;color:#1e3a8a;letter-spacing:3px">DNP360</div>`;
       const watermarkTag = logoDataUri
-        ? `<div style="position:fixed;top:50%;left:50%;transform:translate(-50%,-50%) rotate(-25deg);opacity:0.06;pointer-events:none;z-index:0">
-             <img src="${logoDataUri}" style="width:480px;height:auto;mix-blend-mode:multiply" />
+        ? `<div style="position:fixed;top:50%;left:50%;transform:translate(-50%,-50%) rotate(-20deg);opacity:0.08;pointer-events:none;z-index:0">
+             <img src="${logoDataUri}" style="width:500px;height:auto" />
            </div>`
         : '';
 
