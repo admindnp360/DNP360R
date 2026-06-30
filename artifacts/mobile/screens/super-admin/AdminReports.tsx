@@ -102,6 +102,10 @@ export default function AdminReports() {
   const [pdfFileUri, setPdfFileUri]                   = useState<string | null>(null);
   const [loadingHistoryId, setLoadingHistoryId]       = useState<string | null>(null);
 
+  // Always-fresh ref so the timer closure never goes stale
+  const handleGenerateRef = React.useRef(handleGenerate);
+  useEffect(() => { handleGenerateRef.current = handleGenerate; });
+
   // ── Live countdown + auto-generate trigger (every second) ────────
   const autoGenDoneRef = React.useRef(false);
   useEffect(() => {
@@ -120,7 +124,7 @@ export default function AdminReports() {
         // Trigger auto-generate once when the window opens (9 PM IST on last day)
         if (!autoGenDoneRef.current && shouldAutoGenerate()) {
           autoGenDoneRef.current = true;
-          handleGenerate(true);
+          handleGenerateRef.current(true);
         }
         return;
       }
@@ -763,12 +767,13 @@ export default function AdminReports() {
       }).join('');
 
       // ── Full HTML ─────────────────────────────────────────────────
-      const logoImgTag = logoDataUri
-        ? `<img src="${logoDataUri}" style="height:52px;width:auto;object-fit:contain" />`
-        : `<div style="font-size:22px;font-weight:900;color:#1e3a8a;letter-spacing:3px">DNP360</div>`;
+      // Logo: wrap in dark bg so it's visible on white PDF paper
+      const logoBlock = logoDataUri
+        ? `<div style="background:linear-gradient(135deg,#1e3a8a,#1e40af);border-radius:10px;padding:6px 10px;display:inline-flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(30,58,138,0.4)"><img src="${logoDataUri}" style="height:50px;width:auto;object-fit:contain;display:block" /></div>`
+        : `<div style="background:linear-gradient(135deg,#1e3a8a,#1e40af);border-radius:10px;padding:8px 14px;display:inline-flex;align-items:center;justify-content:center"><span style="font-size:18px;font-weight:900;color:#fff;letter-spacing:2px">DNP360</span></div>`;
       const watermarkTag = logoDataUri
-        ? `<div style="position:fixed;top:50%;left:50%;transform:translate(-50%,-50%) rotate(-20deg);opacity:0.08;pointer-events:none;z-index:0">
-             <img src="${logoDataUri}" style="width:500px;height:auto" />
+        ? `<div style="position:fixed;top:50%;left:50%;transform:translate(-50%,-50%) rotate(-20deg);opacity:0.04;pointer-events:none;z-index:0;filter:grayscale(1) contrast(2)">
+             <img src="${logoDataUri}" style="width:480px;height:auto" />
            </div>`
         : '';
 
@@ -779,38 +784,38 @@ export default function AdminReports() {
   body{font-family:Arial,Helvetica,sans-serif;background:#fff;color:#0f172a;font-size:9px;line-height:1.4;position:relative}
 
   /* ── Header ── */
-  .hdr{border:2px solid #1e3a8a;border-radius:8px;padding:8px 16px;margin-bottom:8px;background:linear-gradient(135deg,#eff6ff,#dbeafe);display:flex;align-items:center;gap:14px}
-  .hdr-logo-wrap{flex-shrink:0}
+  .hdr{border:2px solid #1e3a8a;border-radius:10px;padding:10px 18px;margin-bottom:8px;background:linear-gradient(135deg,#eff6ff 0%,#dbeafe 60%,#e0e7ff 100%);display:flex;align-items:center;gap:14px;box-shadow:0 2px 8px rgba(30,58,138,0.08)}
   .hdr-text{flex:1;text-align:center}
-  .hdr-title{font-size:13px;font-weight:900;color:#1e3a8a;letter-spacing:0.5px;line-height:1.2}
-  .hdr-sub{font-size:9.5px;font-weight:700;color:#1e40af;margin-top:1px}
+  .hdr-title{font-size:14px;font-weight:900;color:#1e3a8a;letter-spacing:0.5px;line-height:1.2;text-transform:uppercase}
+  .hdr-sub{font-size:9.5px;font-weight:700;color:#1e40af;margin-top:2px}
   .hdr-tag{font-size:7px;color:#64748b;margin-top:2px}
-  .hdr-badge{background:#1e3a8a;color:#fff;font-size:7px;font-weight:700;padding:2px 8px;border-radius:12px;display:inline-block;margin-top:3px;letter-spacing:0.5px}
+  .hdr-badge{background:linear-gradient(90deg,#1e3a8a,#1e40af);color:#fff;font-size:7px;font-weight:700;padding:3px 10px;border-radius:12px;display:inline-block;margin-top:4px;letter-spacing:0.8px;box-shadow:0 1px 4px rgba(30,58,138,0.3)}
 
   /* ── Info box ── */
-  .info{border:1px solid #bfdbfe;border-radius:5px;padding:7px 12px;margin-bottom:8px;background:#f0f9ff;display:grid;grid-template-columns:1fr 1fr;gap:2px 20px}
-  .ir{font-size:8px;display:flex;gap:4px}
+  .info{border:1px solid #bfdbfe;border-radius:7px;padding:8px 14px;margin-bottom:8px;background:linear-gradient(135deg,#f0f9ff,#eff6ff);display:grid;grid-template-columns:1fr 1fr;gap:3px 24px}
+  .ir{font-size:8px;display:flex;gap:4px;padding:1px 0}
   .ik{color:#1d4ed8;font-weight:700;min-width:110px}
   .iv{color:#0f172a}
 
   /* ── Stat cards ── */
   .cards{display:flex;gap:6px;margin-bottom:6px}
-  .card{flex:1;border-radius:7px;padding:7px 8px;text-align:center;border:1px solid transparent}
-  .cv{font-size:15px;font-weight:900;line-height:1}
-  .cl{font-size:6.5px;text-transform:uppercase;font-weight:700;color:#475569;letter-spacing:0.4px;margin-top:3px}
-  .ci{font-size:11px;margin-bottom:2px}
+  .card{flex:1;border-radius:8px;padding:8px 6px;text-align:center;border:1px solid transparent;box-shadow:0 1px 3px rgba(0,0,0,0.06)}
+  .cv{font-size:16px;font-weight:900;line-height:1}
+  .cl{font-size:6.5px;text-transform:uppercase;font-weight:700;color:#475569;letter-spacing:0.5px;margin-top:3px}
+  .ci{font-size:12px;margin-bottom:2px}
 
   /* ── Chart grid ── */
   .cgrid{display:flex;gap:6px;margin-bottom:8px}
-  .cbox{flex:1;border:1px solid #e2e8f0;border-radius:6px;padding:7px;position:relative;z-index:1}
-  .ct{font-size:7.5px;font-weight:700;color:#1e3a8a;border-bottom:1px solid #f1f5f9;padding-bottom:3px;margin-bottom:5px;text-transform:uppercase;letter-spacing:0.4px}
+  .cbox{flex:1;border:1px solid #e2e8f0;border-radius:7px;padding:8px;position:relative;z-index:1;box-shadow:0 1px 3px rgba(0,0,0,0.04)}
+  .ct{font-size:7.5px;font-weight:700;color:#1e3a8a;border-bottom:2px solid #dbeafe;padding-bottom:4px;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px}
 
   /* ── Section headers ── */
-  .sh{background:linear-gradient(90deg,#1e3a8a,#1e40af);color:#fff;padding:5px 10px;font-size:9px;font-weight:700;border-radius:4px 4px 0 0;margin-top:8px;display:flex;align-items:center;gap:4px;position:relative;z-index:1}
+  .sh{background:linear-gradient(90deg,#1e3a8a,#2563eb);color:#fff;padding:6px 12px;font-size:9px;font-weight:700;border-radius:5px 5px 0 0;margin-top:8px;display:flex;align-items:center;gap:4px;position:relative;z-index:1;letter-spacing:0.3px}
   table{border-collapse:collapse;width:100%;position:relative;z-index:1}
-  th{background:#dbeafe;color:#1e3a8a;padding:4px 6px;text-align:center;font-size:8px;font-weight:700;border:1px solid #bfdbfe}
+  th{background:linear-gradient(180deg,#dbeafe,#bfdbfe);color:#1e3a8a;padding:4px 6px;text-align:center;font-size:8px;font-weight:700;border:1px solid #bfdbfe}
   td{padding:3px 5px;text-align:center;font-size:7.5px;border:1px solid #e2e8f0}
   tr:nth-child(even) td{background:#f8fafc}
+  tr:hover td{background:#eff6ff}
   td:first-child,th:first-child{text-align:left}
 
   /* ── House data table (smaller for compactness) ── */
@@ -818,9 +823,9 @@ export default function AdminReports() {
   table.dt td{padding:2px 3px;font-size:7px}
 
   /* ── Footer ── */
-  .ftr{margin-top:10px;padding-top:5px;border-top:2px solid #dbeafe;display:flex;justify-content:space-between;align-items:center;position:relative;z-index:1}
-  .ftr-l{font-size:7px;color:#475569}
-  .ftr-r{font-size:7px;color:#1e3a8a;font-weight:700}
+  .ftr{margin-top:10px;padding-top:6px;border-top:2px solid #bfdbfe;display:flex;justify-content:space-between;align-items:center;position:relative;z-index:1}
+  .ftr-l{font-size:7px;color:#475569;line-height:1.6}
+  .ftr-r{font-size:7px;color:#1e3a8a;font-weight:700;text-align:right;line-height:1.6}
 </style>
 </head><body>
 
@@ -828,14 +833,14 @@ ${watermarkTag}
 
 <!-- ══ HEADER ══ -->
 <div class="hdr">
-  <div class="hdr-logo-wrap">${logoImgTag}</div>
+  ${logoBlock}
   <div class="hdr-text">
-    <div class="hdr-title">NAGAR PARISHAD, DAUDNAGAR</div>
+    <div class="hdr-title">Nagar Parishad, Daudnagar</div>
     <div class="hdr-sub">DNP360 — Smart Governance System</div>
     <div class="hdr-tag">Garbage Collection Management · Bihar, India</div>
-    <div class="hdr-badge">OFFICIAL REPORT</div>
+    <div class="hdr-badge">✦ OFFICIAL REPORT ✦</div>
   </div>
-  <div class="hdr-logo-wrap">${logoImgTag}</div>
+  ${logoBlock}
 </div>
 
 <!-- ══ REPORT INFO BOX ══ -->
