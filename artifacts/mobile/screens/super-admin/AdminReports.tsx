@@ -74,7 +74,7 @@ function shouldAutoGenerate(year: number, month: number): boolean {
 
 // ── Main Component ─────────────────────────────────────────────────────
 export default function AdminReports() {
-  const { houses, wards, houseVisits, attendance, users } = useAppData();
+  const { houses, wards, houseVisits, attendance, users, complaints } = useAppData();
   const { showAlert } = useAlert();
 
   const now = new Date();
@@ -525,184 +525,346 @@ export default function AdminReports() {
   // ── Export to PDF ──────────────────────────────────────────────────
   async function handleExportPDF(rpt: GeneratedReport = report!) {
     if (!rpt) return;
-    const canShare = await Sharing.isAvailableAsync();
-    if (!canShare) { showAlert('Not Supported', 'Sharing is not available on this device.', undefined, 'error'); return; }
+    if (Platform.OS !== 'web') {
+      const canShare = await Sharing.isAvailableAsync();
+      if (!canShare) { showAlert('Not Supported', 'Sharing is not available on this device.', undefined, 'error'); return; }
+    }
     setExportingPDF(true);
     try {
-      const totP = rpt.rows.reduce((a, r) => a + r.totalPresent, 0);
-      const totN = rpt.rows.reduce((a, r) => a + r.totalAbsent, 0);
-      const totL = rpt.rows.reduce((a, r) => a + r.totalLate, 0);
+      // ── Core stats ─────────────────────────────────────────────────
+      const totP   = rpt.rows.reduce((a, r) => a + r.totalPresent, 0);
+      const totN   = rpt.rows.reduce((a, r) => a + r.totalAbsent, 0);
+      const totL   = rpt.rows.reduce((a, r) => a + r.totalLate, 0);
       const totAll = totP + totN;
-      const avgPct = totAll > 0 ? ((totP / totAll) * 100).toFixed(1) + '%' : '—';
+      const effPct = totAll > 0 ? Math.round((totP / totAll) * 100) : 0;
+      const latePct = totAll > 0 ? Math.round((totL / totAll) * 100) : 0;
+      const totalWorkers = users.filter(u => u.role === 'safaikarmi').length;
+      const totalComplaints = complaints.length;
+      const genBy = 'Superadmin'; // always super-admin context here
+      const genDate = new Date(rpt.generatedAt).toLocaleString('en-IN', {
+        day: '2-digit', month: 'long', year: 'numeric',
+        hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true,
+      });
 
-      // ── Build column headers ───────────────────────────────────────
-      let colHeaders = '';
-      let dataRows = '';
-
-      if (rpt.type === 'monthly') {
-        colHeaders = rpt.dayHeaders.map(d => `<th>${d}</th>`).join('');
-        dataRows = rpt.rows.map(row => {
-          const cells = rpt.dayHeaders.map(d => {
-            const st = row.dailyStatus[d] ?? 'N';
-            const clr = st === 'P' ? '#22c55e' : st === 'L' ? '#f59e0b' : '#ef4444';
-            return `<td style="color:${clr};font-weight:700">${st}</td>`;
-          }).join('');
-          return `<tr><td>${row.sNo}</td><td>${row.houseRegNo}</td><td>${row.wardNo}</td>${cells}<td style="color:#22c55e">${row.totalPresent}</td><td style="color:#ef4444">${row.totalAbsent}</td><td style="color:#f59e0b">${row.totalLate}</td><td style="color:#818cf8">${row.percentage}</td></tr>`;
-        }).join('');
-        colHeaders = `<th>#</th><th>Reg No</th><th>Ward</th>${colHeaders}<th>P</th><th>N</th><th>L</th><th>%</th>`;
-      } else if (rpt.type === 'quarterly') {
-        const wh = rpt.weekHeaders ?? [];
-        colHeaders = `<th>#</th><th>Reg No</th><th>Ward</th>${wh.map(h => `<th>${h.label}</th>`).join('')}<th>P</th><th>N</th><th>L</th><th>%</th>`;
-        dataRows = rpt.rows.map(row => {
-          const cells = wh.map(h => {
-            const col = row.weeklyCollected?.[h.key] ?? 0;
-            const tot = h.totalDays;
-            const ratio = tot > 0 ? col / tot : 0;
-            const clr = ratio >= 0.8 ? '#22c55e' : ratio >= 0.5 ? '#f59e0b' : '#ef4444';
-            return `<td style="color:${clr};font-weight:700">${col}/${tot}</td>`;
-          }).join('');
-          return `<tr><td>${row.sNo}</td><td>${row.houseRegNo}</td><td>${row.wardNo}</td>${cells}<td style="color:#22c55e">${row.totalPresent}</td><td style="color:#ef4444">${row.totalAbsent}</td><td style="color:#f59e0b">${row.totalLate}</td><td style="color:#818cf8">${row.percentage}</td></tr>`;
-        }).join('');
-      } else {
-        colHeaders = `<th>#</th><th>Reg No</th><th>Ward</th>${MONTH_NAMES.map(m => `<th>${m.slice(0,3)}</th>`).join('')}<th>P</th><th>N</th><th>L</th><th>%</th>`;
-        dataRows = rpt.rows.map(row => {
-          const cells = Array.from({ length: 12 }, (_, i) => {
-            const p = row.monthlyData?.[i + 1]?.p ?? 0;
-            const tot = daysInMonth(i + 1, rpt.year);
-            const ratio = tot > 0 ? p / tot : 0;
-            const clr = ratio >= 0.8 ? '#22c55e' : ratio >= 0.5 ? '#f59e0b' : '#ef4444';
-            return `<td style="color:${clr};font-weight:700">${p}</td>`;
-          }).join('');
-          return `<tr><td>${row.sNo}</td><td>${row.houseRegNo}</td><td>${row.wardNo}</td>${cells}<td style="color:#22c55e">${row.totalPresent}</td><td style="color:#ef4444">${row.totalAbsent}</td><td style="color:#f59e0b">${row.totalLate}</td><td style="color:#818cf8">${row.percentage}</td></tr>`;
-        }).join('');
-      }
-
-      // Ward-wise summary for PDF chart section
-      const wardMap: Record<number, { p: number; tot: number }> = {};
-      for (const row of rpt.rows) {
-        const wn = row.wardNo ?? 0;
-        if (!wardMap[wn]) wardMap[wn] = { p: 0, tot: 0 };
-        wardMap[wn].p   += row.totalPresent;
-        wardMap[wn].tot += row.totalDays;
-      }
-      const wardBars = Object.entries(wardMap).sort(([a],[b]) => Number(a)-Number(b)).map(([wn, d]) => {
-        const pct = d.tot > 0 ? Math.round((d.p / d.tot) * 100) : 0;
-        const clr = pct >= 80 ? '#16a34a' : pct >= 50 ? '#d97706' : '#dc2626';
-        return `<tr><td style="padding:4px 8px;font-size:10px;white-space:nowrap">Ward ${wn}</td>
-          <td style="padding:4px 8px;width:100%"><div style="background:#e5e7eb;border-radius:4px;height:14px;position:relative">
-            <div style="background:${clr};width:${pct}%;height:14px;border-radius:4px"></div>
-          </div></td>
-          <td style="padding:4px 8px;font-size:10px;font-weight:700;color:${clr};white-space:nowrap">${pct}%</td></tr>`;
-      }).join('');
-
-      // Attendance vs Collection chart for PDF
+      // ── Date-range filter ──────────────────────────────────────────
       const inRangePDF = (dateStr: string) => {
         const d = new Date(dateStr);
         if (isNaN(d.getTime())) return false;
         const y = d.getFullYear(), m = d.getMonth() + 1;
         if (y !== rpt.year) return false;
         if (rpt.type === 'monthly') return m === rpt.month;
-        if (rpt.type === 'quarterly' && rpt.quarter) {
-          const qs = (rpt.quarter - 1) * 3 + 1;
-          return m >= qs && m <= qs + 2;
-        }
+        if (rpt.type === 'quarterly' && rpt.quarter) { const qs = (rpt.quarter-1)*3+1; return m>=qs && m<=qs+2; }
         return true;
       };
-      const attBars = wards
-        .filter(w => w.wardNumber)
-        .map(w => {
-          const wn = Number(w.wardNumber);
-          const workerIds = w.assignedWorkers ?? [];
-          const filtered = attendance.filter(a => workerIds.includes(a.workerId) && inRangePDF(a.date));
-          const present  = filtered.filter(a => a.status === 'present' || a.status === 'half_day').length;
-          const attPct   = filtered.length > 0 ? Math.round((present / filtered.length) * 100) : null;
-          const wardRows = rpt.rows.filter(r => r.wardNo === wn);
-          const totP     = wardRows.reduce((s, r) => s + r.totalPresent, 0);
-          const totD     = wardRows.reduce((s, r) => s + r.totalDays, 0);
-          const colPct   = totD > 0 ? Math.round((totP / totD) * 100) : null;
-          if (attPct === null && colPct === null) return '';
-          const aClr = attPct == null ? '#9ca3af' : attPct >= 80 ? '#16a34a' : attPct >= 50 ? '#d97706' : '#dc2626';
-          const cClr = '#6366f1';
-          const workers  = users.filter(u => u.role === 'safaikarmi' && workerIds.includes(u.id)).length;
-          const gap      = attPct != null && colPct != null ? colPct - attPct : null;
-          const note     = gap != null && gap < -15
-            ? `<span style="color:#d97706;font-size:8px"> ⚠ Collection ${Math.abs(gap)}% below attendance</span>`
-            : (attPct != null && attPct < 60
-                ? `<span style="color:#dc2626;font-size:8px"> ⚠ Low worker attendance</span>`
-                : '');
-          return `<tr>
-            <td style="padding:3px 8px;font-size:10px;white-space:nowrap;vertical-align:middle">Ward ${wn}</td>
-            <td style="padding:3px 8px;width:100%;vertical-align:middle">
-              <div style="margin-bottom:3px">
-                <div style="display:flex;align-items:center;gap:4px;margin-bottom:2px">
-                  <span style="font-size:8px;color:#555;width:66px">Attendance</span>
-                  <div style="flex:1;background:#e5e7eb;border-radius:3px;height:10px">
-                    <div style="background:${aClr};width:${attPct ?? 0}%;height:10px;border-radius:3px"></div>
-                  </div>
-                  <span style="font-size:9px;font-weight:700;color:${aClr};width:32px;text-align:right">${attPct != null ? attPct + '%' : '—'}</span>
-                  <span style="font-size:8px;color:#9ca3af">(${workers}w)</span>
-                </div>
-                <div style="display:flex;align-items:center;gap:4px">
-                  <span style="font-size:8px;color:#555;width:66px">Collection</span>
-                  <div style="flex:1;background:#e5e7eb;border-radius:3px;height:10px">
-                    <div style="background:${cClr};width:${colPct ?? 0}%;height:10px;border-radius:3px"></div>
-                  </div>
-                  <span style="font-size:9px;font-weight:700;color:${cClr};width:32px;text-align:right">${colPct != null ? colPct + '%' : '—'}</span>
-                  <span style="font-size:8px;color:transparent">(0w)</span>
-                </div>
-              </div>
-              ${note}
-            </td>
-          </tr>`;
-        }).filter(Boolean).join('');
 
-      const html = `<!DOCTYPE html><html><head><meta charset="utf-8">
-      <style>
-        @page{size:A4 landscape;margin:12mm}
-        *{box-sizing:border-box}
-        body{font-family:Arial,sans-serif;margin:0;padding:0;background:#fff;color:#111;font-size:10px}
-        h1{font-size:14px;margin:0 0 2px;color:#1e1b4b}
-        .sub{font-size:9px;color:#666;margin-bottom:10px}
-        .row{display:flex;gap:10px;margin-bottom:10px}
-        .scard{flex:1;border-radius:6px;padding:6px 10px;text-align:center}
-        .sv{font-size:16px;font-weight:700}.sl{font-size:8px;color:#555;text-transform:uppercase;margin-top:1px}
-        table.data{border-collapse:collapse;width:100%;font-size:7.5px}
-        table.data th{background:#1e1b4b;color:#fff;padding:4px 5px;white-space:nowrap;text-align:center}
-        table.data td{padding:3px 5px;text-align:center;border-bottom:1px solid #e5e7eb}
-        table.data tr:nth-child(even){background:#f9fafb}
-        table.ward{border-collapse:collapse;width:100%}
-        .legend{display:flex;gap:12px;margin-bottom:8px;font-size:9px}
-        .ldot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:3px}
-        h2{font-size:11px;margin:10px 0 6px;color:#1e1b4b;border-bottom:1px solid #e5e7eb;padding-bottom:3px}
-        footer{margin-top:10px;font-size:8px;color:#999;text-align:center;border-top:1px solid #e5e7eb;padding-top:6px}
-      </style></head><body>
-        <h1>DNP360 — Nagar Parishad Daudnagar</h1>
-        <div class="sub">Report: <strong>${rpt.label}</strong> &nbsp;|&nbsp; Generated: ${new Date(rpt.generatedAt).toLocaleString('en-IN')} &nbsp;|&nbsp; ${rpt.rows.length} houses</div>
-        <div class="row">
-          <div class="scard" style="background:#dcfce7"><div class="sv" style="color:#16a34a">${totP}</div><div class="sl">Collected</div></div>
-          <div class="scard" style="background:#fee2e2"><div class="sv" style="color:#dc2626">${totN}</div><div class="sl">Missed</div></div>
-          <div class="scard" style="background:#fef9c3"><div class="sv" style="color:#d97706">${totL}</div><div class="sl">Late</div></div>
-          <div class="scard" style="background:#ede9fe"><div class="sv" style="color:#7c3aed">${avgPct}</div><div class="sl">Avg %</div></div>
+      // ── Ward map ───────────────────────────────────────────────────
+      const wardMap: Record<number, {p:number;n:number;l:number;houses:number}> = {};
+      for (const row of rpt.rows) {
+        const wn = row.wardNo ?? 0;
+        if (!wardMap[wn]) wardMap[wn] = { p:0, n:0, l:0, houses:0 };
+        wardMap[wn].p += row.totalPresent;
+        wardMap[wn].n += row.totalAbsent;
+        wardMap[wn].l += row.totalLate;
+        wardMap[wn].houses++;
+      }
+
+      // ── Worker map ─────────────────────────────────────────────────
+      const workerMap: Record<string, {p:number;n:number;assigned:number}> = {};
+      const filteredVisits = houseVisits.filter(v => inRangePDF(v.visitDate));
+      for (const v of filteredVisits) {
+        if (!v.workerId) continue;
+        if (!workerMap[v.workerId]) workerMap[v.workerId] = { p:0, n:0, assigned:0 };
+        if (v.collectedGarbage) workerMap[v.workerId].p++;
+        else workerMap[v.workerId].n++;
+      }
+      for (const wid of Object.keys(workerMap)) workerMap[wid].assigned = workerMap[wid].p + workerMap[wid].n;
+
+      // ── Trend data ─────────────────────────────────────────────────
+      const trendData: { label:string; pct:number }[] = [];
+      if (rpt.type === 'monthly' && rpt.dayHeaders) {
+        for (const day of rpt.dayHeaders) {
+          let p = 0;
+          for (const row of rpt.rows) { const st = row.dailyStatus[day] ?? 'N'; if (st==='P'||st==='L') p++; }
+          trendData.push({ label: String(day), pct: rpt.rows.length > 0 ? Math.round((p/rpt.rows.length)*100) : 0 });
+        }
+      } else if (rpt.type === 'quarterly' && rpt.weekHeaders) {
+        for (const wh of rpt.weekHeaders) {
+          let p = 0, tot = 0;
+          for (const row of rpt.rows) { p += row.weeklyCollected?.[wh.key] ?? 0; tot += wh.totalDays; }
+          trendData.push({ label: wh.label.replace('Week ','W'), pct: tot>0 ? Math.round((p/tot)*100) : 0 });
+        }
+      } else {
+        for (let mi = 1; mi <= 12; mi++) {
+          let p = 0, tot = 0;
+          for (const row of rpt.rows) { const md = row.monthlyData?.[mi]; if (md) { p+=md.p; tot+=daysInMonth(mi,rpt.year); } }
+          trendData.push({ label: MONTH_NAMES[mi-1].slice(0,3), pct: tot>0 ? Math.round((p/tot)*100) : 0 });
+        }
+      }
+
+      // ── House collection table (existing design) ───────────────────
+      let colHeaders = '';
+      let dataRows = '';
+      if (rpt.type === 'monthly') {
+        const dh = rpt.dayHeaders;
+        colHeaders = `<th>#</th><th>Reg No</th><th>Ward</th>${dh.map(d=>`<th>${d}</th>`).join('')}<th>P</th><th>N</th><th>L</th><th>%</th><th>Status</th>`;
+        dataRows = rpt.rows.map(row => {
+          const cells = dh.map(d => {
+            const st = row.dailyStatus[d] ?? 'N';
+            const bg = st==='P' ? '#dcfce7' : st==='L' ? '#fef9c3' : '#fee2e2';
+            const cl = st==='P' ? '#16a34a' : st==='L' ? '#b45309' : '#dc2626';
+            return `<td style="background:${bg};color:${cl};font-weight:700;padding:2px 3px">${st}</td>`;
+          }).join('');
+          const pct = parseInt(row.percentage);
+          const sClr = pct>=80?'#16a34a':pct>=50?'#d97706':'#dc2626';
+          const sLbl = pct>=80?'🟢 Good':pct>=50?'🟡 Average':'🔴 Poor';
+          return `<tr><td>${row.sNo}</td><td style="font-weight:600">${row.houseRegNo}</td><td>${row.wardNo}</td>${cells}<td style="color:#16a34a;font-weight:700">${row.totalPresent}</td><td style="color:#dc2626;font-weight:700">${row.totalAbsent}</td><td style="color:#d97706;font-weight:700">${row.totalLate}</td><td style="color:#6366f1;font-weight:700">${row.percentage}</td><td style="color:${sClr};font-weight:600;white-space:nowrap">${sLbl}</td></tr>`;
+        }).join('');
+      } else if (rpt.type === 'quarterly') {
+        const wh = rpt.weekHeaders ?? [];
+        colHeaders = `<th>#</th><th>Reg No</th><th>Ward</th>${wh.map(h=>`<th>${h.label.replace('Week','W')}</th>`).join('')}<th>P</th><th>N</th><th>L</th><th>%</th><th>Status</th>`;
+        dataRows = rpt.rows.map(row => {
+          const cells = wh.map(h => { const col=row.weeklyCollected?.[h.key]??0; const r2=h.totalDays>0?col/h.totalDays:0; const cl=r2>=0.8?'#16a34a':r2>=0.5?'#d97706':'#dc2626'; return `<td style="color:${cl};font-weight:700">${col}/${h.totalDays}</td>`; }).join('');
+          const pct=parseInt(row.percentage); const sClr=pct>=80?'#16a34a':pct>=50?'#d97706':'#dc2626'; const sLbl=pct>=80?'🟢 Good':pct>=50?'🟡 Average':'🔴 Poor';
+          return `<tr><td>${row.sNo}</td><td style="font-weight:600">${row.houseRegNo}</td><td>${row.wardNo}</td>${cells}<td style="color:#16a34a;font-weight:700">${row.totalPresent}</td><td style="color:#dc2626;font-weight:700">${row.totalAbsent}</td><td style="color:#d97706;font-weight:700">${row.totalLate}</td><td style="color:#6366f1;font-weight:700">${row.percentage}</td><td style="color:${sClr};font-weight:600;white-space:nowrap">${sLbl}</td></tr>`;
+        }).join('');
+      } else {
+        colHeaders = `<th>#</th><th>Reg No</th><th>Ward</th>${MONTH_NAMES.map(m=>`<th>${m.slice(0,3)}</th>`).join('')}<th>P</th><th>N</th><th>L</th><th>%</th><th>Status</th>`;
+        dataRows = rpt.rows.map(row => {
+          const cells = Array.from({length:12},(_,i)=>{ const p=row.monthlyData?.[i+1]?.p??0; const tot=daysInMonth(i+1,rpt.year); const r2=tot>0?p/tot:0; const cl=r2>=0.8?'#16a34a':r2>=0.5?'#d97706':'#dc2626'; return `<td style="color:${cl};font-weight:700">${p}</td>`; }).join('');
+          const pct=parseInt(row.percentage); const sClr=pct>=80?'#16a34a':pct>=50?'#d97706':'#dc2626'; const sLbl=pct>=80?'🟢 Good':pct>=50?'🟡 Average':'🔴 Poor';
+          return `<tr><td>${row.sNo}</td><td style="font-weight:600">${row.houseRegNo}</td><td>${row.wardNo}</td>${cells}<td style="color:#16a34a;font-weight:700">${row.totalPresent}</td><td style="color:#dc2626;font-weight:700">${row.totalAbsent}</td><td style="color:#d97706;font-weight:700">${row.totalLate}</td><td style="color:#6366f1;font-weight:700">${row.percentage}</td><td style="color:${sClr};font-weight:600;white-space:nowrap">${sLbl}</td></tr>`;
+        }).join('');
+      }
+
+      // ── Helper HTML builders ───────────────────────────────────────
+      function bar(pct: number, clr: string, h = 10) {
+        return `<div style="background:#e2e8f0;border-radius:3px;height:${h}px;width:100%;overflow:hidden"><div style="background:${clr};width:${pct}%;height:${h}px;border-radius:3px"></div></div>`;
+      }
+      function effColor(p: number) { return p>=80?'#16a34a':p>=50?'#d97706':'#dc2626'; }
+      function effEmoji(p: number) { return p>=80?'🟢':p>=50?'🟡':'🔴'; }
+
+      // ── Ward chart bars ────────────────────────────────────────────
+      const wardChartHTML = Object.entries(wardMap).sort(([a],[b])=>Number(a)-Number(b)).map(([wn,d])=>{
+        const tot=d.p+d.n; const eff=tot>0?Math.round((d.p/tot)*100):0; const cl=effColor(eff);
+        return `<div style="display:flex;align-items:center;gap:5px;margin-bottom:5px">
+          <span style="font-size:7px;color:#475569;min-width:28px">W${wn}</span>
+          ${bar(eff,cl,9)}
+          <span style="font-size:7px;font-weight:700;color:${cl};min-width:26px;text-align:right">${eff}%</span>
+        </div>`;
+      }).join('') || '<div style="font-size:8px;color:#94a3b8;text-align:center;padding:16px">No ward data</div>';
+
+      // ── Trend sparkline bars ───────────────────────────────────────
+      const trendHTML = trendData.length > 0
+        ? `<div style="display:flex;align-items:flex-end;gap:2px;height:55px;padding-top:4px">
+            ${trendData.map(t=>{ const h=Math.max(2,Math.round((t.pct/100)*48)); const cl=effColor(t.pct); return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:1px"><div style="width:100%;background:${cl};height:${h}px;border-radius:2px 2px 0 0"></div><span style="font-size:4.5px;color:#64748b">${t.label}</span></div>`; }).join('')}
+           </div>`
+        : '<div style="font-size:8px;color:#94a3b8;text-align:center;padding:16px">No trend data</div>';
+
+      // ── Collection status stacked bar ──────────────────────────────
+      const missPct2 = Math.max(0, 100 - effPct - latePct);
+      const statusHTML = `
+        <div style="height:18px;border-radius:6px;overflow:hidden;display:flex;margin:6px 0">
+          <div style="width:${effPct}%;background:linear-gradient(90deg,#16a34a,#22c55e)"></div>
+          <div style="width:${latePct}%;background:linear-gradient(90deg,#d97706,#f59e0b)"></div>
+          <div style="flex:1;background:linear-gradient(90deg,#dc2626,#ef4444)"></div>
         </div>
-        ${wardBars ? `<h2>Ward-wise Collection Performance</h2><table class="ward">${wardBars}</table>` : ''}
-        ${attBars ? `<h2>Attendance vs Collection by Ward</h2>
-        <div style="font-size:8px;color:#666;margin-bottom:6px">Safai Karmi attendance rate alongside collection rate — spot absenteeism-driven gaps</div>
-        <div style="display:flex;gap:14px;margin-bottom:8px;font-size:8px">
-          <span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#16a34a;margin-right:3px"></span>Attendance (≥80%)</span>
-          <span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#d97706;margin-right:3px"></span>50–79%</span>
-          <span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#dc2626;margin-right:3px"></span>&lt;50%</span>
-          <span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#6366f1;margin-right:3px"></span>Collection</span>
-        </div>
-        <table class="ward">${attBars}</table>` : ''}
-        <h2>Collection Details</h2>
-        <div class="legend">
-          <span><span class="ldot" style="background:#22c55e"></span>P = Collected</span>
-          <span><span class="ldot" style="background:#ef4444"></span>N = Not Collected</span>
-          <span><span class="ldot" style="background:#f59e0b"></span>L = Late</span>
-        </div>
-        <table class="data"><thead><tr>${colHeaders}</tr></thead><tbody>${dataRows}</tbody></table>
-        <footer>Generated by DNP360 Admin &bull; ${new Date().toLocaleString('en-IN')}</footer>
-      </body></html>`;
+        <div style="display:flex;flex-direction:column;gap:3px">
+          <div style="display:flex;justify-content:space-between;font-size:7.5px"><span>🟢 Collected</span><strong style="color:#16a34a">${totP} · ${effPct}%</strong></div>
+          <div style="display:flex;justify-content:space-between;font-size:7.5px"><span>🟡 Late</span><strong style="color:#d97706">${totL} · ${latePct}%</strong></div>
+          <div style="display:flex;justify-content:space-between;font-size:7.5px"><span>🔴 Missed</span><strong style="color:#dc2626">${totN} · ${missPct2}%</strong></div>
+        </div>`;
+
+      // ── Worker performance chart bars ──────────────────────────────
+      const workerChartHTML = Object.entries(workerMap).slice(0,6).map(([wid,d])=>{
+        const worker = users.find(u=>u.id===wid);
+        const eff = d.assigned>0 ? Math.round((d.p/d.assigned)*100) : 0;
+        const cl = effColor(eff);
+        const nm = (worker?.name ?? wid).split(' ')[0];
+        return `<div style="display:flex;align-items:center;gap:5px;margin-bottom:5px">
+          <span style="font-size:6.5px;color:#475569;min-width:36px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${nm}</span>
+          ${bar(eff,cl,9)}
+          <span style="font-size:7px;font-weight:700;color:${cl};min-width:26px;text-align:right">${eff}%</span>
+        </div>`;
+      }).join('') || '<div style="font-size:8px;color:#94a3b8;text-align:center;padding:16px">No worker data</div>';
+
+      // ── Ward table rows ────────────────────────────────────────────
+      const wardTableRows = Object.entries(wardMap).sort(([a],[b])=>Number(a)-Number(b)).map(([wn,d])=>{
+        const tot=d.p+d.n; const eff=tot>0?Math.round((d.p/tot)*100):0; const cl=effColor(eff);
+        return `<tr>
+          <td>Ward ${wn}</td><td>${d.houses}</td>
+          <td style="color:#16a34a;font-weight:700">${d.p}</td>
+          <td style="color:#dc2626;font-weight:700">${d.n}</td>
+          <td><div style="display:flex;align-items:center;gap:4px">${bar(eff,cl,10)}<span style="color:${cl};font-weight:700;white-space:nowrap">${eff}% ${effEmoji(eff)}</span></div></td>
+        </tr>`;
+      }).join('');
+
+      // ── Worker table rows ──────────────────────────────────────────
+      const workerTableRows = Object.entries(workerMap).map(([wid,d])=>{
+        const worker = users.find(u=>u.id===wid);
+        const eff = d.assigned>0 ? Math.round((d.p/d.assigned)*100) : 0; const cl=effColor(eff);
+        return `<tr>
+          <td style="text-align:left;font-weight:600">${worker?.name ?? wid}</td>
+          <td>${d.assigned}</td>
+          <td style="color:#16a34a;font-weight:700">${d.p}</td>
+          <td style="color:#dc2626;font-weight:700">${d.n}</td>
+          <td><div style="display:flex;align-items:center;gap:4px">${bar(eff,cl,10)}<span style="color:${cl};font-weight:700;white-space:nowrap">${eff}% ${effEmoji(eff)}</span></div></td>
+        </tr>`;
+      }).join('');
+
+      // ── Full HTML ─────────────────────────────────────────────────
+      const html = `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
+<style>
+  @page{size:A4;margin:10mm}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:Arial,Helvetica,sans-serif;background:#fff;color:#0f172a;font-size:9px;line-height:1.4}
+
+  /* ── Header ── */
+  .hdr{border:2px solid #1e3a8a;border-radius:8px;padding:10px 16px;margin-bottom:8px;text-align:center;background:linear-gradient(135deg,#eff6ff,#dbeafe)}
+  .hdr-logo{font-size:20px;font-weight:900;color:#1e3a8a;letter-spacing:3px}
+  .hdr-sub{font-size:10px;font-weight:700;color:#1e40af;margin-top:1px}
+  .hdr-tag{font-size:7.5px;color:#64748b;margin-top:2px}
+
+  /* ── Info box ── */
+  .info{border:1px solid #bfdbfe;border-radius:5px;padding:7px 12px;margin-bottom:8px;background:#f0f9ff;display:grid;grid-template-columns:1fr 1fr;gap:2px 20px}
+  .ir{font-size:8px;display:flex;gap:4px}
+  .ik{color:#1d4ed8;font-weight:700;min-width:110px}
+  .iv{color:#0f172a}
+
+  /* ── Stat cards ── */
+  .cards{display:flex;gap:6px;margin-bottom:6px}
+  .card{flex:1;border-radius:7px;padding:7px 8px;text-align:center;border:1px solid transparent}
+  .cv{font-size:15px;font-weight:900;line-height:1}
+  .cl{font-size:6.5px;text-transform:uppercase;font-weight:700;color:#475569;letter-spacing:0.4px;margin-top:3px}
+  .ci{font-size:11px;margin-bottom:2px}
+
+  /* ── Chart grid ── */
+  .cgrid{display:flex;gap:6px;margin-bottom:8px}
+  .cbox{flex:1;border:1px solid #e2e8f0;border-radius:6px;padding:7px}
+  .ct{font-size:7.5px;font-weight:700;color:#1e3a8a;border-bottom:1px solid #f1f5f9;padding-bottom:3px;margin-bottom:5px;text-transform:uppercase;letter-spacing:0.4px}
+
+  /* ── Section headers ── */
+  .sh{background:linear-gradient(90deg,#1e3a8a,#1e40af);color:#fff;padding:5px 10px;font-size:9px;font-weight:700;border-radius:4px 4px 0 0;margin-top:8px;display:flex;align-items:center;gap:4px}
+  table{border-collapse:collapse;width:100%}
+  th{background:#dbeafe;color:#1e3a8a;padding:4px 6px;text-align:center;font-size:8px;font-weight:700;border:1px solid #bfdbfe}
+  td{padding:3px 5px;text-align:center;font-size:7.5px;border:1px solid #e2e8f0}
+  tr:nth-child(even) td{background:#f8fafc}
+  td:first-child,th:first-child{text-align:left}
+
+  /* ── House data table (smaller for compactness) ── */
+  table.dt th{font-size:7px;padding:3px 4px}
+  table.dt td{padding:2px 3px;font-size:7px}
+
+  /* ── Footer ── */
+  .ftr{margin-top:10px;padding-top:5px;border-top:2px solid #dbeafe;display:flex;justify-content:space-between;align-items:center}
+  .ftr-l{font-size:7px;color:#475569}
+  .ftr-r{font-size:7px;color:#1e3a8a;font-weight:700}
+</style>
+</head><body>
+
+<!-- ══ HEADER ══ -->
+<div class="hdr">
+  <div class="hdr-logo">🏛 DNP360</div>
+  <div class="hdr-sub">NAGAR PARISHAD, DAUDNAGAR</div>
+  <div class="hdr-tag">Garbage Collection Management System · Bihar, India</div>
+</div>
+
+<!-- ══ REPORT INFO BOX ══ -->
+<div class="info">
+  <div class="ir"><span class="ik">REPORT TYPE</span><span class="iv">: ${rpt.type.toUpperCase()} — ${rpt.label}</span></div>
+  <div class="ir"><span class="ik">TOTAL HOUSES COVERED</span><span class="iv">: ${rpt.rows.length.toLocaleString()}</span></div>
+  <div class="ir"><span class="ik">GENERATED ON</span><span class="iv">: ${genDate}</span></div>
+  <div class="ir"><span class="ik">TOTAL WORKERS</span><span class="iv">: ${totalWorkers}</span></div>
+  <div class="ir"><span class="ik">GENERATED BY</span><span class="iv">: ${genBy}</span></div>
+  <div class="ir"><span class="ik">TOTAL COMPLAINTS</span><span class="iv">: ${totalComplaints}</span></div>
+</div>
+
+<!-- ══ STAT CARDS ROW 1 (4 cards) ══ -->
+<div class="cards">
+  <div class="card" style="background:linear-gradient(135deg,#eff6ff,#dbeafe);border-color:#bfdbfe">
+    <div class="ci">🏠</div><div class="cv" style="color:#1e40af">${rpt.rows.length.toLocaleString()}</div><div class="cl">Total Houses</div>
+  </div>
+  <div class="card" style="background:linear-gradient(135deg,#f0fdf4,#dcfce7);border-color:#bbf7d0">
+    <div class="ci">🟢</div><div class="cv" style="color:#16a34a">${totP.toLocaleString()}</div><div class="cl">Collected</div>
+  </div>
+  <div class="card" style="background:linear-gradient(135deg,#fef2f2,#fee2e2);border-color:#fecaca">
+    <div class="ci">🔴</div><div class="cv" style="color:#dc2626">${totN.toLocaleString()}</div><div class="cl">Missed</div>
+  </div>
+  <div class="card" style="background:linear-gradient(135deg,#fffbeb,#fef9c3);border-color:#fde68a">
+    <div class="ci">🟡</div><div class="cv" style="color:#d97706">${totL.toLocaleString()}</div><div class="cl">Late</div>
+  </div>
+</div>
+
+<!-- ══ STAT CARDS ROW 2 (3 cards) ══ -->
+<div class="cards" style="margin-bottom:8px">
+  <div class="card" style="background:linear-gradient(135deg,#eef2ff,#e0e7ff);border-color:#c7d2fe">
+    <div class="ci">🔵</div><div class="cv" style="color:#4f46e5">${effPct}%</div><div class="cl">Efficiency</div>
+  </div>
+  <div class="card" style="background:linear-gradient(135deg,#f5f3ff,#ede9fe);border-color:#ddd6fe">
+    <div class="ci">🟣</div><div class="cv" style="color:#7c3aed">${totalWorkers}</div><div class="cl">Workers</div>
+  </div>
+  <div class="card" style="background:linear-gradient(135deg,#fff7ed,#ffedd5);border-color:#fed7aa">
+    <div class="ci">🟠</div><div class="cv" style="color:#ea580c">${totalComplaints}</div><div class="cl">Complaints</div>
+  </div>
+</div>
+
+<!-- ══ CHARTS 2×2 ══ -->
+<div class="cgrid">
+  <div class="cbox">
+    <div class="ct">📊 Ward Collection</div>
+    ${wardChartHTML}
+  </div>
+  <div class="cbox">
+    <div class="ct">📈 Daily Trend</div>
+    ${trendHTML}
+  </div>
+</div>
+<div class="cgrid">
+  <div class="cbox">
+    <div class="ct">🥧 Collection Status</div>
+    ${statusHTML}
+  </div>
+  <div class="cbox">
+    <div class="ct">👷 Worker Performance</div>
+    ${workerChartHTML}
+  </div>
+</div>
+
+<!-- ══ WARD PERFORMANCE TABLE ══ -->
+<div class="sh">🗺️ WARD PERFORMANCE &nbsp;<span style="font-size:7px;opacity:0.8">(${rpt.wardId ? 'Selected Ward' : 'All Wards'})</span></div>
+<table>
+  <thead><tr><th>Ward</th><th>Houses</th><th>Collected</th><th>Missed</th><th style="min-width:120px">Efficiency</th></tr></thead>
+  <tbody>${wardTableRows || '<tr><td colspan="5" style="text-align:center;color:#94a3b8;padding:8px">No ward data available</td></tr>'}</tbody>
+</table>
+
+<!-- ══ WORKER PERFORMANCE TABLE ══ -->
+<div class="sh">👷 WORKER PERFORMANCE &nbsp;<span style="font-size:7px;opacity:0.8">(All)</span></div>
+<table>
+  <thead><tr><th>Worker</th><th>Assigned</th><th>Collected</th><th>Missed</th><th style="min-width:120px">Efficiency</th></tr></thead>
+  <tbody>${workerTableRows || '<tr><td colspan="5" style="text-align:center;color:#94a3b8;padding:8px">No worker visit data for this period</td></tr>'}</tbody>
+</table>
+
+<!-- ══ HOUSE COLLECTION DETAILS ══ -->
+<div class="sh">🏠 HOUSE COLLECTION DETAILS</div>
+<div style="font-size:7.5px;color:#475569;padding:4px 0;display:flex;gap:12px">
+  <span>🟢 P = Collected on time</span>
+  <span>🔴 N = Not collected</span>
+  <span>🟡 L = Collected late</span>
+</div>
+<table class="dt">
+  <thead><tr>${colHeaders}</tr></thead>
+  <tbody>${dataRows || '<tr><td colspan="20" style="text-align:center;color:#94a3b8;padding:8px">No house data</td></tr>'}</tbody>
+</table>
+
+<!-- ══ FOOTER ══ -->
+<div class="ftr">
+  <div class="ftr-l">
+    Generated by DNP360 System · Nagar Parishad, Daudnagar<br>
+    &copy; DNP360&reg; · &copy; SUPERADMIN · ${new Date().toLocaleDateString('en-IN')}
+  </div>
+  <div class="ftr-r">DNP360 · Nagar Parishad Daudnagar</div>
+</div>
+
+</body></html>`;
 
       if (Platform.OS === 'web') {
         const w = (window as any).open('', '_blank');
