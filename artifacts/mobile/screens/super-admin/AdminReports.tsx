@@ -578,7 +578,7 @@ export default function AdminReports() {
       // ── Load logo as base64 for PDF ────────────────────────────────
       let logoDataUri = '';
       try {
-        const asset = Asset.fromModule(require('../../assets/dnp360-logo-pdf.png'));
+        const asset = Asset.fromModule(require('../../assets/dnp360-logo-transparent.png'));
         await asset.downloadAsync();
         if (asset.localUri) {
           const b64 = await FileSystem.readAsStringAsync(asset.localUri, { encoding: FileSystem.EncodingType.Base64 });
@@ -767,13 +767,10 @@ export default function AdminReports() {
       }).join('');
 
       // ── Full HTML ─────────────────────────────────────────────────
-      // Logo: wrap in dark bg so it's visible on white PDF paper
-      const logoBlock = logoDataUri
-        ? `<div style="background:linear-gradient(135deg,#1e3a8a,#1e40af);border-radius:10px;padding:6px 10px;display:inline-flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(30,58,138,0.4)"><img src="${logoDataUri}" style="height:50px;width:auto;object-fit:contain;display:block" /></div>`
-        : `<div style="background:linear-gradient(135deg,#1e3a8a,#1e40af);border-radius:10px;padding:8px 14px;display:inline-flex;align-items:center;justify-content:center"><span style="font-size:18px;font-weight:900;color:#fff;letter-spacing:2px">DNP360</span></div>`;
+      // Watermark: transparent logo centered behind all content, low opacity, no color filter
       const watermarkTag = logoDataUri
-        ? `<div style="position:fixed;top:50%;left:50%;transform:translate(-50%,-50%) rotate(-20deg);opacity:0.04;pointer-events:none;z-index:0;filter:grayscale(1) contrast(2)">
-             <img src="${logoDataUri}" style="width:480px;height:auto" />
+        ? `<div style="position:fixed;top:50%;left:50%;transform:translate(-50%,-50%) rotate(-15deg);opacity:0.13;pointer-events:none;z-index:0">
+             <img src="${logoDataUri}" style="width:420px;height:auto" />
            </div>`
         : '';
 
@@ -833,14 +830,12 @@ ${watermarkTag}
 
 <!-- ══ HEADER ══ -->
 <div class="hdr">
-  ${logoBlock}
   <div class="hdr-text">
     <div class="hdr-title">Nagar Parishad, Daudnagar</div>
     <div class="hdr-sub">DNP360 — Smart Governance System</div>
     <div class="hdr-tag">Garbage Collection Management · Bihar, India</div>
     <div class="hdr-badge">✦ OFFICIAL REPORT ✦</div>
   </div>
-  ${logoBlock}
 </div>
 
 <!-- ══ REPORT INFO BOX ══ -->
