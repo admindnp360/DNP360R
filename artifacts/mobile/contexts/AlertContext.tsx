@@ -1,7 +1,7 @@
 import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { createContext, useCallback, useContext, useState } from 'react';
-import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 export interface AlertButton {
   text: string;
@@ -56,9 +56,14 @@ export function AlertProvider({ children }: { children: React.ReactNode }) {
   return (
     <AlertContext.Provider value={{ showAlert }}>
       {children}
-      <Modal visible={state.visible} transparent animationType="fade" statusBarTranslucent>
-        <Pressable style={styles.overlay} onPress={() => dismiss()}>
-          <Pressable style={styles.container} onPress={e => e.stopPropagation()}>
+
+      {/* Absolute overlay — avoids React Native's Modal stacking bug on Android
+          where a second Modal can't show while another is already open.
+          This View renders in the same tree above all children at z=9999. */}
+      {state.visible && (
+        <View style={styles.overlay} pointerEvents="box-none">
+          <Pressable style={StyleSheet.absoluteFill} onPress={() => dismiss()} />
+          <View style={styles.container}>
             <LinearGradient colors={['#0D1B3E', '#060D1F']} style={styles.box}>
               <View style={[styles.glowRing, { shadowColor: cfg.glow }]}>
                 <LinearGradient colors={cfg.grad} style={styles.iconCircle}>
@@ -110,9 +115,9 @@ export function AlertProvider({ children }: { children: React.ReactNode }) {
                 })}
               </View>
             </LinearGradient>
-          </Pressable>
-        </Pressable>
-      </Modal>
+          </View>
+        </View>
+      )}
     </AlertContext.Provider>
   );
 }
@@ -124,11 +129,17 @@ export function useAlert() {
 }
 
 const styles = StyleSheet.create({
+  // Absolute full-screen overlay — renders above everything including other Modals
   overlay: {
-    flex: 1, backgroundColor: 'rgba(0,0,0,0.8)',
-    justifyContent: 'center', alignItems: 'center', padding: 28,
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.8)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 28,
+    zIndex: 9999,
+    elevation: 9999,
   },
-  container: { width: '100%', maxWidth: 340 },
+  container: { width: '100%', maxWidth: 340, zIndex: 10000, elevation: 10000 },
   box: {
     borderRadius: 28, overflow: 'hidden',
     borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)',
