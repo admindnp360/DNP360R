@@ -100,6 +100,32 @@ export default function AdminReports() {
   const [reportRecipients, setReportRecipients]       = useState<string[]>([]);
   const [savingRecipients, setSavingRecipients]       = useState(false);
   const [recipientDraft, setRecipientDraft]           = useState<string[]>([]);
+  const [countdown, setCountdown]                     = useState('');
+
+  // ── Live countdown to next auto-generate ──────────────────────────
+  useEffect(() => {
+    function calcCountdown() {
+      const now = new Date();
+      const istNow = new Date(now.getTime() + 5.5 * 60 * 60 * 1000);
+      const y = istNow.getUTCFullYear();
+      const m = istNow.getUTCMonth() + 1;
+      const lastD = daysInMonth(m, y);
+      // 9 PM IST = 15:30 UTC
+      const target = new Date(Date.UTC(y, m - 1, lastD, 15, 30, 0));
+      const diff = target.getTime() - now.getTime();
+      const MNAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+      if (diff <= 0) { setCountdown(`${lastD} ${MNAMES[m-1]} · Generating...`); return; }
+      const days  = Math.floor(diff / 86400000);
+      const hours = Math.floor((diff % 86400000) / 3600000);
+      const mins  = Math.floor((diff % 3600000) / 60000);
+      const secs  = Math.floor((diff % 60000) / 1000);
+      const parts = [days > 0 ? `${days}d` : null, `${String(hours).padStart(2,'0')}h`, `${String(mins).padStart(2,'0')}m`, `${String(secs).padStart(2,'0')}s`].filter(Boolean).join(' ');
+      setCountdown(`${lastD} ${MNAMES[m-1]} · 9:00 PM IST · ${parts} left`);
+    }
+    calcCountdown();
+    const timer = setInterval(calcCountdown, 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   // ── Load history + recipients from Firestore on mount ─────────────
   useEffect(() => {
@@ -347,15 +373,17 @@ export default function AdminReports() {
       setReportHistory(prev => [rpt, ...prev.filter(r => r.id !== rpt.id)].slice(0, 20));
       const entry: HistoryEntry = {
         id: rpt.id, type: rpt.type, label: rpt.label, year: rpt.year,
-        ...(rpt.month    != null ? { month: rpt.month }       : {}),
-        ...(rpt.quarter  != null ? { quarter: rpt.quarter }   : {}),
+        ...(rpt.month    != null ? { month: Number(rpt.month) }     : {}),
+        ...(rpt.quarter  != null ? { quarter: Number(rpt.quarter) } : {}),
         wardId: rpt.wardId ?? null,
-        wardNumber: rpt.wardNumber ? Number(rpt.wardNumber) : null,
+        wardNumber: rpt.wardNumber != null ? Number(rpt.wardNumber) : null,
         generatedAt: rpt.generatedAt, rowCount: rpt.rows.length,
         generatedBy: silent ? 'auto' : 'manual',
       };
-      setHistoryMeta(prev => [entry, ...prev.filter(h => h.id !== entry.id)].slice(0, 30));
-      await setDoc(doc(db, 'reportHistory', rpt.id), entry).catch(e => console.warn('reportHistory save failed:', e));
+      // Strip any undefined values before Firestore write
+      const safeEntry = JSON.parse(JSON.stringify(entry)) as HistoryEntry;
+      setHistoryMeta(prev => [safeEntry, ...prev.filter(h => h.id !== safeEntry.id)].slice(0, 30));
+      await setDoc(doc(db, 'reportHistory', rpt.id), safeEntry).catch(e => console.warn('reportHistory save failed:', e));
       if (silent) sendToRecipients(rpt, reportRecipients);
       if (!silent) showAlert('Report Ready', rpt.label, undefined, 'success');
     } finally { setGenerating(false); }
@@ -732,6 +760,16 @@ export default function AdminReports() {
           )}
         </TouchableOpacity>
       </ScrollView>
+
+      {/* ── Auto-generate countdown bar ──────────────────────────────── */}
+      {countdown !== '' && (
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginHorizontal: 16, marginTop: 6, paddingHorizontal: 12, paddingVertical: 7, borderRadius: 10, backgroundColor: 'rgba(239,68,68,0.07)', borderWidth: 1, borderColor: 'rgba(239,68,68,0.15)' }}>
+          <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#EF4444' }} />
+          <Text style={{ color: '#FCA5A5', fontSize: 11, fontFamily: 'Inter_500Medium', flex: 1 }} numberOfLines={1}>
+            Auto-report: {countdown}
+          </Text>
+        </View>
+      )}
 
       {/* Config panel */}
       <View style={s.configCard}>

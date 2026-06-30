@@ -1,8 +1,10 @@
 import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import React from 'react';
-import { Linking, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, Linking, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { collection, getDocs, limit, orderBy, query, where } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 import { ComplaintCard } from '@/components/ComplaintCard';
 import { LanguageSwitcher } from '@/components/LanguageSwitcher';
 import { SectionHeader } from '@/components/SectionHeader';
@@ -12,11 +14,38 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useColors } from '@/hooks/useColors';
 
+type ReceivedReport = {
+  reportId: string; label: string; type: string; year: number;
+  month?: number; quarter?: number; rowCount: number;
+  collected: number; missed: number; sentAt: string;
+};
+
 export default function OfficialHome() {
   const { user } = useAuth();
   const { complaints, wards, users } = useAppData();
   const colors = useColors();
   const { t } = useLanguage();
+
+  const [receivedReports, setReceivedReports] = useState<ReceivedReport[]>([]);
+  const [reportsLoading, setReportsLoading]   = useState(true);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    (async () => {
+      setReportsLoading(true);
+      try {
+        const snap = await getDocs(
+          query(collection(db, 'reportDistributions'),
+            where('recipients', 'array-contains', user.id),
+            orderBy('sentAt', 'desc'),
+            limit(10)
+          )
+        );
+        setReceivedReports(snap.docs.map(d => d.data() as ReceivedReport));
+      } catch { /* silent */ }
+      finally { setReportsLoading(false); }
+    })();
+  }, [user?.id]);
 
   const myWard = wards.find(w => w.officialId === user?.id);
   const workers = users.filter(u => u.role === 'safaikarmi');
@@ -156,6 +185,72 @@ export default function OfficialHome() {
                 <Text style={[styles.quickValue, { color: stat.color }]}>{stat.value}</Text>
               </View>
             ))}
+          </View>
+
+          {/* ── Received Reports ──────────────────────────────────── */}
+          <View>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+              <Feather name="inbox" size={15} color="#F59E0B" />
+              <Text style={[styles.sectionTitleText, { color: colors.text, marginBottom: 0, fontSize: 15 }]}>Received Reports</Text>
+              {receivedReports.length > 0 && (
+                <View style={{ backgroundColor: '#F59E0B', borderRadius: 8, paddingHorizontal: 6, paddingVertical: 1 }}>
+                  <Text style={{ color: '#000', fontSize: 9, fontFamily: 'Inter_700Bold' }}>{receivedReports.length}</Text>
+                </View>
+              )}
+            </View>
+            {reportsLoading ? (
+              <View style={{ alignItems: 'center', paddingVertical: 18 }}>
+                <ActivityIndicator size="small" color="#F59E0B" />
+              </View>
+            ) : receivedReports.length === 0 ? (
+              <View style={[styles.card, { backgroundColor: colors.card, borderColor: '#D9770620', alignItems: 'center', paddingVertical: 20, gap: 6 }]}>
+                <Feather name="inbox" size={24} color={colors.mutedForeground} />
+                <Text style={{ color: colors.mutedForeground, fontSize: 12, fontFamily: 'Inter_400Regular' }}>No reports received yet</Text>
+                <Text style={{ color: colors.mutedForeground, fontSize: 10, fontFamily: 'Inter_400Regular', textAlign: 'center' }}>Admin will auto-send monthly reports here</Text>
+              </View>
+            ) : (
+              <View style={{ gap: 8 }}>
+                {receivedReports.map(r => {
+                  const total = r.collected + r.missed;
+                  const pct   = total > 0 ? Math.round((r.collected / total) * 100) : 0;
+                  const clr   = pct >= 80 ? '#34D399' : pct >= 50 ? '#FBBF24' : '#FB7185';
+                  const typeClr = r.type === 'monthly' ? '#22D3EE' : r.type === 'quarterly' ? '#A78BFA' : '#34D399';
+                  return (
+                    <View key={r.reportId} style={[styles.card, { backgroundColor: colors.card, borderColor: '#D9770630', padding: 12, gap: 0 }]}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                        <View style={{ paddingHorizontal: 7, paddingVertical: 2, borderRadius: 6, backgroundColor: typeClr + '18', borderWidth: 1, borderColor: typeClr + '35' }}>
+                          <Text style={{ color: typeClr, fontSize: 9, fontFamily: 'Inter_700Bold', textTransform: 'capitalize' }}>{r.type}</Text>
+                        </View>
+                        <Text style={{ color: colors.text, fontSize: 13, fontFamily: 'Inter_600SemiBold', flex: 1 }} numberOfLines={1}>{r.label}</Text>
+                        <Text style={{ color: colors.mutedForeground, fontSize: 9, fontFamily: 'Inter_400Regular' }}>
+                          {new Date(r.sentAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}
+                        </Text>
+                      </View>
+                      <View style={{ flexDirection: 'row', gap: 10 }}>
+                        <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                          <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#34D399' }} />
+                          <Text style={{ color: colors.mutedForeground, fontSize: 10, fontFamily: 'Inter_400Regular' }}>Collected: <Text style={{ color: '#34D399', fontFamily: 'Inter_700Bold' }}>{r.collected}</Text></Text>
+                        </View>
+                        <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                          <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#FB7185' }} />
+                          <Text style={{ color: colors.mutedForeground, fontSize: 10, fontFamily: 'Inter_400Regular' }}>Missed: <Text style={{ color: '#FB7185', fontFamily: 'Inter_700Bold' }}>{r.missed}</Text></Text>
+                        </View>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+                          <Feather name="percent" size={9} color={clr} />
+                          <Text style={{ color: clr, fontSize: 11, fontFamily: 'Inter_700Bold' }}>{pct}%</Text>
+                        </View>
+                      </View>
+                      <View style={{ height: 3, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.07)', marginTop: 8, overflow: 'hidden' }}>
+                        <View style={{ width: `${pct}%`, height: 3, borderRadius: 2, backgroundColor: clr }} />
+                      </View>
+                      <Text style={{ color: colors.mutedForeground, fontSize: 9, fontFamily: 'Inter_400Regular', marginTop: 5 }}>
+                        {r.rowCount} houses · Received {new Date(r.sentAt).toLocaleString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })}
+                      </Text>
+                    </View>
+                  );
+                })}
+              </View>
+            )}
           </View>
 
           <TouchableOpacity style={styles.announceBannerWrap} activeOpacity={0.85} onPress={() => Linking.openURL('tel:0618400000')}>
