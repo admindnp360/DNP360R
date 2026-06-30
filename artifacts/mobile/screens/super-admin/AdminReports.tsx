@@ -6,7 +6,7 @@ import * as Sharing from 'expo-sharing';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import * as XLSX from 'xlsx';
 import {
-  ActivityIndicator, Modal, Platform, Pressable, ScrollView, StyleSheet,
+  ActivityIndicator, Modal, Platform, Pressable, ScrollView, Share, StyleSheet,
   Text, TouchableOpacity, View,
 } from 'react-native';
 import { collection, doc, getDocs, limit, orderBy, query, setDoc, writeBatch } from 'firebase/firestore';
@@ -95,8 +95,13 @@ export default function AdminReports() {
   const [historyFilter, setHistoryFilter] = useState<'all' | 'auto' | 'manual'>('all');
   const [selIds, setSelIds]               = useState<Set<string>>(new Set());
   const [deleting, setDeleting]           = useState(false);
+  const [showShareMenu, setShowShareMenu] = useState(false);
+  const [showRecipientsModal, setShowRecipientsModal] = useState(false);
+  const [reportRecipients, setReportRecipients]       = useState<string[]>([]);
+  const [savingRecipients, setSavingRecipients]       = useState(false);
+  const [recipientDraft, setRecipientDraft]           = useState<string[]>([]);
 
-  // ── Load history from Firestore on mount ──────────────────────────
+  // ── Load history + recipients from Firestore on mount ─────────────
   useEffect(() => {
     (async () => {
       setHistoryLoading(true);
@@ -104,6 +109,13 @@ export default function AdminReports() {
         const snap = await getDocs(query(collection(db, 'reportHistory'), orderBy('generatedAt', 'desc'), limit(30)));
         setHistoryMeta(snap.docs.map(d => d.data() as HistoryEntry));
       } catch { /* silent */ } finally { setHistoryLoading(false); }
+    })();
+    (async () => {
+      try {
+        const snap = await getDocs(query(collection(db, 'settings')));
+        const recDoc = snap.docs.find(d => d.id === 'reportRecipients');
+        if (recDoc) setReportRecipients((recDoc.data().userIds ?? []) as string[]);
+      } catch { /* silent */ }
     })();
   }, []);
 
@@ -344,6 +356,7 @@ export default function AdminReports() {
       };
       setHistoryMeta(prev => [entry, ...prev.filter(h => h.id !== entry.id)].slice(0, 30));
       await setDoc(doc(db, 'reportHistory', rpt.id), entry).catch(e => console.warn('reportHistory save failed:', e));
+      if (silent) sendToRecipients(rpt, reportRecipients);
       if (!silent) showAlert('Report Ready', rpt.label, undefined, 'success');
     } finally { setGenerating(false); }
   }
@@ -365,6 +378,48 @@ export default function AdminReports() {
 
   function toggleSel(id: string) {
     setSelIds(prev => { const s = new Set(prev); s.has(id) ? s.delete(id) : s.add(id); return s; });
+  }
+
+  // ── Normal share (native share sheet) ─────────────────────────────
+  async function handleNormalShare(rpt: GeneratedReport = report!) {
+    if (!rpt) return;
+    const totP = rpt.rows.reduce((a, r) => a + r.totalPresent, 0);
+    const totN = rpt.rows.reduce((a, r) => a + r.totalAbsent, 0);
+    const totAll = totP + totN;
+    const avg = totAll > 0 ? ((totP / totAll) * 100).toFixed(1) + '%' : '—';
+    const msg = `📊 DNP360 Report — ${rpt.label}\n\n🏠 Houses: ${rpt.rows.length}\n✅ Collected: ${totP}\n❌ Missed: ${totN}\n📈 Avg: ${avg}\n\n📅 Generated: ${new Date(rpt.generatedAt).toLocaleString('en-IN')}\n\nNagar Parishad Daudnagar`;
+    try { await Share.share({ message: msg, title: `DNP360 — ${rpt.label}` }); } catch { /* user cancelled */ }
+    setShowShareMenu(false);
+  }
+
+  // ── Save report recipients to Firestore ───────────────────────────
+  async function saveReportRecipients(ids: string[]) {
+    setSavingRecipients(true);
+    try {
+      await setDoc(doc(db, 'settings', 'reportRecipients'), { userIds: ids, updatedAt: new Date().toISOString() });
+      setReportRecipients(ids);
+      showAlert('Saved', `${ids.length} recipient${ids.length !== 1 ? 's' : ''} will receive auto-generated reports.`, undefined, 'success');
+    } catch (e: any) { showAlert('Save Failed', e?.message ?? 'Unknown error', undefined, 'error'); }
+    finally { setSavingRecipients(false); }
+  }
+
+  // ── Auto-distribute report to saved recipients ────────────────────
+  async function sendToRecipients(rpt: GeneratedReport, recipientIds: string[]) {
+    if (recipientIds.length === 0) return;
+    try {
+      const batch = writeBatch(db);
+      const totP = rpt.rows.reduce((a, r) => a + r.totalPresent, 0);
+      const totN = rpt.rows.reduce((a, r) => a + r.totalAbsent, 0);
+      const payload = {
+        reportId: rpt.id, label: rpt.label, type: rpt.type, year: rpt.year,
+        ...(rpt.month   != null ? { month: rpt.month }     : {}),
+        ...(rpt.quarter != null ? { quarter: rpt.quarter } : {}),
+        rowCount: rpt.rows.length, collected: totP, missed: totN,
+        sentAt: new Date().toISOString(), recipients: recipientIds,
+      };
+      batch.set(doc(db, 'reportDistributions', rpt.id), payload);
+      await batch.commit();
+    } catch (e) { console.warn('sendToRecipients failed:', e); }
   }
 
   // ── Export to Excel (.xlsx) ────────────────────────────────────────
@@ -896,6 +951,122 @@ export default function AdminReports() {
         </View>
       </Modal>
 
+      {/* ── Share Menu Modal ─────────────────────────────────────────── */}
+      <Modal visible={showShareMenu} transparent animationType="fade" onRequestClose={() => setShowShareMenu(false)}>
+        <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', justifyContent: 'flex-end' }} onPress={() => setShowShareMenu(false)}>
+          <Pressable onPress={e => e.stopPropagation()}>
+            <View style={{ backgroundColor: '#0D1226', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, paddingBottom: 32, borderTopWidth: 1, borderTopColor: 'rgba(99,102,241,0.25)' }}>
+              <Text style={{ color: TEXT, fontSize: 14, fontFamily: 'Inter_700Bold', marginBottom: 16 }}>Share Report</Text>
+              {/* Normal share */}
+              <TouchableOpacity
+                onPress={() => report && handleNormalShare(report)}
+                activeOpacity={0.8}
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 14, backgroundColor: 'rgba(99,102,241,0.10)', borderRadius: 14, padding: 14, marginBottom: 10, borderWidth: 1, borderColor: 'rgba(99,102,241,0.25)' }}
+              >
+                <View style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: '#6366F118', justifyContent: 'center', alignItems: 'center' }}>
+                  <Feather name="share-2" size={18} color="#818CF8" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ color: TEXT, fontSize: 13, fontFamily: 'Inter_700Bold' }}>Normal Share</Text>
+                  <Text style={{ color: MUTED, fontSize: 10, fontFamily: 'Inter_400Regular', marginTop: 2 }}>Share via WhatsApp, SMS, email & more</Text>
+                </View>
+                <Feather name="chevron-right" size={14} color={MUTED} />
+              </TouchableOpacity>
+              {/* Auto-recipients share */}
+              <TouchableOpacity
+                onPress={() => { setShowShareMenu(false); setShowRecipientsModal(true); }}
+                activeOpacity={0.8}
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 14, backgroundColor: 'rgba(245,158,11,0.10)', borderRadius: 14, padding: 14, borderWidth: 1, borderColor: 'rgba(245,158,11,0.25)' }}
+              >
+                <View style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: '#F59E0B18', justifyContent: 'center', alignItems: 'center' }}>
+                  <Feather name="zap" size={18} color="#F59E0B" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ color: TEXT, fontSize: 13, fontFamily: 'Inter_700Bold' }}>Auto-Send Recipients</Text>
+                  <Text style={{ color: MUTED, fontSize: 10, fontFamily: 'Inter_400Regular', marginTop: 2 }}>
+                    {reportRecipients.length > 0
+                      ? `${reportRecipients.length} official${reportRecipients.length !== 1 ? 's' : ''} set — receive every auto-report`
+                      : 'Pick officials who receive auto-generated reports'}
+                  </Text>
+                </View>
+                <Feather name="chevron-right" size={14} color={MUTED} />
+              </TouchableOpacity>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* ── Recipients Picker Modal ──────────────────────────────────── */}
+      <Modal
+        visible={showRecipientsModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowRecipientsModal(false)}
+        onShow={() => setRecipientDraft(reportRecipients)}
+      >
+        <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)' }} onPress={() => setShowRecipientsModal(false)} />
+        <View style={{ backgroundColor: '#0D1226', borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: '70%', borderTopWidth: 1, borderTopColor: 'rgba(245,158,11,0.25)' }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, padding: 18, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.07)' }}>
+            <Feather name="zap" size={15} color="#F59E0B" />
+            <Text style={{ color: TEXT, fontSize: 15, fontFamily: 'Inter_700Bold', flex: 1 }}>Auto-Send Recipients</Text>
+            <TouchableOpacity onPress={() => setShowRecipientsModal(false)}><Feather name="x" size={18} color={MUTED} /></TouchableOpacity>
+          </View>
+          <View style={{ paddingHorizontal: 14, paddingVertical: 10, backgroundColor: 'rgba(245,158,11,0.06)', borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.04)' }}>
+            <Text style={{ color: MUTED, fontSize: 10, fontFamily: 'Inter_400Regular' }}>
+              Selected officials receive every auto-generated report. Add once — it works automatically every month.
+            </Text>
+          </View>
+          <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 14, gap: 8 }}>
+            {users.filter(u => u.role === 'official' || u.role === 'admin').length === 0 && (
+              <View style={{ alignItems: 'center', padding: 24, gap: 8 }}>
+                <Feather name="users" size={28} color={MUTED} />
+                <Text style={{ color: MUTED, fontSize: 12 }}>No officials found</Text>
+              </View>
+            )}
+            {users.filter(u => u.role === 'official' || u.role === 'admin').map(u => {
+              const sel = recipientDraft.includes(u.id);
+              const roleClr = u.role === 'admin' ? '#A78BFA' : '#FCD34D';
+              return (
+                <TouchableOpacity
+                  key={u.id}
+                  onPress={() => setRecipientDraft(prev => prev.includes(u.id) ? prev.filter(x => x !== u.id) : [...prev, u.id])}
+                  activeOpacity={0.8}
+                  style={{ flexDirection: 'row', alignItems: 'center', gap: 12, padding: 12, marginBottom: 8, borderRadius: 12, borderWidth: 1, borderColor: sel ? '#F59E0B50' : 'rgba(255,255,255,0.08)', backgroundColor: sel ? 'rgba(245,158,11,0.09)' : GLASS }}
+                >
+                  <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: roleClr + '20', justifyContent: 'center', alignItems: 'center' }}>
+                    <Text style={{ color: roleClr, fontSize: 13, fontFamily: 'Inter_700Bold' }}>{(u.name ?? '?')[0].toUpperCase()}</Text>
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ color: TEXT, fontSize: 12, fontFamily: 'Inter_600SemiBold' }}>{u.name}</Text>
+                    <Text style={{ color: MUTED, fontSize: 10, fontFamily: 'Inter_400Regular' }}>{u.id} · {u.role}</Text>
+                  </View>
+                  <View style={{ width: 22, height: 22, borderRadius: 6, borderWidth: 1.5, borderColor: sel ? '#F59E0B' : 'rgba(255,255,255,0.20)', backgroundColor: sel ? '#F59E0B' : 'transparent', justifyContent: 'center', alignItems: 'center' }}>
+                    {sel && <Feather name="check" size={12} color="#000" />}
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+          <View style={{ padding: 14, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.07)', gap: 8 }}>
+            {recipientDraft.length > 0 && (
+              <Text style={{ color: MUTED, fontSize: 10, fontFamily: 'Inter_400Regular', textAlign: 'center' }}>
+                {recipientDraft.length} recipient{recipientDraft.length !== 1 ? 's' : ''} selected
+              </Text>
+            )}
+            <TouchableOpacity
+              onPress={() => { saveReportRecipients(recipientDraft); setShowRecipientsModal(false); }}
+              disabled={savingRecipients}
+              activeOpacity={0.85}
+            >
+              <LinearGradient colors={['#F59E0B', '#D97706']} style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8, paddingVertical: 13, borderRadius: 14 }}>
+                {savingRecipients ? <ActivityIndicator size={14} color="#000" /> : <Feather name="save" size={14} color="#000" />}
+                <Text style={{ color: '#000', fontSize: 13, fontFamily: 'Inter_700Bold' }}>Save Recipients</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
       {/* Report table */}
       {report && (
         <View style={{ marginHorizontal: 14, marginTop: 16 }}>
@@ -908,23 +1079,32 @@ export default function AdminReports() {
                 {report.rows.length} houses · Generated {new Date(report.generatedAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
               </Text>
             </View>
-            {/* Export buttons */}
-            <View style={{ gap: 6 }}>
+            {/* Export + Share buttons — single compact row */}
+            <View style={{ flexDirection: 'row', gap: 5, alignItems: 'center' }}>
               <TouchableOpacity onPress={handleExport} disabled={exporting} activeOpacity={0.8}>
-                <LinearGradient colors={['#10B981','#059669']} style={s.exportBtnWide}>
-                  {exporting ? <ActivityIndicator size={13} color="#fff" /> : <>
-                    <Feather name="download" size={13} color="#fff" />
-                    <Text style={s.exportBtnWideTxt}>Excel</Text>
+                <LinearGradient colors={['#10B981','#059669']} style={s.exportBtnCompact}>
+                  {exporting ? <ActivityIndicator size={11} color="#fff" /> : <>
+                    <Feather name="download" size={11} color="#fff" />
+                    <Text style={s.exportBtnCompactTxt}>Excel</Text>
                   </>}
                 </LinearGradient>
               </TouchableOpacity>
               <TouchableOpacity onPress={() => handleExportPDF()} disabled={exportingPDF} activeOpacity={0.8}>
-                <LinearGradient colors={['#EF4444','#DC2626']} style={s.exportBtnWide}>
-                  {exportingPDF ? <ActivityIndicator size={13} color="#fff" /> : <>
-                    <Feather name="file-text" size={13} color="#fff" />
-                    <Text style={s.exportBtnWideTxt}>PDF</Text>
+                <LinearGradient colors={['#EF4444','#DC2626']} style={s.exportBtnCompact}>
+                  {exportingPDF ? <ActivityIndicator size={11} color="#fff" /> : <>
+                    <Feather name="file-text" size={11} color="#fff" />
+                    <Text style={s.exportBtnCompactTxt}>PDF</Text>
                   </>}
                 </LinearGradient>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => setShowShareMenu(true)} activeOpacity={0.8}>
+                <LinearGradient colors={['#6366F1','#4F46E5']} style={s.exportBtnCompact}>
+                  <Feather name="share-2" size={11} color="#fff" />
+                  <Text style={s.exportBtnCompactTxt}>Share</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => setShowRecipientsModal(true)} activeOpacity={0.8} style={{ padding: 5, borderRadius: 8, backgroundColor: reportRecipients.length > 0 ? '#F59E0B18' : 'rgba(255,255,255,0.06)', borderWidth: 1, borderColor: reportRecipients.length > 0 ? '#F59E0B40' : 'rgba(255,255,255,0.10)' }}>
+                <Feather name="users" size={13} color={reportRecipients.length > 0 ? '#F59E0B' : MUTED} />
               </TouchableOpacity>
             </View>
           </View>
@@ -1405,6 +1585,8 @@ const s = StyleSheet.create({
   reportSub: { color: MUTED, fontSize: 11, fontFamily: 'Inter_400Regular', marginTop: 2 },
   exportBtnWide: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10 },
   exportBtnWideTxt: { color: '#fff', fontSize: 12, fontFamily: 'Inter_700Bold' },
+  exportBtnCompact: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 5, borderRadius: 8 },
+  exportBtnCompactTxt: { color: '#fff', fontSize: 10, fontFamily: 'Inter_700Bold' },
 
   legend: { flexDirection: 'row', gap: 14, marginBottom: 12 },
   legendItem: { flexDirection: 'row', alignItems: 'center', gap: 5 },

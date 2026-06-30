@@ -124,6 +124,12 @@ service cloud.firestore {
       allow delete: if isSignedIn();
     }
 
+    // ── Report Distributions (auto-send to recipients) ─────────────────────────
+    match /reportDistributions/{distId} {
+      allow write: if isSignedIn();
+      allow delete: if isSignedIn();
+    }
+
     // ── Activity Logs ──────────────────────────────────────────────────────────
     match /activityLogs/{logId} {
       allow write: if isSignedIn();
