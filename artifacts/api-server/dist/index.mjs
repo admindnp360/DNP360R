@@ -51,7 +51,7 @@ var require_ms = __commonJS({
       options = options || {};
       var type = typeof val;
       if (type === "string" && val.length > 0) {
-        return parse(val);
+        return parse2(val);
       } else if (type === "number" && isFinite(val)) {
         return options.long ? fmtLong(val) : fmtShort(val);
       }
@@ -59,7 +59,7 @@ var require_ms = __commonJS({
         "val is not a non-empty string or a valid number. val=" + JSON.stringify(val)
       );
     };
-    function parse(str) {
+    function parse2(str) {
       str = String(str);
       if (str.length > 100) {
         return;
@@ -622,7 +622,7 @@ var require_node = __commonJS({
     var tty = __require("tty");
     var util2 = __require("util");
     exports.init = init;
-    exports.log = log;
+    exports.log = log2;
     exports.formatArgs = formatArgs;
     exports.save = save;
     exports.load = load;
@@ -757,7 +757,7 @@ var require_node = __commonJS({
       }
       return (/* @__PURE__ */ new Date()).toISOString() + " ";
     }
-    function log(...args) {
+    function log2(...args) {
       return process.stderr.write(util2.formatWithOptions(exports.inspectOpts, ...args) + "\n");
     }
     function save(namespaces) {
@@ -859,7 +859,7 @@ var require_depd = __commonJS({
       var site = callSiteLocation(stack[1]);
       var file = site[0];
       function deprecate(message) {
-        log.call(deprecate, message);
+        log2.call(deprecate, message);
       }
       deprecate._file = file;
       deprecate._ignored = isignored(namespace);
@@ -888,7 +888,7 @@ var require_depd = __commonJS({
       var str = process.env.TRACE_DEPRECATION || "";
       return containsNamespace(str, namespace);
     }
-    function log(message, site) {
+    function log2(message, site) {
       var haslisteners = eehaslisteners(process, "deprecation");
       if (!haslisteners && this._ignored) {
         return;
@@ -1028,7 +1028,7 @@ var require_depd = __commonJS({
         "message",
         "site",
         '"use strict"\nreturn function (' + args + ") {log.call(deprecate, message, site)\nreturn fn.apply(this, arguments)\n}"
-      )(fn, log, this, message, site);
+      )(fn, log2, this, message, site);
       return deprecatedfn;
     }
     function wrapproperty(obj, prop, message) {
@@ -1053,13 +1053,13 @@ var require_depd = __commonJS({
       var set = descriptor.set;
       if (typeof get === "function") {
         descriptor.get = function getter() {
-          log.call(deprecate, message, site);
+          log2.call(deprecate, message, site);
           return get.apply(this, arguments);
         };
       }
       if (typeof set === "function") {
         descriptor.set = function setter() {
-          log.call(deprecate, message, site);
+          log2.call(deprecate, message, site);
           return set.apply(this, arguments);
         };
       }
@@ -1498,7 +1498,7 @@ var require_bytes = __commonJS({
     "use strict";
     module.exports = bytes;
     module.exports.format = format;
-    module.exports.parse = parse;
+    module.exports.parse = parse2;
     var formatThousandsRegExp = /\B(?=(\d{3})+(?!\d))/g;
     var formatDecimalsRegExp = /(?:\.0*|(\.[^0]+)0+)$/;
     var map = {
@@ -1512,7 +1512,7 @@ var require_bytes = __commonJS({
     var parseRegExp = /^((-|\+)?(\d+(?:\.\d+)?)) *(kb|mb|gb|tb|pb)$/i;
     function bytes(value, options) {
       if (typeof value === "string") {
-        return parse(value);
+        return parse2(value);
       }
       if (typeof value === "number") {
         return format(value, options);
@@ -1556,7 +1556,7 @@ var require_bytes = __commonJS({
       }
       return str + unitSeparator + unit;
     }
-    function parse(val) {
+    function parse2(val) {
       if (typeof val === "number" && !isNaN(val)) {
         return val;
       }
@@ -5453,10 +5453,10 @@ var require_raw_body = __commonJS({
       if (done) {
         return readStream(stream, encoding, length, limit, wrap(done));
       }
-      return new Promise(function executor(resolve, reject) {
+      return new Promise(function executor(resolve2, reject) {
         readStream(stream, encoding, length, limit, function onRead(err, buf) {
           if (err) return reject(err);
-          resolve(buf);
+          resolve2(buf);
         });
       });
     }
@@ -5761,7 +5761,7 @@ var require_content_type = __commonJS({
     var QUOTE_REGEXP = /([\\"])/g;
     var TYPE_REGEXP = /^[!#$%&'*+.^_`|~0-9A-Za-z-]+\/[!#$%&'*+.^_`|~0-9A-Za-z-]+$/;
     exports.format = format;
-    exports.parse = parse;
+    exports.parse = parse2;
     function format(obj) {
       if (!obj || typeof obj !== "object") {
         throw new TypeError("argument obj is required");
@@ -5785,7 +5785,7 @@ var require_content_type = __commonJS({
       }
       return string;
     }
-    function parse(string) {
+    function parse2(string) {
       if (!string) {
         throw new TypeError("argument string is required");
       }
@@ -15310,11 +15310,11 @@ var require_mime_types = __commonJS({
       }
       return exts[0];
     }
-    function lookup(path) {
-      if (!path || typeof path !== "string") {
+    function lookup(path2) {
+      if (!path2 || typeof path2 !== "string") {
         return false;
       }
-      var extension2 = extname("x." + path).toLowerCase().slice(1);
+      var extension2 = extname("x." + path2).toLowerCase().slice(1);
       if (!extension2) {
         return false;
       }
@@ -15367,7 +15367,7 @@ var require_media_typer = __commonJS({
     var TYPE_NAME_REGEXP = /^[A-Za-z0-9][A-Za-z0-9!#$&^_-]{0,126}$/;
     var TYPE_REGEXP = /^ *([A-Za-z0-9][A-Za-z0-9!#$&^_-]{0,126})\/([A-Za-z0-9][A-Za-z0-9!#$&^_.+-]{0,126}) *$/;
     exports.format = format;
-    exports.parse = parse;
+    exports.parse = parse2;
     exports.test = test;
     function format(obj) {
       if (!obj || typeof obj !== "object") {
@@ -15400,7 +15400,7 @@ var require_media_typer = __commonJS({
       }
       return TYPE_REGEXP.test(string.toLowerCase());
     }
-    function parse(string) {
+    function parse2(string) {
       if (!string) {
         throw new TypeError("argument string is required");
       }
@@ -15586,7 +15586,7 @@ var require_read = __commonJS({
     var hasBody = require_type_is().hasBody;
     var { getCharset } = require_utils();
     module.exports = read;
-    function read(req, res, next, parse, debug, options) {
+    function read(req, res, next, parse2, debug, options) {
       if (onFinished.isFinished(req)) {
         debug("body already parsed");
         next();
@@ -15674,7 +15674,7 @@ var require_read = __commonJS({
         try {
           debug("parse body");
           str = typeof body !== "string" && encoding !== null ? iconv.decode(body, encoding) : body;
-          req.body = parse(str, encoding);
+          req.body = parse2(str, encoding);
         } catch (err) {
           next(createError(400, err, {
             body: str,
@@ -15747,7 +15747,7 @@ var require_json = __commonJS({
       const normalizedOptions = normalizeOptions(options, "application/json");
       var reviver = options?.reviver;
       var strict = options?.strict !== false;
-      function parse(body) {
+      function parse2(body) {
         if (body.length === 0) {
           return {};
         }
@@ -15774,7 +15774,7 @@ var require_json = __commonJS({
         isValidCharset: (charset) => charset.slice(0, 4) === "utf-"
       };
       return function jsonParser(req, res, next) {
-        read(req, res, next, parse, debug, readOptions);
+        read(req, res, next, parse2, debug, readOptions);
       };
     }
     function createStrictSyntaxError(str, char) {
@@ -18355,11 +18355,11 @@ var require_lib2 = __commonJS({
   "../../node_modules/.pnpm/qs@6.15.1/node_modules/qs/lib/index.js"(exports, module) {
     "use strict";
     var stringify = require_stringify();
-    var parse = require_parse();
+    var parse2 = require_parse();
     var formats = require_formats();
     module.exports = {
       formats,
-      parse,
+      parse: parse2,
       stringify
     };
   }
@@ -18381,7 +18381,7 @@ var require_urlencoded = __commonJS({
         throw new TypeError("option defaultCharset must be either utf-8 or iso-8859-1");
       }
       var queryparse = createQueryParser(options);
-      function parse(body, encoding) {
+      function parse2(body, encoding) {
         return body.length ? queryparse(body, encoding) : {};
       }
       const readOptions = {
@@ -18390,7 +18390,7 @@ var require_urlencoded = __commonJS({
         isValidCharset: (charset) => charset === "utf-8" || charset === "iso-8859-1"
       };
       return function urlencodedParser(req, res, next) {
-        read(req, res, next, parse, debug, readOptions);
+        read(req, res, next, parse2, debug, readOptions);
       };
     }
     function createQueryParser(options) {
@@ -18574,7 +18574,7 @@ var require_parseurl = __commonJS({
   "../../node_modules/.pnpm/parseurl@1.3.3/node_modules/parseurl/index.js"(exports, module) {
     "use strict";
     var url = __require("url");
-    var parse = url.parse;
+    var parse2 = url.parse;
     var Url = url.Url;
     module.exports = parseurl;
     module.exports.original = originalurl;
@@ -18606,7 +18606,7 @@ var require_parseurl = __commonJS({
     }
     function fastparse(str) {
       if (typeof str !== "string" || str.charCodeAt(0) !== 47) {
-        return parse(str);
+        return parse2(str);
       }
       var pathname = str;
       var query = null;
@@ -18634,7 +18634,7 @@ var require_parseurl = __commonJS({
           /* #  */
           case 160:
           case 65279:
-            return parse(str);
+            return parse2(str);
         }
       }
       var url2 = Url !== void 0 ? new Url() : {};
@@ -18785,13 +18785,13 @@ var require_view = __commonJS({
   "../../node_modules/.pnpm/express@5.2.1/node_modules/express/lib/view.js"(exports, module) {
     "use strict";
     var debug = require_src()("express:view");
-    var path = __require("node:path");
+    var path2 = __require("node:path");
     var fs = __require("node:fs");
-    var dirname = path.dirname;
-    var basename = path.basename;
-    var extname = path.extname;
-    var join = path.join;
-    var resolve = path.resolve;
+    var dirname2 = path2.dirname;
+    var basename = path2.basename;
+    var extname = path2.extname;
+    var join = path2.join;
+    var resolve2 = path2.resolve;
     module.exports = View;
     function View(name, options) {
       var opts = options || {};
@@ -18820,17 +18820,17 @@ var require_view = __commonJS({
       this.path = this.lookup(fileName);
     }
     View.prototype.lookup = function lookup(name) {
-      var path2;
+      var path3;
       var roots = [].concat(this.root);
       debug('lookup "%s"', name);
-      for (var i = 0; i < roots.length && !path2; i++) {
+      for (var i = 0; i < roots.length && !path3; i++) {
         var root = roots[i];
-        var loc = resolve(root, name);
-        var dir = dirname(loc);
+        var loc = resolve2(root, name);
+        var dir = dirname2(loc);
         var file = basename(loc);
-        path2 = this.resolve(dir, file);
+        path3 = this.resolve(dir, file);
       }
-      return path2;
+      return path3;
     };
     View.prototype.render = function render(options, callback) {
       var sync = true;
@@ -18850,23 +18850,23 @@ var require_view = __commonJS({
       });
       sync = false;
     };
-    View.prototype.resolve = function resolve2(dir, file) {
+    View.prototype.resolve = function resolve3(dir, file) {
       var ext = this.ext;
-      var path2 = join(dir, file);
-      var stat = tryStat(path2);
+      var path3 = join(dir, file);
+      var stat = tryStat(path3);
       if (stat && stat.isFile()) {
-        return path2;
+        return path3;
       }
-      path2 = join(dir, basename(file, ext), "index" + ext);
-      stat = tryStat(path2);
+      path3 = join(dir, basename(file, ext), "index" + ext);
+      stat = tryStat(path3);
       if (stat && stat.isFile()) {
-        return path2;
+        return path3;
       }
     };
-    function tryStat(path2) {
-      debug('stat "%s"', path2);
+    function tryStat(path3) {
+      debug('stat "%s"', path3);
       try {
-        return fs.statSync(path2);
+        return fs.statSync(path3);
       } catch (e) {
         return void 0;
       }
@@ -18925,7 +18925,7 @@ var require_forwarded = __commonJS({
       if (!req) {
         throw new TypeError("argument req is required");
       }
-      var proxyAddrs = parse(req.headers["x-forwarded-for"] || "");
+      var proxyAddrs = parse2(req.headers["x-forwarded-for"] || "");
       var socketAddr = getSocketAddr(req);
       var addrs = [socketAddr].concat(proxyAddrs);
       return addrs;
@@ -18933,7 +18933,7 @@ var require_forwarded = __commonJS({
     function getSocketAddr(req) {
       return req.socket ? req.socket.remoteAddress : req.connection.remoteAddress;
     }
-    function parse(header) {
+    function parse2(header) {
       var end = header.length;
       var list = [];
       var start = header.length;
@@ -19962,7 +19962,7 @@ var require_dist = __commonJS({
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.PathError = exports.TokenData = void 0;
-    exports.parse = parse;
+    exports.parse = parse2;
     exports.compile = compile;
     exports.match = match;
     exports.pathToRegexp = pathToRegexp;
@@ -19996,21 +19996,21 @@ var require_dist = __commonJS({
       }
     };
     exports.PathError = PathError;
-    function parse(str, options = {}) {
+    function parse2(str, options = {}) {
       const { encodePath = NOOP_VALUE } = options;
       const chars = [...str];
       let index = 0;
       function consumeUntil(end) {
         const output = [];
-        let path = "";
+        let path2 = "";
         function writePath() {
-          if (!path)
+          if (!path2)
             return;
           output.push({
             type: "text",
-            value: encodePath(path)
+            value: encodePath(path2)
           });
-          path = "";
+          path2 = "";
         }
         while (index < chars.length) {
           const value = chars[index++];
@@ -20022,7 +20022,7 @@ var require_dist = __commonJS({
             if (index === chars.length) {
               throw new PathError(`Unexpected end after \\ at index ${index}`, str);
             }
-            path += chars[index++];
+            path2 += chars[index++];
             continue;
           }
           if (value === ":" || value === "*") {
@@ -20066,7 +20066,7 @@ var require_dist = __commonJS({
           if (value === "}" || value === "(" || value === ")" || value === "[" || value === "]" || value === "+" || value === "?" || value === "!") {
             throw new PathError(`Unexpected ${value} at index ${index - 1}`, str);
           }
-          path += value;
+          path2 += value;
         }
         if (end) {
           throw new PathError(`Unexpected end at index ${index}, expected ${end}`, str);
@@ -20076,17 +20076,17 @@ var require_dist = __commonJS({
       }
       return new TokenData(consumeUntil(""), str);
     }
-    function compile(path, options = {}) {
+    function compile(path2, options = {}) {
       const { encode = encodeURIComponent, delimiter = DEFAULT_DELIMITER } = options;
-      const data = typeof path === "object" ? path : parse(path, options);
+      const data = typeof path2 === "object" ? path2 : parse2(path2, options);
       const fn = tokensToFunction(data.tokens, delimiter, encode);
-      return function path2(params = {}) {
+      return function path3(params = {}) {
         const missing = [];
-        const path3 = fn(params, missing);
+        const path4 = fn(params, missing);
         if (missing.length) {
           throw new TypeError(`Missing parameters: ${missing.join(", ")}`);
         }
-        return path3;
+        return path4;
       };
     }
     function tokensToFunction(tokens, delimiter, encode) {
@@ -20148,9 +20148,9 @@ var require_dist = __commonJS({
         return encodeValue(value);
       };
     }
-    function match(path, options = {}) {
+    function match(path2, options = {}) {
       const { decode = decodeURIComponent, delimiter = DEFAULT_DELIMITER } = options;
-      const { regexp, keys } = pathToRegexp(path, options);
+      const { regexp, keys } = pathToRegexp(path2, options);
       const decoders = keys.map((key) => {
         if (decode === false)
           return NOOP_VALUE;
@@ -20162,7 +20162,7 @@ var require_dist = __commonJS({
         const m = regexp.exec(input);
         if (!m)
           return false;
-        const path2 = m[0];
+        const path3 = m[0];
         const params = /* @__PURE__ */ Object.create(null);
         for (let i = 1; i < m.length; i++) {
           if (m[i] === void 0)
@@ -20171,21 +20171,21 @@ var require_dist = __commonJS({
           const decoder = decoders[i - 1];
           params[key.name] = decoder(m[i]);
         }
-        return { path: path2, params };
+        return { path: path3, params };
       };
     }
-    function pathToRegexp(path, options = {}) {
+    function pathToRegexp(path2, options = {}) {
       const { delimiter = DEFAULT_DELIMITER, end = true, sensitive = false, trailing = true } = options;
       const keys = [];
       let source = "";
       let combinations = 0;
-      function process2(path2) {
-        if (Array.isArray(path2)) {
-          for (const p of path2)
+      function process2(path3) {
+        if (Array.isArray(path3)) {
+          for (const p of path3)
             process2(p);
           return;
         }
-        const data = typeof path2 === "object" ? path2 : parse(path2, options);
+        const data = typeof path3 === "object" ? path3 : parse2(path3, options);
         flatten(data.tokens, 0, [], (tokens) => {
           if (combinations >= 256) {
             throw new PathError("Too many path combinations", data.originalPath);
@@ -20196,7 +20196,7 @@ var require_dist = __commonJS({
           combinations++;
         });
       }
-      process2(path);
+      process2(path2);
       let pattern = `^(?:${source})`;
       if (trailing)
         pattern += "(?:" + escape2(delimiter) + "$)?";
@@ -20336,18 +20336,18 @@ var require_layer = __commonJS({
     var TRAILING_SLASH_REGEXP = /\/+$/;
     var MATCHING_GROUP_REGEXP = /\((?:\?<(.*?)>)?(?!\?)/g;
     module.exports = Layer;
-    function Layer(path, options, fn) {
+    function Layer(path2, options, fn) {
       if (!(this instanceof Layer)) {
-        return new Layer(path, options, fn);
+        return new Layer(path2, options, fn);
       }
-      debug("new %o", path);
+      debug("new %o", path2);
       const opts = options || {};
       this.handle = fn;
       this.keys = [];
       this.name = fn.name || "<anonymous>";
       this.params = void 0;
       this.path = void 0;
-      this.slash = path === "/" && opts.end === false;
+      this.slash = path2 === "/" && opts.end === false;
       function matcher(_path) {
         if (_path instanceof RegExp) {
           const keys = [];
@@ -20386,7 +20386,7 @@ var require_layer = __commonJS({
           decode: decodeParam
         });
       }
-      this.matchers = Array.isArray(path) ? path.map(matcher) : [matcher(path)];
+      this.matchers = Array.isArray(path2) ? path2.map(matcher) : [matcher(path2)];
     }
     Layer.prototype.handleError = function handleError(error, req, res, next) {
       const fn = this.handle;
@@ -20426,9 +20426,9 @@ var require_layer = __commonJS({
         next(err);
       }
     };
-    Layer.prototype.match = function match(path) {
+    Layer.prototype.match = function match(path2) {
       let match2;
-      if (path != null) {
+      if (path2 != null) {
         if (this.slash) {
           this.params = {};
           this.path = "";
@@ -20436,7 +20436,7 @@ var require_layer = __commonJS({
         }
         let i = 0;
         while (!match2 && i < this.matchers.length) {
-          match2 = this.matchers[i](path);
+          match2 = this.matchers[i](path2);
           i++;
         }
       }
@@ -20464,13 +20464,13 @@ var require_layer = __commonJS({
         throw err;
       }
     }
-    function loosen(path) {
-      if (path instanceof RegExp || path === "/") {
-        return path;
+    function loosen(path2) {
+      if (path2 instanceof RegExp || path2 === "/") {
+        return path2;
       }
-      return Array.isArray(path) ? path.map(function(p) {
+      return Array.isArray(path2) ? path2.map(function(p) {
         return loosen(p);
-      }) : String(path).replace(TRAILING_SLASH_REGEXP, "");
+      }) : String(path2).replace(TRAILING_SLASH_REGEXP, "");
     }
   }
 });
@@ -20486,9 +20486,9 @@ var require_route = __commonJS({
     var flatten = Array.prototype.flat;
     var methods = METHODS.map((method) => method.toLowerCase());
     module.exports = Route;
-    function Route(path) {
-      debug("new %o", path);
-      this.path = path;
+    function Route(path2) {
+      debug("new %o", path2);
+      this.path = path2;
       this.stack = [];
       this.methods = /* @__PURE__ */ Object.create(null);
     }
@@ -20696,8 +20696,8 @@ var require_router = __commonJS({
         if (++sync > 100) {
           return setImmediate(next, err);
         }
-        const path = getPathname(req);
-        if (path == null) {
+        const path2 = getPathname(req);
+        if (path2 == null) {
           return done(layerError);
         }
         let layer;
@@ -20705,7 +20705,7 @@ var require_router = __commonJS({
         let route;
         while (match !== true && idx < stack.length) {
           layer = stack[idx++];
-          match = matchLayer(layer, path);
+          match = matchLayer(layer, path2);
           route = layer.route;
           if (typeof match !== "boolean") {
             layerError = layerError || match;
@@ -20743,18 +20743,18 @@ var require_router = __commonJS({
           } else if (route) {
             layer.handleRequest(req, res, next);
           } else {
-            trimPrefix(layer, layerError, layerPath, path);
+            trimPrefix(layer, layerError, layerPath, path2);
           }
           sync = 0;
         });
       }
-      function trimPrefix(layer, layerError, layerPath, path) {
+      function trimPrefix(layer, layerError, layerPath, path2) {
         if (layerPath.length !== 0) {
-          if (layerPath !== path.substring(0, layerPath.length)) {
+          if (layerPath !== path2.substring(0, layerPath.length)) {
             next(layerError);
             return;
           }
-          const c = path[layerPath.length];
+          const c = path2[layerPath.length];
           if (c && c !== "/") {
             next(layerError);
             return;
@@ -20778,7 +20778,7 @@ var require_router = __commonJS({
     };
     Router3.prototype.use = function use(handler) {
       let offset = 0;
-      let path = "/";
+      let path2 = "/";
       if (typeof handler !== "function") {
         let arg = handler;
         while (Array.isArray(arg) && arg.length !== 0) {
@@ -20786,7 +20786,7 @@ var require_router = __commonJS({
         }
         if (typeof arg !== "function") {
           offset = 1;
-          path = handler;
+          path2 = handler;
         }
       }
       const callbacks = flatten.call(slice.call(arguments, offset), Infinity);
@@ -20798,8 +20798,8 @@ var require_router = __commonJS({
         if (typeof fn !== "function") {
           throw new TypeError("argument handler must be a function");
         }
-        debug("use %o %s", path, fn.name || "<anonymous>");
-        const layer = new Layer(path, {
+        debug("use %o %s", path2, fn.name || "<anonymous>");
+        const layer = new Layer(path2, {
           sensitive: this.caseSensitive,
           strict: false,
           end: false
@@ -20809,9 +20809,9 @@ var require_router = __commonJS({
       }
       return this;
     };
-    Router3.prototype.route = function route(path) {
-      const route2 = new Route(path);
-      const layer = new Layer(path, {
+    Router3.prototype.route = function route(path2) {
+      const route2 = new Route(path2);
+      const layer = new Layer(path2, {
         sensitive: this.caseSensitive,
         strict: this.strict,
         end: true
@@ -20824,8 +20824,8 @@ var require_router = __commonJS({
       return route2;
     };
     methods.concat("all").forEach(function(method) {
-      Router3.prototype[method] = function(path) {
-        const route = this.route(path);
+      Router3.prototype[method] = function(path2) {
+        const route = this.route(path2);
         route[method].apply(route, slice.call(arguments, 1));
         return this;
       };
@@ -20854,9 +20854,9 @@ var require_router = __commonJS({
       const fqdnIndex = url.substring(0, pathLength).indexOf("://");
       return fqdnIndex !== -1 ? url.substring(0, url.indexOf("/", 3 + fqdnIndex)) : void 0;
     }
-    function matchLayer(layer, path) {
+    function matchLayer(layer, path2) {
       try {
-        return layer.match(path);
+        return layer.match(path2);
       } catch (err) {
         return err;
       }
@@ -21005,7 +21005,7 @@ var require_application = __commonJS({
     var compileETag = require_utils3().compileETag;
     var compileQueryParser = require_utils3().compileQueryParser;
     var compileTrust = require_utils3().compileTrust;
-    var resolve = __require("node:path").resolve;
+    var resolve2 = __require("node:path").resolve;
     var once = require_once();
     var Router3 = require_router();
     var slice = Array.prototype.slice;
@@ -21059,7 +21059,7 @@ var require_application = __commonJS({
       this.mountpath = "/";
       this.locals.settings = this.settings;
       this.set("view", View);
-      this.set("views", resolve("views"));
+      this.set("views", resolve2("views"));
       this.set("jsonp callback name", "callback");
       if (env === "production") {
         this.enable("view cache");
@@ -21084,7 +21084,7 @@ var require_application = __commonJS({
     };
     app2.use = function use(fn) {
       var offset = 0;
-      var path = "/";
+      var path2 = "/";
       if (typeof fn !== "function") {
         var arg = fn;
         while (Array.isArray(arg) && arg.length !== 0) {
@@ -21092,7 +21092,7 @@ var require_application = __commonJS({
         }
         if (typeof arg !== "function") {
           offset = 1;
-          path = fn;
+          path2 = fn;
         }
       }
       var fns = flatten.call(slice.call(arguments, offset), Infinity);
@@ -21102,12 +21102,12 @@ var require_application = __commonJS({
       var router3 = this.router;
       fns.forEach(function(fn2) {
         if (!fn2 || !fn2.handle || !fn2.set) {
-          return router3.use(path, fn2);
+          return router3.use(path2, fn2);
         }
-        debug(".use app under %s", path);
-        fn2.mountpath = path;
+        debug(".use app under %s", path2);
+        fn2.mountpath = path2;
         fn2.parent = this;
-        router3.use(path, function mounted_app(req, res, next) {
+        router3.use(path2, function mounted_app(req, res, next) {
           var orig = req.app;
           fn2.handle(req, res, function(err) {
             Object.setPrototypeOf(req, orig.request);
@@ -21119,8 +21119,8 @@ var require_application = __commonJS({
       }, this);
       return this;
     };
-    app2.route = function route(path) {
-      return this.router.route(path);
+    app2.route = function route(path2) {
+      return this.router.route(path2);
     };
     app2.engine = function engine(ext, fn) {
       if (typeof fn !== "function") {
@@ -21163,7 +21163,7 @@ var require_application = __commonJS({
       }
       return this;
     };
-    app2.path = function path() {
+    app2.path = function path2() {
       return this.parent ? this.parent.path() + this.mountpath : "";
     };
     app2.enabled = function enabled(setting) {
@@ -21179,17 +21179,17 @@ var require_application = __commonJS({
       return this.set(setting, false);
     };
     methods.forEach(function(method) {
-      app2[method] = function(path) {
+      app2[method] = function(path2) {
         if (method === "get" && arguments.length === 1) {
-          return this.set(path);
+          return this.set(path2);
         }
-        var route = this.route(path);
+        var route = this.route(path2);
         route[method].apply(route, slice.call(arguments, 1));
         return this;
       };
     });
-    app2.all = function all(path) {
-      var route = this.route(path);
+    app2.all = function all(path2) {
+      var route = this.route(path2);
       var args = slice.call(arguments, 1);
       for (var i = 0; i < methods.length; i++) {
         route[methods[i]].apply(route, args);
@@ -22011,7 +22011,7 @@ var require_request = __commonJS({
     var http = __require("node:http");
     var fresh = require_fresh();
     var parseRange = require_range_parser();
-    var parse = require_parseurl();
+    var parse2 = require_parseurl();
     var proxyaddr = require_proxy_addr();
     var req = Object.create(http.IncomingMessage.prototype);
     module.exports = req;
@@ -22056,7 +22056,7 @@ var require_request = __commonJS({
       if (!queryparse) {
         return /* @__PURE__ */ Object.create(null);
       }
-      var querystring = parse(this).query;
+      var querystring = parse2(this).query;
       return queryparse(querystring);
     });
     req.is = function is(types) {
@@ -22099,8 +22099,8 @@ var require_request = __commonJS({
       var subdomains2 = !isIP(hostname) ? hostname.split(".").reverse() : [hostname];
       return subdomains2.slice(offset);
     });
-    defineGetter(req, "path", function path() {
-      return parse(this).pathname;
+    defineGetter(req, "path", function path2() {
+      return parse2(this).pathname;
     });
     defineGetter(req, "host", function host() {
       var trust = this.app.get("trust proxy fn");
@@ -22154,7 +22154,7 @@ var require_content_disposition = __commonJS({
   "../../node_modules/.pnpm/content-disposition@1.1.0/node_modules/content-disposition/index.js"(exports, module) {
     "use strict";
     module.exports = contentDisposition;
-    module.exports.parse = parse;
+    module.exports.parse = parse2;
     var utf8Decoder = new TextDecoder("utf-8");
     var ENCODE_URL_ATTR_CHAR_REGEXP = /[\x00-\x20"'()*,/:;<=>?@[\\\]{}\x7f]/g;
     var NON_LATIN1_REGEXP = /[^\x20-\x7e\xa0-\xff]/g;
@@ -22249,7 +22249,7 @@ var require_content_disposition = __commonJS({
     function getlatin1(val) {
       return String(val).replace(NON_LATIN1_REGEXP, "?");
     }
-    function parse(string) {
+    function parse2(string) {
       if (!string || typeof string !== "string") {
         throw new TypeError("argument string is required");
       }
@@ -22310,8 +22310,8 @@ var require_content_disposition = __commonJS({
       this.type = type;
       this.parameters = parameters;
     }
-    function basename(path) {
-      const normalized = path.replaceAll("\\", "/");
+    function basename(path2) {
+      const normalized = path2.replaceAll("\\", "/");
       let end = normalized.length;
       while (end > 0 && normalized[end - 1] === "/") {
         end--;
@@ -22380,7 +22380,7 @@ var require_cookie_signature = __commonJS({
 var require_cookie = __commonJS({
   "../../node_modules/.pnpm/cookie@0.7.2/node_modules/cookie/index.js"(exports) {
     "use strict";
-    exports.parse = parse;
+    exports.parse = parse2;
     exports.serialize = serialize;
     var __toString = Object.prototype.toString;
     var __hasOwnProperty = Object.prototype.hasOwnProperty;
@@ -22388,7 +22388,7 @@ var require_cookie = __commonJS({
     var cookieValueRegExp = /^("?)[\u0021\u0023-\u002B\u002D-\u003A\u003C-\u005B\u005D-\u007E]*\1$/;
     var domainValueRegExp = /^([.]?[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)([.][a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)*$/i;
     var pathValueRegExp = /^[\u0020-\u003A\u003D-\u007E]*$/;
-    function parse(str, opt) {
+    function parse2(str, opt) {
       if (typeof str !== "string") {
         throw new TypeError("argument str must be a string");
       }
@@ -22557,27 +22557,27 @@ var require_send = __commonJS({
     var ms = require_ms();
     var onFinished = require_on_finished();
     var parseRange = require_range_parser();
-    var path = __require("path");
+    var path2 = __require("path");
     var statuses = require_statuses();
     var Stream = __require("stream");
     var util2 = __require("util");
-    var extname = path.extname;
-    var join = path.join;
-    var normalize = path.normalize;
-    var resolve = path.resolve;
-    var sep = path.sep;
+    var extname = path2.extname;
+    var join = path2.join;
+    var normalize = path2.normalize;
+    var resolve2 = path2.resolve;
+    var sep = path2.sep;
     var BYTES_RANGE_REGEXP = /^ *bytes=/;
     var MAX_MAXAGE = 60 * 60 * 24 * 365 * 1e3;
     var UP_PATH_REGEXP = /(?:^|[\\/])\.\.(?:[\\/]|$)/;
     module.exports = send;
-    function send(req, path2, options) {
-      return new SendStream(req, path2, options);
+    function send(req, path3, options) {
+      return new SendStream(req, path3, options);
     }
-    function SendStream(req, path2, options) {
+    function SendStream(req, path3, options) {
       Stream.call(this);
       var opts = options || {};
       this.options = opts;
-      this.path = path2;
+      this.path = path3;
       this.req = req;
       this._acceptRanges = opts.acceptRanges !== void 0 ? Boolean(opts.acceptRanges) : true;
       this._cacheControl = opts.cacheControl !== void 0 ? Boolean(opts.cacheControl) : true;
@@ -22593,7 +22593,7 @@ var require_send = __commonJS({
       this._maxage = opts.maxAge || opts.maxage;
       this._maxage = typeof this._maxage === "string" ? ms(this._maxage) : Number(this._maxage);
       this._maxage = !isNaN(this._maxage) ? Math.min(Math.max(0, this._maxage), MAX_MAXAGE) : 0;
-      this._root = opts.root ? resolve(opts.root) : null;
+      this._root = opts.root ? resolve2(opts.root) : null;
     }
     util2.inherits(SendStream, Stream);
     SendStream.prototype.error = function error(status, err) {
@@ -22691,10 +22691,10 @@ var require_send = __commonJS({
       var lastModified = this.res.getHeader("Last-Modified");
       return parseHttpDate(lastModified) <= parseHttpDate(ifRange);
     };
-    SendStream.prototype.redirect = function redirect(path2) {
+    SendStream.prototype.redirect = function redirect(path3) {
       var res = this.res;
       if (hasListeners(this, "directory")) {
-        this.emit("directory", res, path2);
+        this.emit("directory", res, path3);
         return;
       }
       if (this.hasTrailingSlash()) {
@@ -22714,38 +22714,38 @@ var require_send = __commonJS({
     SendStream.prototype.pipe = function pipe(res) {
       var root = this._root;
       this.res = res;
-      var path2 = decode(this.path);
-      if (path2 === -1) {
+      var path3 = decode(this.path);
+      if (path3 === -1) {
         this.error(400);
         return res;
       }
-      if (~path2.indexOf("\0")) {
+      if (~path3.indexOf("\0")) {
         this.error(400);
         return res;
       }
       var parts;
       if (root !== null) {
-        if (path2) {
-          path2 = normalize("." + sep + path2);
+        if (path3) {
+          path3 = normalize("." + sep + path3);
         }
-        if (UP_PATH_REGEXP.test(path2)) {
-          debug('malicious path "%s"', path2);
+        if (UP_PATH_REGEXP.test(path3)) {
+          debug('malicious path "%s"', path3);
           this.error(403);
           return res;
         }
-        parts = path2.split(sep);
-        path2 = normalize(join(root, path2));
+        parts = path3.split(sep);
+        path3 = normalize(join(root, path3));
       } else {
-        if (UP_PATH_REGEXP.test(path2)) {
-          debug('malicious path "%s"', path2);
+        if (UP_PATH_REGEXP.test(path3)) {
+          debug('malicious path "%s"', path3);
           this.error(403);
           return res;
         }
-        parts = normalize(path2).split(sep);
-        path2 = resolve(path2);
+        parts = normalize(path3).split(sep);
+        path3 = resolve2(path3);
       }
       if (containsDotFile(parts)) {
-        debug('%s dotfile "%s"', this._dotfiles, path2);
+        debug('%s dotfile "%s"', this._dotfiles, path3);
         switch (this._dotfiles) {
           case "allow":
             break;
@@ -22759,13 +22759,13 @@ var require_send = __commonJS({
         }
       }
       if (this._index.length && this.hasTrailingSlash()) {
-        this.sendIndex(path2);
+        this.sendIndex(path3);
         return res;
       }
-      this.sendFile(path2);
+      this.sendFile(path3);
       return res;
     };
-    SendStream.prototype.send = function send2(path2, stat) {
+    SendStream.prototype.send = function send2(path3, stat) {
       var len = stat.size;
       var options = this.options;
       var opts = {};
@@ -22777,9 +22777,9 @@ var require_send = __commonJS({
         this.headersAlreadySent();
         return;
       }
-      debug('pipe "%s"', path2);
-      this.setHeader(path2, stat);
-      this.type(path2);
+      debug('pipe "%s"', path3);
+      this.setHeader(path3, stat);
+      this.type(path3);
       if (this.isConditionalGET()) {
         if (this.isPreconditionFailure()) {
           this.error(412);
@@ -22828,28 +22828,28 @@ var require_send = __commonJS({
         res.end();
         return;
       }
-      this.stream(path2, opts);
+      this.stream(path3, opts);
     };
-    SendStream.prototype.sendFile = function sendFile(path2) {
+    SendStream.prototype.sendFile = function sendFile(path3) {
       var i = 0;
       var self = this;
-      debug('stat "%s"', path2);
-      fs.stat(path2, function onstat(err, stat) {
-        var pathEndsWithSep = path2[path2.length - 1] === sep;
-        if (err && err.code === "ENOENT" && !extname(path2) && !pathEndsWithSep) {
+      debug('stat "%s"', path3);
+      fs.stat(path3, function onstat(err, stat) {
+        var pathEndsWithSep = path3[path3.length - 1] === sep;
+        if (err && err.code === "ENOENT" && !extname(path3) && !pathEndsWithSep) {
           return next(err);
         }
         if (err) return self.onStatError(err);
-        if (stat.isDirectory()) return self.redirect(path2);
+        if (stat.isDirectory()) return self.redirect(path3);
         if (pathEndsWithSep) return self.error(404);
-        self.emit("file", path2, stat);
-        self.send(path2, stat);
+        self.emit("file", path3, stat);
+        self.send(path3, stat);
       });
       function next(err) {
         if (self._extensions.length <= i) {
           return err ? self.onStatError(err) : self.error(404);
         }
-        var p = path2 + "." + self._extensions[i++];
+        var p = path3 + "." + self._extensions[i++];
         debug('stat "%s"', p);
         fs.stat(p, function(err2, stat) {
           if (err2) return next(err2);
@@ -22859,7 +22859,7 @@ var require_send = __commonJS({
         });
       }
     };
-    SendStream.prototype.sendIndex = function sendIndex(path2) {
+    SendStream.prototype.sendIndex = function sendIndex(path3) {
       var i = -1;
       var self = this;
       function next(err) {
@@ -22867,7 +22867,7 @@ var require_send = __commonJS({
           if (err) return self.onStatError(err);
           return self.error(404);
         }
-        var p = join(path2, self._index[i]);
+        var p = join(path3, self._index[i]);
         debug('stat "%s"', p);
         fs.stat(p, function(err2, stat) {
           if (err2) return next(err2);
@@ -22878,10 +22878,10 @@ var require_send = __commonJS({
       }
       next();
     };
-    SendStream.prototype.stream = function stream(path2, options) {
+    SendStream.prototype.stream = function stream(path3, options) {
       var self = this;
       var res = this.res;
-      var stream2 = fs.createReadStream(path2, options);
+      var stream2 = fs.createReadStream(path3, options);
       this.emit("stream", stream2);
       stream2.pipe(res);
       function cleanup() {
@@ -22896,17 +22896,17 @@ var require_send = __commonJS({
         self.emit("end");
       });
     };
-    SendStream.prototype.type = function type(path2) {
+    SendStream.prototype.type = function type(path3) {
       var res = this.res;
       if (res.getHeader("Content-Type")) return;
-      var ext = extname(path2);
+      var ext = extname(path3);
       var type2 = mime.contentType(ext) || "application/octet-stream";
       debug("content-type %s", type2);
       res.setHeader("Content-Type", type2);
     };
-    SendStream.prototype.setHeader = function setHeader(path2, stat) {
+    SendStream.prototype.setHeader = function setHeader(path3, stat) {
       var res = this.res;
-      this.emit("headers", res, path2, stat);
+      this.emit("headers", res, path3, stat);
       if (this._acceptRanges && !res.getHeader("Accept-Ranges")) {
         debug("accept ranges");
         res.setHeader("Accept-Ranges", "bytes");
@@ -22964,9 +22964,9 @@ var require_send = __commonJS({
       }
       return err instanceof Error ? createError(status, err, { expose: false }) : createError(status, err);
     }
-    function decode(path2) {
+    function decode(path3) {
       try {
-        return decodeURIComponent(path2);
+        return decodeURIComponent(path3);
       } catch (err) {
         return -1;
       }
@@ -23039,7 +23039,7 @@ var require_vary = __commonJS({
       if (!field) {
         throw new TypeError("field argument is required");
       }
-      var fields = !Array.isArray(field) ? parse(String(field)) : field;
+      var fields = !Array.isArray(field) ? parse2(String(field)) : field;
       for (var j = 0; j < fields.length; j++) {
         if (!FIELD_NAME_REGEXP.test(fields[j])) {
           throw new TypeError("field argument contains an invalid header name");
@@ -23049,7 +23049,7 @@ var require_vary = __commonJS({
         return header;
       }
       var val = header;
-      var vals = parse(header.toLowerCase());
+      var vals = parse2(header.toLowerCase());
       if (fields.indexOf("*") !== -1 || vals.indexOf("*") !== -1) {
         return "*";
       }
@@ -23062,7 +23062,7 @@ var require_vary = __commonJS({
       }
       return val;
     }
-    function parse(header) {
+    function parse2(header) {
       var end = 0;
       var list = [];
       var start = 0;
@@ -23110,7 +23110,7 @@ var require_response = __commonJS({
     var http = __require("node:http");
     var onFinished = require_on_finished();
     var mime = require_mime_types();
-    var path = __require("node:path");
+    var path2 = __require("node:path");
     var pathIsAbsolute = __require("node:path").isAbsolute;
     var statuses = require_statuses();
     var sign = require_cookie_signature().sign;
@@ -23119,8 +23119,8 @@ var require_response = __commonJS({
     var setCharset = require_utils3().setCharset;
     var cookie = require_cookie();
     var send = require_send();
-    var extname = path.extname;
-    var resolve = path.resolve;
+    var extname = path2.extname;
+    var resolve2 = path2.resolve;
     var vary = require_vary();
     var { Buffer: Buffer2 } = __require("node:buffer");
     var res = Object.create(http.ServerResponse.prototype);
@@ -23266,26 +23266,26 @@ var require_response = __commonJS({
       this.type("txt");
       return this.send(body);
     };
-    res.sendFile = function sendFile(path2, options, callback) {
+    res.sendFile = function sendFile(path3, options, callback) {
       var done = callback;
       var req = this.req;
       var res2 = this;
       var next = req.next;
       var opts = options || {};
-      if (!path2) {
+      if (!path3) {
         throw new TypeError("path argument is required to res.sendFile");
       }
-      if (typeof path2 !== "string") {
+      if (typeof path3 !== "string") {
         throw new TypeError("path must be a string to res.sendFile");
       }
       if (typeof options === "function") {
         done = options;
         opts = {};
       }
-      if (!opts.root && !pathIsAbsolute(path2)) {
+      if (!opts.root && !pathIsAbsolute(path3)) {
         throw new TypeError("path must be absolute or specify root to res.sendFile");
       }
-      var pathname = encodeURI(path2);
+      var pathname = encodeURI(path3);
       opts.etag = this.app.enabled("etag");
       var file = send(req, pathname, opts);
       sendfile(res2, file, opts, function(err) {
@@ -23296,7 +23296,7 @@ var require_response = __commonJS({
         }
       });
     };
-    res.download = function download(path2, filename, options, callback) {
+    res.download = function download(path3, filename, options, callback) {
       var done = callback;
       var name = filename;
       var opts = options || null;
@@ -23313,7 +23313,7 @@ var require_response = __commonJS({
         opts = filename;
       }
       var headers = {
-        "Content-Disposition": contentDisposition(name || path2)
+        "Content-Disposition": contentDisposition(name || path3)
       };
       if (opts && opts.headers) {
         var keys = Object.keys(opts.headers);
@@ -23326,7 +23326,7 @@ var require_response = __commonJS({
       }
       opts = Object.create(opts);
       opts.headers = headers;
-      var fullPath = !opts.root ? resolve(path2) : path2;
+      var fullPath = !opts.root ? resolve2(path3) : path3;
       return this.sendFile(fullPath, opts, done);
     };
     res.contentType = res.type = function contentType(type) {
@@ -23575,7 +23575,7 @@ var require_serve_static = __commonJS({
     var encodeUrl = require_encodeurl();
     var escapeHtml = require_escape_html();
     var parseUrl = require_parseurl();
-    var resolve = __require("path").resolve;
+    var resolve2 = __require("path").resolve;
     var send = require_send();
     var url = __require("url");
     module.exports = serveStatic;
@@ -23594,7 +23594,7 @@ var require_serve_static = __commonJS({
         throw new TypeError("option setHeaders must be function");
       }
       opts.maxage = opts.maxage || opts.maxAge || 0;
-      opts.root = resolve(root);
+      opts.root = resolve2(root);
       var onDirectory = redirect ? createRedirectDirectoryListener() : createNotFoundDirectoryListener();
       return function serveStatic2(req, res, next) {
         if (req.method !== "GET" && req.method !== "HEAD") {
@@ -23609,11 +23609,11 @@ var require_serve_static = __commonJS({
         }
         var forwardError = !fallthrough;
         var originalUrl = parseUrl.original(req);
-        var path = parseUrl(req).pathname;
-        if (path === "/" && originalUrl.pathname.substr(-1) !== "/") {
-          path = "";
+        var path2 = parseUrl(req).pathname;
+        if (path2 === "/" && originalUrl.pathname.substr(-1) !== "/") {
+          path2 = "";
         }
-        var stream = send(req, path, opts);
+        var stream = send(req, path2, opts);
         stream.on("directory", onDirectory);
         if (setHeaders) {
           stream.on("headers", setHeaders);
@@ -23677,7 +23677,7 @@ var require_express = __commonJS({
   "../../node_modules/.pnpm/express@5.2.1/node_modules/express/lib/express.js"(exports, module) {
     "use strict";
     var bodyParser = require_body_parser();
-    var EventEmitter = __require("node:events").EventEmitter;
+    var EventEmitter3 = __require("node:events").EventEmitter;
     var mixin = require_merge_descriptors();
     var proto = require_application();
     var Router3 = require_router();
@@ -23688,7 +23688,7 @@ var require_express = __commonJS({
       var app2 = function(req2, res2, next) {
         app2.handle(req2, res2, next);
       };
-      mixin(app2, EventEmitter.prototype, false);
+      mixin(app2, EventEmitter3.prototype, false);
       mixin(app2, proto, false);
       app2.request = Object.create(req, {
         app: { configurable: true, enumerable: true, writable: true, value: app2 }
@@ -24261,8 +24261,8 @@ var require_req = __commonJS({
       if (req.originalUrl) {
         _req.url = req.originalUrl;
       } else {
-        const path = req.path;
-        _req.url = typeof path === "string" ? path : req.url ? req.url.path || req.url : void 0;
+        const path2 = req.path;
+        _req.url = typeof path2 === "string" ? path2 : req.url ? req.url.path || req.url : void 0;
       }
       if (req.query) {
         _req.query = req.query;
@@ -24427,14 +24427,14 @@ var require_redact = __commonJS({
       }
       return obj;
     }
-    function parsePath(path) {
+    function parsePath(path2) {
       const parts = [];
       let current = "";
       let inBrackets = false;
       let inQuotes = false;
       let quoteChar = "";
-      for (let i = 0; i < path.length; i++) {
-        const char = path[i];
+      for (let i = 0; i < path2.length; i++) {
+        const char = path2[i];
         if (!inBrackets && char === ".") {
           if (current) {
             parts.push(current);
@@ -24565,10 +24565,10 @@ var require_redact = __commonJS({
       return current;
     }
     function redactPaths(obj, paths, censor, remove = false) {
-      for (const path of paths) {
-        const parts = parsePath(path);
+      for (const path2 of paths) {
+        const parts = parsePath(path2);
         if (parts.includes("*")) {
-          redactWildcardPath(obj, parts, censor, path, remove);
+          redactWildcardPath(obj, parts, censor, path2, remove);
         } else {
           if (remove) {
             removeKey(obj, parts);
@@ -24653,8 +24653,8 @@ var require_redact = __commonJS({
           }
         } else {
           if (afterWildcard.includes("*")) {
-            const wrappedCensor = typeof censor === "function" ? (value, path) => {
-              const fullPath = [...pathArray.slice(0, pathLength), ...path];
+            const wrappedCensor = typeof censor === "function" ? (value, path2) => {
+              const fullPath = [...pathArray.slice(0, pathLength), ...path2];
               return censor(value, fullPath);
             } : censor;
             redactWildcardPath(current, afterWildcard, wrappedCensor, originalPath, remove);
@@ -24689,8 +24689,8 @@ var require_redact = __commonJS({
         return null;
       }
       const pathStructure = /* @__PURE__ */ new Map();
-      for (const path of pathsToClone) {
-        const parts = parsePath(path);
+      for (const path2 of pathsToClone) {
+        const parts = parsePath(path2);
         let current = pathStructure;
         for (let i = 0; i < parts.length; i++) {
           const part = parts[i];
@@ -24742,24 +24742,24 @@ var require_redact = __commonJS({
       }
       return cloneSelectively(obj, pathStructure);
     }
-    function validatePath(path) {
-      if (typeof path !== "string") {
+    function validatePath(path2) {
+      if (typeof path2 !== "string") {
         throw new Error("Paths must be (non-empty) strings");
       }
-      if (path === "") {
+      if (path2 === "") {
         throw new Error("Invalid redaction path ()");
       }
-      if (path.includes("..")) {
-        throw new Error(`Invalid redaction path (${path})`);
+      if (path2.includes("..")) {
+        throw new Error(`Invalid redaction path (${path2})`);
       }
-      if (path.includes(",")) {
-        throw new Error(`Invalid redaction path (${path})`);
+      if (path2.includes(",")) {
+        throw new Error(`Invalid redaction path (${path2})`);
       }
       let bracketCount = 0;
       let inQuotes = false;
       let quoteChar = "";
-      for (let i = 0; i < path.length; i++) {
-        const char = path[i];
+      for (let i = 0; i < path2.length; i++) {
+        const char = path2[i];
         if ((char === '"' || char === "'") && bracketCount > 0) {
           if (!inQuotes) {
             inQuotes = true;
@@ -24773,20 +24773,20 @@ var require_redact = __commonJS({
         } else if (char === "]" && !inQuotes) {
           bracketCount--;
           if (bracketCount < 0) {
-            throw new Error(`Invalid redaction path (${path})`);
+            throw new Error(`Invalid redaction path (${path2})`);
           }
         }
       }
       if (bracketCount !== 0) {
-        throw new Error(`Invalid redaction path (${path})`);
+        throw new Error(`Invalid redaction path (${path2})`);
       }
     }
     function validatePaths(paths) {
       if (!Array.isArray(paths)) {
         throw new TypeError("paths must be an array");
       }
-      for (const path of paths) {
-        validatePath(path);
+      for (const path2 of paths) {
+        validatePath(path2);
       }
     }
     function slowRedact(options = {}) {
@@ -24954,8 +24954,8 @@ var require_redaction = __commonJS({
         if (shape[k] === null) {
           o[k] = (value) => topCensor(value, [k]);
         } else {
-          const wrappedCensor = typeof censor === "function" ? (value, path) => {
-            return censor(value, [k, ...path]);
+          const wrappedCensor = typeof censor === "function" ? (value, path2) => {
+            return censor(value, [k, ...path2]);
           } : censor;
           o[k] = Redact({
             paths: shape[k],
@@ -25174,9 +25174,9 @@ var require_sonic_boom = __commonJS({
   "../../node_modules/.pnpm/sonic-boom@4.2.1/node_modules/sonic-boom/index.js"(exports, module) {
     "use strict";
     var fs = __require("fs");
-    var EventEmitter = __require("events");
+    var EventEmitter3 = __require("events");
     var inherits = __require("util").inherits;
-    var path = __require("path");
+    var path2 = __require("path");
     var sleep = require_atomic_sleep();
     var assert = __require("assert");
     var BUSY_WRITE_TIMEOUT = 100;
@@ -25230,7 +25230,7 @@ var require_sonic_boom = __commonJS({
       const mode = sonic.mode;
       if (sonic.sync) {
         try {
-          if (sonic.mkdir) fs.mkdirSync(path.dirname(file), { recursive: true });
+          if (sonic.mkdir) fs.mkdirSync(path2.dirname(file), { recursive: true });
           const fd = fs.openSync(file, flags, mode);
           fileOpened(null, fd);
         } catch (err) {
@@ -25238,7 +25238,7 @@ var require_sonic_boom = __commonJS({
           throw err;
         }
       } else if (sonic.mkdir) {
-        fs.mkdir(path.dirname(file), { recursive: true }, (err) => {
+        fs.mkdir(path2.dirname(file), { recursive: true }, (err) => {
           if (err) return fileOpened(err);
           fs.open(file, flags, mode, fileOpened);
         });
@@ -25411,7 +25411,7 @@ var require_sonic_boom = __commonJS({
       sonic._asyncDrainScheduled = false;
       sonic.emit("drain");
     }
-    inherits(SonicBoom, EventEmitter);
+    inherits(SonicBoom, EventEmitter3);
     function mergeBuf(bufs, len) {
       if (bufs.length === 0) {
         return kEmptyBuffer;
@@ -25768,10 +25768,10 @@ var require_on_exit_leak_free = __commonJS({
       exit: onExit,
       beforeExit: onBeforeExit
     };
-    var registry;
+    var registry2;
     function ensureRegistry() {
-      if (registry === void 0) {
-        registry = new FinalizationRegistry(clear);
+      if (registry2 === void 0) {
+        registry2 = new FinalizationRegistry(clear);
       }
     }
     function install(event) {
@@ -25786,7 +25786,7 @@ var require_on_exit_leak_free = __commonJS({
       }
       process.removeListener(event, functions[event]);
       if (refs.exit.length === 0 && refs.beforeExit.length === 0) {
-        registry = void 0;
+        registry2 = void 0;
       }
     }
     function onExit() {
@@ -25820,7 +25820,7 @@ var require_on_exit_leak_free = __commonJS({
       const ref = new WeakRef(obj);
       ref.fn = fn;
       ensureRegistry();
-      registry.register(obj, ref);
+      registry2.register(obj, ref);
       refs[event].push(ref);
     }
     function register(obj, fn) {
@@ -25830,10 +25830,10 @@ var require_on_exit_leak_free = __commonJS({
       _register("beforeExit", obj, fn);
     }
     function unregister(obj) {
-      if (registry === void 0) {
+      if (registry2 === void 0) {
         return;
       }
-      registry.unregister(obj);
+      registry2.unregister(obj);
       for (const event of ["exit", "beforeExit"]) {
         refs[event] = refs[event].filter((ref) => {
           const _obj = ref.deref();
@@ -25989,10 +25989,10 @@ var require_thread_stream = __commonJS({
   "../../node_modules/.pnpm/thread-stream@3.1.0/node_modules/thread-stream/index.js"(exports, module) {
     "use strict";
     var { version } = require_package();
-    var { EventEmitter } = __require("events");
+    var { EventEmitter: EventEmitter3 } = __require("events");
     var { Worker } = __require("worker_threads");
     var { join } = __require("path");
-    var { pathToFileURL } = __require("url");
+    var { pathToFileURL: pathToFileURL2 } = __require("url");
     var { wait } = require_wait();
     var {
       WRITE_INDEX,
@@ -26018,7 +26018,7 @@ var require_thread_stream = __commonJS({
     };
     var FinalizationRegistry2 = process.env.NODE_V8_COVERAGE ? FakeFinalizationRegistry : global.FinalizationRegistry || FakeFinalizationRegistry;
     var WeakRef2 = process.env.NODE_V8_COVERAGE ? FakeWeakRef : global.WeakRef || FakeWeakRef;
-    var registry = new FinalizationRegistry2((worker) => {
+    var registry2 = new FinalizationRegistry2((worker) => {
       if (worker.exited) {
         return;
       }
@@ -26032,7 +26032,7 @@ var require_thread_stream = __commonJS({
         ...opts.workerOpts,
         trackUnmanagedFds: false,
         workerData: {
-          filename: filename.indexOf("file://") === 0 ? filename : pathToFileURL(filename).href,
+          filename: filename.indexOf("file://") === 0 ? filename : pathToFileURL2(filename).href,
           dataBuf: stream[kImpl].dataBuf,
           stateBuf: stream[kImpl].stateBuf,
           workerData: {
@@ -26046,7 +26046,7 @@ var require_thread_stream = __commonJS({
       worker.stream = new FakeWeakRef(stream);
       worker.on("message", onWorkerMessage);
       worker.on("exit", onWorkerExit);
-      registry.register(stream, worker);
+      registry2.register(stream, worker);
       return worker;
     }
     function drain(stream) {
@@ -26140,12 +26140,12 @@ var require_thread_stream = __commonJS({
       if (stream === void 0) {
         return;
       }
-      registry.unregister(stream);
+      registry2.unregister(stream);
       stream.worker.exited = true;
       stream.worker.off("exit", onWorkerExit);
       destroy(stream, code !== 0 ? new Error("the worker thread exited") : null);
     }
-    var ThreadStream = class extends EventEmitter {
+    var ThreadStream = class extends EventEmitter3 {
       constructor(opts = {}) {
         super();
         if (opts.bufferSize < 4) {
@@ -26844,11 +26844,11 @@ var require_tools = __commonJS({
         }
       }
     }
-    function buildFormatters(level, bindings, log) {
+    function buildFormatters(level, bindings, log2) {
       return {
         level,
         bindings,
-        log
+        log: log2
       };
     }
     function normalizeDestFileDescriptor(destination) {
@@ -27102,7 +27102,7 @@ var require_meta = __commonJS({
 var require_proto = __commonJS({
   "../../node_modules/.pnpm/pino@9.14.0/node_modules/pino/lib/proto.js"(exports, module) {
     "use strict";
-    var { EventEmitter } = __require("node:events");
+    var { EventEmitter: EventEmitter3 } = __require("node:events");
     var {
       lsCacheSym,
       levelValSym,
@@ -27184,7 +27184,7 @@ var require_proto = __commonJS({
       [getLevelSym]: getLevel,
       [setLevelSym]: setLevel
     };
-    Object.setPrototypeOf(prototype, EventEmitter.prototype);
+    Object.setPrototypeOf(prototype, EventEmitter3.prototype);
     module.exports = function() {
       return Object.create(prototype);
     };
@@ -27231,11 +27231,11 @@ var require_proto = __commonJS({
         }
       } else instance[serializersSym] = serializers;
       if (options.hasOwnProperty("formatters")) {
-        const { level, bindings: chindings, log } = options.formatters;
+        const { level, bindings: chindings, log: log2 } = options.formatters;
         instance[formattersSym] = buildFormatters(
           level || formatters.level,
           chindings || resetChildingsFormatter,
-          log || formatters.log
+          log2 || formatters.log
         );
       } else {
         instance[formattersSym] = buildFormatters(
@@ -28098,9 +28098,9 @@ var require_pino = __commonJS({
   "../../node_modules/.pnpm/pino@9.14.0/node_modules/pino/pino.js"(exports, module) {
     function pinoBundlerAbsolutePath(p) {
       try {
-        const path = __require("path");
+        const path2 = __require("path");
         const outputDir = "/home/runner/workspace/artifacts/api-server/dist";
-        return path.resolve(outputDir, p.replace(/^\.\//, ""));
+        return path2.resolve(outputDir, p.replace(/^\.\//, ""));
       } catch (e) {
         const f = new Function("p", "return new URL(p, import.meta.url).pathname");
         return f(p);
@@ -28403,18 +28403,18 @@ var require_logger = __commonJS({
       delete opts.customErroredMessage;
       const quietReqLogger = !!opts.quietReqLogger;
       const quietResLogger = !!opts.quietResLogger;
-      const logger2 = wrapChild(opts, theStream);
-      const validLogLevels = Object.keys(logger2.levels.values).concat("silent");
+      const logger3 = wrapChild(opts, theStream);
+      const validLogLevels = Object.keys(logger3.levels.values).concat("silent");
       const useLevel = getValidLogLevel(opts.useLevel);
       delete opts.useLevel;
       const genReqId = reqIdGenFactory(opts.genReqId);
       const result = (req, res, next) => {
-        return loggingMiddleware(logger2, req, res, next);
+        return loggingMiddleware(logger3, req, res, next);
       };
-      result.logger = logger2;
+      result.logger = logger3;
       return result;
-      function onResFinished(res, logger3, err) {
-        let log = logger3;
+      function onResFinished(res, logger4, err) {
+        let log2 = logger4;
         const responseTime = Date.now() - res[startTime];
         const req = res[reqObject];
         const level = getLogLevelFromCustomLogLevel(customLogLevel, useLevel, res, err, req);
@@ -28423,15 +28423,15 @@ var require_logger = __commonJS({
         }
         const customPropBindings = typeof customProps === "function" ? customProps(req, res) : customProps;
         if (customPropBindings) {
-          const customPropBindingStr = logger3[stringifySym](customPropBindings).replace(/[{}]/g, "");
-          const customPropBindingsStr = logger3[chindingsSym];
+          const customPropBindingStr = logger4[stringifySym](customPropBindings).replace(/[{}]/g, "");
+          const customPropBindingsStr = logger4[chindingsSym];
           if (!customPropBindingsStr.includes(customPropBindingStr)) {
-            log = logger3.child(customPropBindings);
+            log2 = logger4.child(customPropBindings);
           }
         }
         if (err || res.err || res.statusCode >= 500) {
           const error = err || res.err || new Error("failed with status code " + res.statusCode);
-          log[level](
+          log2[level](
             onRequestErrorObject(req, res, error, {
               [resKey]: res,
               [errKey]: error,
@@ -28441,7 +28441,7 @@ var require_logger = __commonJS({
           );
           return;
         }
-        log[level](
+        log2[level](
           onRequestSuccessObject(req, res, {
             [resKey]: res,
             [responseTimeKey]: responseTime
@@ -28449,17 +28449,17 @@ var require_logger = __commonJS({
           successMessage(req, res, responseTime)
         );
       }
-      function loggingMiddleware(logger3, req, res, next) {
+      function loggingMiddleware(logger4, req, res, next) {
         let shouldLogSuccess = true;
         req.id = req.id || genReqId(req, res);
-        const log = quietReqLogger ? logger3.child({ [requestIdKey]: req.id }) : logger3;
-        let fullReqLogger = log.child({ [reqKey]: req });
+        const log2 = quietReqLogger ? logger4.child({ [requestIdKey]: req.id }) : logger4;
+        let fullReqLogger = log2.child({ [reqKey]: req });
         const customPropBindings = typeof customProps === "function" ? customProps(req, res) : customProps;
         if (customPropBindings) {
           fullReqLogger = fullReqLogger.child(customPropBindings);
         }
-        const responseLogger = quietResLogger ? log : fullReqLogger;
-        const requestLogger = quietReqLogger ? log : fullReqLogger;
+        const responseLogger = quietResLogger ? log2 : fullReqLogger;
+        const requestLogger = quietReqLogger ? log2 : fullReqLogger;
         if (!res.log) {
           res.log = responseLogger;
         }
@@ -28508,20 +28508,20 @@ var require_logger = __commonJS({
     function wrapChild(opts, stream) {
       const prevLogger = opts.logger;
       const prevGenReqId = opts.genReqId;
-      let logger2 = null;
+      let logger3 = null;
       if (prevLogger) {
         opts.logger = void 0;
         opts.genReqId = void 0;
-        logger2 = prevLogger.child({}, opts);
+        logger3 = prevLogger.child({}, opts);
         opts.logger = prevLogger;
         opts.genReqId = prevGenReqId;
       } else {
         if (opts.transport && !opts.transport.caller) {
           opts.transport.caller = getCallerFile();
         }
-        logger2 = pino2(opts, stream);
+        logger3 = pino2(opts, stream);
       }
-      return logger2;
+      return logger3;
     }
     function reqIdGenFactory(func) {
       if (typeof func === "function") return func;
@@ -28931,8 +28931,8 @@ function getErrorMap() {
 
 // ../../node_modules/.pnpm/zod@3.25.76/node_modules/zod/v3/helpers/parseUtil.js
 var makeIssue = (params) => {
-  const { data, path, errorMaps, issueData } = params;
-  const fullPath = [...path, ...issueData.path || []];
+  const { data, path: path2, errorMaps, issueData } = params;
+  const fullPath = [...path2, ...issueData.path || []];
   const fullIssue = {
     ...issueData,
     path: fullPath
@@ -29047,11 +29047,11 @@ var errorUtil;
 
 // ../../node_modules/.pnpm/zod@3.25.76/node_modules/zod/v3/types.js
 var ParseInputLazyPath = class {
-  constructor(parent, value, path, key) {
+  constructor(parent, value, path2, key) {
     this._cachedPath = [];
     this.parent = parent;
     this.data = value;
-    this._path = path;
+    this._path = path2;
     this._key = key;
   }
   get path() {
@@ -32511,6 +32511,1768 @@ app.use(import_express3.default.urlencoded({ extended: true }));
 app.use("/api", routes_default);
 var app_default = app;
 
+// ../../node_modules/.pnpm/node-cron@4.5.0/node_modules/node-cron/dist/_shared.js
+import { EventEmitter } from "events";
+import { randomUUID } from "node:crypto";
+function createID() {
+  return randomUUID();
+}
+var levelColors = {
+  INFO: "\x1B[36m",
+  WARN: "\x1B[33m",
+  ERROR: "\x1B[31m",
+  DEBUG: "\x1B[35m"
+};
+var GREEN = "\x1B[32m";
+var RESET = "\x1B[0m";
+function log(level, message, extra) {
+  const timestamp = (/* @__PURE__ */ new Date()).toISOString();
+  const color = levelColors[level] ?? "";
+  const prefix = `[${timestamp}] [PID: ${process.pid}] ${GREEN}[NODE-CRON]${GREEN} ${color}[${level}]${RESET}`;
+  const output = `${prefix} ${message}`;
+  switch (level) {
+    case "ERROR":
+      console.error(output, extra ?? "");
+      break;
+    case "DEBUG":
+      console.debug(output, extra ?? "");
+      break;
+    case "WARN":
+      console.warn(output);
+      break;
+    case "INFO":
+    default:
+      console.info(output);
+      break;
+  }
+}
+var defaultLogger = {
+  info(message) {
+    log("INFO", message);
+  },
+  warn(message) {
+    log("WARN", message);
+  },
+  error(message, err) {
+    if (message instanceof Error) {
+      log("ERROR", message.message, message);
+    } else {
+      log("ERROR", message, err);
+    }
+  },
+  debug(message, err) {
+    if (message instanceof Error) {
+      log("DEBUG", message.message, message);
+    } else {
+      log("DEBUG", message, err);
+    }
+  }
+};
+var activeLogger = defaultLogger;
+function setLogger(logger3) {
+  activeLogger = logger3 ?? defaultLogger;
+}
+var logger2 = {
+  info: (message) => activeLogger.info(message),
+  warn: (message) => activeLogger.warn(message),
+  error: (message, err) => activeLogger.error(message, err),
+  debug: (message, err) => activeLogger.debug(message, err)
+};
+var TrackedPromise = class {
+  promise;
+  error;
+  state;
+  value;
+  constructor(executor) {
+    this.state = "pending";
+    this.promise = new Promise((resolve2, reject) => {
+      executor((value) => {
+        this.state = "fulfilled";
+        this.value = value;
+        resolve2(value);
+      }, (error) => {
+        this.state = "rejected";
+        this.error = error;
+        reject(error);
+      });
+    });
+  }
+  getPromise() {
+    return this.promise;
+  }
+  getState() {
+    return this.state;
+  }
+  isPending() {
+    return this.state === "pending";
+  }
+  isFulfilled() {
+    return this.state === "fulfilled";
+  }
+  isRejected() {
+    return this.state === "rejected";
+  }
+  getValue() {
+    return this.value;
+  }
+  getError() {
+    return this.error;
+  }
+  then(onfulfilled, onrejected) {
+    return this.promise.then(onfulfilled, onrejected);
+  }
+  catch(onrejected) {
+    return this.promise.catch(onrejected);
+  }
+  finally(onfinally) {
+    return this.promise.finally(onfinally);
+  }
+};
+function planBeat(expected, now, toleranceMs, getNextMatch) {
+  const missed = [];
+  let slot = expected;
+  while (true) {
+    const nowMs = now.getTime();
+    const slotMs = slot.getTime();
+    if (nowMs < slotMs) {
+      return { missed, next: slot };
+    }
+    const next = getNextMatch(slot);
+    if (next.getTime() <= slotMs) {
+      return { missed, next: getNextMatch(now) };
+    }
+    const gap = next.getTime() - slotMs;
+    const lateBy = nowMs - slotMs;
+    if (lateBy <= toleranceMs && lateBy < gap) {
+      return { missed, run: slot, next };
+    }
+    missed.push(slot);
+    slot = next;
+  }
+}
+var DEFAULT_MISSED_EXECUTION_TOLERANCE = 1e3;
+function emptyOnFn() {
+}
+function emptySkipFn() {
+}
+function emptyHookFn() {
+  return true;
+}
+var DEFAULT_COORDINATOR_TTL = 3e4;
+var Runner = class {
+  timeMatcher;
+  onMatch;
+  noOverlap;
+  maxExecutions;
+  maxRandomDelay;
+  missedExecutionTolerance;
+  runCount;
+  running;
+  heartBeatTimeout;
+  logger;
+  onMissedExecution;
+  onOverlap;
+  onError;
+  beforeRun;
+  onFinished;
+  onMaxExecutions;
+  runCoordinator;
+  coordinatorKeyPrefix;
+  coordinatorTtl;
+  onSkipped;
+  constructor(timeMatcher, onMatch, options) {
+    this.timeMatcher = timeMatcher;
+    this.onMatch = onMatch;
+    this.noOverlap = options == void 0 || options.noOverlap === void 0 ? false : options.noOverlap;
+    this.maxExecutions = options?.maxExecutions;
+    this.maxRandomDelay = options?.maxRandomDelay || 0;
+    this.missedExecutionTolerance = options?.missedExecutionTolerance ?? DEFAULT_MISSED_EXECUTION_TOLERANCE;
+    this.logger = options?.logger || logger2;
+    this.onMissedExecution = options?.onMissedExecution || emptyOnFn;
+    this.onOverlap = options?.onOverlap || emptyOnFn;
+    this.onError = options?.onError || ((date, error) => this.logger.error("Task failed with error!", error));
+    this.onFinished = options?.onFinished || emptyHookFn;
+    this.beforeRun = options?.beforeRun || emptyHookFn;
+    this.onMaxExecutions = options?.onMaxExecutions || emptyOnFn;
+    this.runCoordinator = options?.runCoordinator;
+    this.coordinatorKeyPrefix = options?.coordinatorKeyPrefix || "";
+    this.coordinatorTtl = options?.coordinatorTtl ?? DEFAULT_COORDINATOR_TTL;
+    this.onSkipped = options?.onSkipped || emptySkipFn;
+    this.runCount = 0;
+    this.running = false;
+  }
+  onErrorFallback = (date, error) => {
+    this.logger.error("Task failed with error!", error);
+  };
+  async runCoordinated(slot, run) {
+    if (!this.runCoordinator) {
+      await run();
+      return;
+    }
+    const key = `${this.coordinatorKeyPrefix}:${slot.toISOString()}`;
+    let allowed;
+    try {
+      allowed = await this.runCoordinator.shouldRun(key, this.coordinatorTtl);
+    } catch (err) {
+      this.logger.error("Run coordinator failed; skipping execution (fail-closed)", err);
+      this.emitSkipped(slot, "coordinator-error");
+      return;
+    }
+    if (!allowed) {
+      this.emitSkipped(slot, "not-elected");
+      return;
+    }
+    try {
+      await run();
+    } finally {
+      try {
+        await this.runCoordinator.onComplete?.(key);
+      } catch (err) {
+        this.logger.error("Run coordinator onComplete failed", err);
+      }
+    }
+  }
+  emitSkipped(slot, reason) {
+    Promise.resolve(this.onSkipped(slot, reason)).catch((err) => this.onErrorFallback(slot, err));
+  }
+  start() {
+    this.running = true;
+    let lastExecution;
+    let expectedNextExecution = this.timeMatcher.getNextMatch(nowWithoutMs());
+    const armHeartBeat = () => {
+      if (this.running) {
+        clearTimeout(this.heartBeatTimeout);
+        this.heartBeatTimeout = setTimeout(heartBeat, getDelay(expectedNextExecution));
+      }
+    };
+    const runTask = (date) => {
+      return new Promise(async (resolve2) => {
+        const execution = {
+          id: createID(),
+          reason: "scheduled"
+        };
+        const shouldExecute = await this.beforeRun(date, execution);
+        const randomDelay = Math.floor(Math.random() * this.maxRandomDelay);
+        if (shouldExecute) {
+          const execute = async () => {
+            try {
+              this.runCount++;
+              execution.startedAt = /* @__PURE__ */ new Date();
+              const result = await this.onMatch(date, execution);
+              execution.finishedAt = /* @__PURE__ */ new Date();
+              execution.result = result;
+              this.onFinished(date, execution);
+              if (this.maxExecutions && this.runCount >= this.maxExecutions) {
+                this.onMaxExecutions(date);
+                this.stop();
+              }
+            } catch (error) {
+              execution.finishedAt = /* @__PURE__ */ new Date();
+              execution.error = error;
+              this.onError(date, error, execution);
+            }
+            resolve2(true);
+          };
+          if (randomDelay > 0) {
+            setTimeout(execute, randomDelay);
+          } else {
+            execute();
+          }
+        } else {
+          resolve2(true);
+        }
+      });
+    };
+    const heartBeat = async () => {
+      const currentDate = nowWithoutMs();
+      const plan = planBeat(expectedNextExecution, currentDate, this.missedExecutionTolerance, (date) => this.timeMatcher.getNextMatch(date));
+      expectedNextExecution = plan.next;
+      for (const missedSlot of plan.missed) {
+        runAsync(this.onMissedExecution, missedSlot, this.onErrorFallback);
+      }
+      if (plan.run) {
+        if (lastExecution && lastExecution.getState() === "pending") {
+          runAsync(this.onOverlap, plan.run, this.onErrorFallback);
+          if (this.noOverlap) {
+            this.logger.warn("task still running, new execution blocked by overlap prevention!");
+            armHeartBeat();
+            return;
+          }
+        }
+        const slot = plan.run;
+        lastExecution = new TrackedPromise(async (resolve2, reject) => {
+          try {
+            await this.runCoordinated(slot, () => runTask(slot));
+            resolve2(true);
+          } catch (err) {
+            reject(err);
+          }
+        });
+      }
+      armHeartBeat();
+    };
+    armHeartBeat();
+  }
+  nextRun() {
+    return this.timeMatcher.getNextMatch(/* @__PURE__ */ new Date());
+  }
+  stop() {
+    this.running = false;
+    if (this.heartBeatTimeout) {
+      clearTimeout(this.heartBeatTimeout);
+      this.heartBeatTimeout = void 0;
+    }
+  }
+  isStarted() {
+    return !!this.heartBeatTimeout && this.running;
+  }
+  isStopped() {
+    return !this.isStarted();
+  }
+  async execute() {
+    const date = /* @__PURE__ */ new Date();
+    const execution = {
+      id: createID(),
+      reason: "invoked"
+    };
+    try {
+      const shouldExecute = await this.beforeRun(date, execution);
+      if (shouldExecute) {
+        this.runCount++;
+        execution.startedAt = /* @__PURE__ */ new Date();
+        const result = await this.onMatch(date, execution);
+        execution.finishedAt = /* @__PURE__ */ new Date();
+        execution.result = result;
+        this.onFinished(date, execution);
+      }
+    } catch (error) {
+      execution.finishedAt = /* @__PURE__ */ new Date();
+      execution.error = error;
+      this.onError(date, error, execution);
+    }
+  }
+};
+async function runAsync(fn, date, onError) {
+  try {
+    await fn(date);
+  } catch (error) {
+    onError(date, error);
+  }
+}
+function getDelay(nextRun) {
+  const maxDelay = 864e5;
+  const now = /* @__PURE__ */ new Date();
+  const delay = nextRun.getTime() - now.getTime();
+  if (delay > maxDelay) {
+    return maxDelay;
+  }
+  return Math.max(0, delay);
+}
+function nowWithoutMs() {
+  const date = /* @__PURE__ */ new Date();
+  date.setMilliseconds(0);
+  return date;
+}
+var monthNamesConversion = /* @__PURE__ */ (() => {
+  const months = [
+    "january",
+    "february",
+    "march",
+    "april",
+    "may",
+    "june",
+    "july",
+    "august",
+    "september",
+    "october",
+    "november",
+    "december"
+  ];
+  const shortMonths = [
+    "jan",
+    "feb",
+    "mar",
+    "apr",
+    "may",
+    "jun",
+    "jul",
+    "aug",
+    "sep",
+    "oct",
+    "nov",
+    "dec"
+  ];
+  function convertMonthName(expression, items) {
+    for (let i = 0; i < items.length; i++) {
+      expression = expression.replace(new RegExp(items[i], "gi"), i + 1);
+    }
+    return expression;
+  }
+  function interpret(monthExpression) {
+    monthExpression = convertMonthName(monthExpression, months);
+    monthExpression = convertMonthName(monthExpression, shortMonths);
+    return monthExpression;
+  }
+  return interpret;
+})();
+var weekDayNamesConversion = /* @__PURE__ */ (() => {
+  const weekDays = [
+    "sunday",
+    "monday",
+    "tuesday",
+    "wednesday",
+    "thursday",
+    "friday",
+    "saturday"
+  ];
+  const shortWeekDays = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
+  function convertWeekDayName(expression, items) {
+    for (let i = 0; i < items.length; i++) {
+      expression = expression.replace(new RegExp(items[i], "gi"), i);
+    }
+    return expression;
+  }
+  function convertWeekDays(expression) {
+    expression = expression.replace("7", "0");
+    expression = convertWeekDayName(expression, weekDays);
+    return convertWeekDayName(expression, shortWeekDays);
+  }
+  return convertWeekDays;
+})();
+var convertAsterisksToRanges = /* @__PURE__ */ (() => {
+  function convertAsterisk(expression, replecement) {
+    if (expression.indexOf("*") !== -1) {
+      return expression.replace("*", replecement);
+    }
+    return expression;
+  }
+  function convertAsterisksToRanges2(expressions) {
+    expressions[0] = convertAsterisk(expressions[0], "0-59");
+    expressions[1] = convertAsterisk(expressions[1], "0-59");
+    expressions[2] = convertAsterisk(expressions[2], "0-23");
+    expressions[3] = convertAsterisk(expressions[3], "1-31");
+    expressions[4] = convertAsterisk(expressions[4], "1-12");
+    expressions[5] = convertAsterisk(expressions[5], "0-6");
+    return expressions;
+  }
+  return convertAsterisksToRanges2;
+})();
+var convertRanges = /* @__PURE__ */ (() => {
+  function replaceWithRange(expression, text, init, end, stepTxt) {
+    const step = parseInt(stepTxt);
+    const numbers = [];
+    let last = parseInt(end);
+    let first = parseInt(init);
+    if (first > last) {
+      last = parseInt(init);
+      first = parseInt(end);
+    }
+    for (let i = first; i <= last; i += step) {
+      numbers.push(i);
+    }
+    return expression.replace(new RegExp(text, "i"), numbers.join());
+  }
+  function convertRange(expression) {
+    const rangeRegEx = /(\d+)-(\d+)(\/(\d+)|)/;
+    let match = rangeRegEx.exec(expression);
+    while (match !== null && match.length > 0) {
+      expression = replaceWithRange(expression, match[0], match[1], match[2], match[4] || "1");
+      match = rangeRegEx.exec(expression);
+    }
+    return expression;
+  }
+  function convertAllRanges(expressions) {
+    for (let i = 0; i < expressions.length; i++) {
+      expressions[i] = convertRange(expressions[i]);
+    }
+    return expressions;
+  }
+  return convertAllRanges;
+})();
+var convertExpression = /* @__PURE__ */ (() => {
+  function appendSecondExpression(expressions) {
+    if (expressions.length === 5) {
+      return ["0"].concat(expressions);
+    }
+    return expressions;
+  }
+  function removeSpaces(str) {
+    return str.replace(/\s{2,}/g, " ").trim();
+  }
+  function normalizeIntegers(expressions) {
+    for (let i = 0; i < expressions.length; i++) {
+      const numbers = expressions[i].split(",");
+      for (let j = 0; j < numbers.length; j++) {
+        const token = String(numbers[j]).trim();
+        if (/^l$/i.test(token)) {
+          numbers[j] = "L";
+        } else if (/^[0-7]l$/i.test(token)) {
+          numbers[j] = token.toUpperCase();
+        } else if (token.indexOf("#") !== -1) {
+          numbers[j] = token;
+        } else {
+          numbers[j] = parseInt(numbers[j]);
+        }
+      }
+      expressions[i] = numbers;
+    }
+    return expressions;
+  }
+  function interpret(expression) {
+    let expressions = removeSpaces(`${expression}`).split(" ");
+    expressions = appendSecondExpression(expressions);
+    expressions[4] = monthNamesConversion(expressions[4]);
+    expressions[5] = weekDayNamesConversion(expressions[5]);
+    expressions = convertAsterisksToRanges(expressions);
+    expressions = convertRanges(expressions);
+    expressions = normalizeIntegers(expressions);
+    return expressions;
+  }
+  return interpret;
+})();
+var LocalizedTime = class {
+  timestamp;
+  parts;
+  timezone;
+  constructor(date, timezone) {
+    this.timestamp = date.getTime();
+    this.timezone = timezone;
+    this.parts = buildDateParts(date, timezone);
+  }
+  toDate() {
+    return new Date(this.timestamp);
+  }
+  toISO() {
+    const gmt = this.parts.gmt.replace(/^GMT/, "");
+    const offset = gmt ? gmt : "Z";
+    const pad = (n) => String(n).padStart(2, "0");
+    return `${this.parts.year}-${pad(this.parts.month)}-${pad(this.parts.day)}T${pad(this.parts.hour)}:${pad(this.parts.minute)}:${pad(this.parts.second)}.${String(this.parts.millisecond).padStart(3, "0")}` + offset;
+  }
+  getParts() {
+    return this.parts;
+  }
+};
+function getOffsetMinutes(date, timezone) {
+  const offset = parseOffsetMinutes(getTimezoneGMT(date, timezone).replace(/^GMT/, "") || "Z");
+  return offset ?? 0;
+}
+function readsBackTo(timestamp, parts, timezone) {
+  const p = buildDateParts(new Date(timestamp), timezone);
+  return p.year === parts.year && p.month === parts.month && p.day === parts.day && p.hour === parts.hour && p.minute === parts.minute && p.second === parts.second;
+}
+function localTimeToTimestamp(parts, timezone) {
+  const guess = Date.UTC(parts.year, parts.month - 1, parts.day, parts.hour, parts.minute, parts.second, parts.millisecond);
+  const firstOffset = getOffsetMinutes(new Date(guess), timezone);
+  const candidate1 = guess - firstOffset * 6e4;
+  const secondOffset = getOffsetMinutes(new Date(candidate1), timezone);
+  if (secondOffset === firstOffset) {
+    return candidate1;
+  }
+  const candidate2 = guess - secondOffset * 6e4;
+  if (readsBackTo(candidate1, parts, timezone))
+    return candidate1;
+  if (readsBackTo(candidate2, parts, timezone))
+    return candidate2;
+  return Math.max(candidate1, candidate2);
+}
+var partsFormatterCache = /* @__PURE__ */ new Map();
+var offsetFormatterCache = /* @__PURE__ */ new Map();
+function getPartsFormatter(timezone) {
+  const key = timezone ?? "";
+  let formatter = partsFormatterCache.get(key);
+  if (!formatter) {
+    const dftOptions = {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      weekday: "short",
+      hour12: false
+    };
+    if (timezone) {
+      dftOptions.timeZone = timezone;
+    }
+    formatter = new Intl.DateTimeFormat("en-US", dftOptions);
+    partsFormatterCache.set(key, formatter);
+  }
+  return formatter;
+}
+function getOffsetFormatter(timezone) {
+  const key = timezone ?? "";
+  let formatter = offsetFormatterCache.get(key);
+  if (!formatter) {
+    formatter = new Intl.DateTimeFormat("en-US", {
+      timeZone: timezone,
+      timeZoneName: "shortOffset"
+    });
+    offsetFormatterCache.set(key, formatter);
+  }
+  return formatter;
+}
+function buildDateParts(date, timezone) {
+  const dateFormat = getPartsFormatter(timezone);
+  const parts = dateFormat.formatToParts(date).filter((part) => {
+    return part.type !== "literal";
+  }).reduce((acc, part) => {
+    acc[part.type] = part.value;
+    return acc;
+  }, {});
+  const result = {
+    day: parseInt(parts.day),
+    month: parseInt(parts.month),
+    year: parseInt(parts.year),
+    hour: parts.hour === "24" ? 0 : parseInt(parts.hour),
+    minute: parseInt(parts.minute),
+    second: parseInt(parts.second),
+    millisecond: date.getMilliseconds(),
+    weekday: parts.weekday
+  };
+  let gmt;
+  Object.defineProperty(result, "gmt", {
+    enumerable: true,
+    configurable: true,
+    get() {
+      return gmt ??= getTimezoneGMT(date, timezone);
+    }
+  });
+  return result;
+}
+function parseOffsetMinutes(isoString) {
+  if (isoString.endsWith("Z"))
+    return 0;
+  const match = isoString.match(/([+-])(\d{2}):(\d{2})$/);
+  if (!match)
+    return null;
+  const sign = match[1] === "+" ? 1 : -1;
+  return sign * (parseInt(match[2]) * 60 + parseInt(match[3]));
+}
+function getTimezoneGMT(date, timezone) {
+  const fmt = getOffsetFormatter(timezone);
+  const parts = fmt.formatToParts(date);
+  const tzPart = parts.find((p) => p.type === "timeZoneName");
+  if (!tzPart)
+    return "Z";
+  const tzValue = tzPart.value;
+  if (tzValue === "GMT")
+    return "Z";
+  const match = tzValue.match(/^GMT([+-])(\d{1,2})(?::(\d{2}))?$/);
+  if (!match)
+    return "Z";
+  const sign = match[1];
+  const hoursNum = parseInt(match[2]);
+  const minutesNum = parseInt(match[3] || "0");
+  if (hoursNum === 0 && minutesNum === 0)
+    return "Z";
+  const hours = match[2].padStart(2, "0");
+  const minutes = (match[3] || "00").padStart(2, "0");
+  return `GMT${sign}${hours}:${minutes}`;
+}
+var LAST_DAY_TOKEN = "L";
+function lastDayOfMonth(year, month) {
+  return new Date(Date.UTC(year, month, 0)).getUTCDate();
+}
+function matchesDayOfMonth(field, year, month, day) {
+  if (field.includes(day))
+    return true;
+  if (field.includes(LAST_DAY_TOKEN) && day === lastDayOfMonth(year, month))
+    return true;
+  return false;
+}
+var LAST_WEEKDAY_REGEX = /^([0-7])L$/i;
+var NTH_WEEKDAY_REGEX = /^([0-7])#([1-5])$/;
+function parseLastWeekdayToken(value) {
+  if (typeof value !== "string")
+    return null;
+  const match = LAST_WEEKDAY_REGEX.exec(value);
+  if (!match)
+    return null;
+  const weekday = parseInt(match[1], 10);
+  return weekday === 7 ? 0 : weekday;
+}
+function isLastWeekdayOfMonth(year, month, day) {
+  const date = new Date(Date.UTC(year, month - 1, day));
+  const inSevenDays = new Date(date.getTime());
+  inSevenDays.setUTCDate(inSevenDays.getUTCDate() + 7);
+  return inSevenDays.getUTCMonth() + 1 !== month;
+}
+function isNthWeekdayToken(value) {
+  return typeof value === "string" && NTH_WEEKDAY_REGEX.test(value);
+}
+function parseNthWeekday(value) {
+  if (typeof value !== "string")
+    return null;
+  const match = NTH_WEEKDAY_REGEX.exec(value);
+  if (!match)
+    return null;
+  const weekday = parseInt(match[1], 10) % 7;
+  const nth = parseInt(match[2], 10);
+  return { weekday, nth };
+}
+function occurrenceInMonth(day) {
+  return Math.floor((day - 1) / 7) + 1;
+}
+function matchesNthWeekday(token, year, month, day) {
+  const parsed = parseNthWeekday(token);
+  if (!parsed)
+    return false;
+  const weekday = new Date(Date.UTC(year, month - 1, day)).getUTCDay();
+  if (weekday !== parsed.weekday)
+    return false;
+  return occurrenceInMonth(day) === parsed.nth;
+}
+function matchesDayOfWeek(field, year, month, day, weekday) {
+  for (const value of field) {
+    if (value === weekday)
+      return true;
+    if (isNthWeekdayToken(value)) {
+      if (matchesNthWeekday(value, year, month, day))
+        return true;
+      continue;
+    }
+    const lastWeekday = parseLastWeekdayToken(value);
+    if (lastWeekday !== null && lastWeekday === weekday && isLastWeekdayOfMonth(year, month, day)) {
+      return true;
+    }
+  }
+  return false;
+}
+var MAX_DAYS = 366 * 100;
+var MatcherWalker = class {
+  baseDate;
+  timeMatcher;
+  timezone;
+  seconds;
+  minutes;
+  hours;
+  days;
+  months;
+  weekdays;
+  constructor(timeMatcher, baseDate, timezone) {
+    this.baseDate = baseDate;
+    this.timeMatcher = timeMatcher;
+    this.timezone = timezone;
+    const expressions = timeMatcher.expressions;
+    this.seconds = sortedAsc(expressions[0]);
+    this.minutes = sortedAsc(expressions[1]);
+    this.hours = sortedAsc(expressions[2]);
+    this.days = expressions[3];
+    this.months = expressions[4];
+    this.weekdays = expressions[5];
+  }
+  isMatching() {
+    return this.timeMatcher.match(this.baseDate);
+  }
+  matchNext() {
+    const months = this.months;
+    const days = this.days;
+    const baseMs = Math.floor(this.baseDate.getTime() / 1e3) * 1e3;
+    const baseParts = new LocalizedTime(new Date(baseMs), this.timezone).getParts();
+    let { year, month, day } = baseParts;
+    for (let i = 0; i < MAX_DAYS; i++) {
+      if (months.includes(month) && matchesDayOfMonth(days, year, month, day) && this.matchesWeekday(year, month, day)) {
+        const lowerBound = i === 0 ? baseParts : null;
+        const found = this.firstTimeOnDay(year, month, day, lowerBound, baseMs);
+        if (found !== null) {
+          return new LocalizedTime(new Date(found), this.timezone);
+        }
+      }
+      ({ year, month, day } = nextDay(year, month, day));
+    }
+    throw new Error("Could not find next matching date within reasonable time range");
+  }
+  firstTimeOnDay(year, month, day, lowerBound, baseMs) {
+    const { seconds, minutes, hours } = this;
+    for (const hour of hours) {
+      if (lowerBound && hour < lowerBound.hour)
+        continue;
+      for (const minute of minutes) {
+        for (const second of seconds) {
+          if (lowerBound && !isLaterInDay(hour, minute, second, lowerBound))
+            continue;
+          const ts = localTimeToTimestamp({ year, month, day, hour, minute, second, millisecond: 0 }, this.timezone);
+          if (ts > baseMs && this.timeMatcher.match(new Date(ts))) {
+            return ts;
+          }
+        }
+      }
+    }
+    return null;
+  }
+  matchesWeekday(year, month, day) {
+    const weekday = new Date(Date.UTC(year, month - 1, day)).getUTCDay();
+    return matchesDayOfWeek(this.weekdays, year, month, day, weekday);
+  }
+};
+function nextDay(year, month, day) {
+  const d = new Date(Date.UTC(year, month - 1, day + 1));
+  return { year: d.getUTCFullYear(), month: d.getUTCMonth() + 1, day: d.getUTCDate() };
+}
+function sortedAsc(values) {
+  return [...values].sort((a, b) => a - b);
+}
+function isLaterInDay(hour, minute, second, bound) {
+  return hour * 3600 + minute * 60 + second > bound.hour * 3600 + bound.minute * 60 + bound.second;
+}
+function matchValue(allowedValues, value) {
+  return allowedValues.indexOf(value) !== -1;
+}
+var TimeMatcher = class {
+  timezone;
+  pattern;
+  expressions;
+  constructor(pattern, timezone) {
+    this.timezone = timezone;
+    this.pattern = pattern;
+    this.expressions = convertExpression(pattern);
+  }
+  match(date) {
+    const localizedTime = new LocalizedTime(date, this.timezone);
+    const parts = localizedTime.getParts();
+    const runOnSecond = matchValue(this.expressions[0], parts.second);
+    const runOnMinute = matchValue(this.expressions[1], parts.minute);
+    const runOnHour = matchValue(this.expressions[2], parts.hour);
+    const runOnDay = matchesDayOfMonth(this.expressions[3], parts.year, parts.month, parts.day);
+    const runOnMonth = matchValue(this.expressions[4], parts.month);
+    const weekday = parseInt(weekDayNamesConversion(parts.weekday));
+    const runOnWeekDay = matchesDayOfWeek(this.expressions[5], parts.year, parts.month, parts.day, weekday);
+    return runOnSecond && runOnMinute && runOnHour && runOnDay && runOnMonth && runOnWeekDay;
+  }
+  getNextMatch(date) {
+    const walker = new MatcherWalker(this, date, this.timezone);
+    const next = walker.matchNext();
+    return next.toDate();
+  }
+};
+var allowedTransitions = {
+  "stopped": ["stopped", "idle", "destroyed"],
+  "idle": ["idle", "running", "stopped", "destroyed"],
+  "running": ["running", "idle", "stopped", "destroyed"],
+  "destroyed": ["destroyed"]
+};
+var StateMachine = class {
+  state;
+  constructor(initial = "stopped") {
+    this.state = initial;
+  }
+  changeState(state) {
+    if (allowedTransitions[this.state].includes(state)) {
+      this.state = state;
+    } else {
+      throw new Error(`invalid transition from ${this.state} to ${state}`);
+    }
+  }
+};
+var EnvVarRunCoordinator = class {
+  envName;
+  constructor(envName = "NODE_CRON_RUN") {
+    this.envName = envName;
+    this.read();
+  }
+  shouldRun() {
+    return this.read();
+  }
+  read() {
+    const value = process.env[this.envName];
+    if (value !== "true" && value !== "false") {
+      throw new Error(`node-cron: a \`distributed\` task needs ${this.envName} set to 'true' or 'false'. Set it to 'true' on exactly one instance and 'false' on the others, or provide a coordinator via cron.setRunCoordinator(...).`);
+    }
+    return value === "true";
+  }
+};
+var globalRunCoordinator;
+function setRunCoordinator(coordinator) {
+  globalRunCoordinator = coordinator;
+}
+function resolveRunCoordinator(perTask) {
+  return perTask ?? globalRunCoordinator ?? new EnvVarRunCoordinator();
+}
+var TaskEmitter = class extends EventEmitter {
+};
+var InlineScheduledTask = class {
+  emitter;
+  cronExpression;
+  timeMatcher;
+  runner;
+  id;
+  name;
+  stateMachine;
+  timezone;
+  logger;
+  suppressMissedWarning;
+  _lastRun = null;
+  constructor(cronExpression, taskFn, options) {
+    this.emitter = new TaskEmitter();
+    this.cronExpression = cronExpression;
+    this.id = createID();
+    this.name = options?.name || this.id;
+    this.timezone = options?.timezone;
+    this.logger = options?.logger || logger2;
+    this.suppressMissedWarning = options?.suppressMissedWarning || false;
+    this.timeMatcher = new TimeMatcher(cronExpression, options?.timezone);
+    this.stateMachine = new StateMachine();
+    const runnerOptions = {
+      timezone: options?.timezone,
+      noOverlap: options?.noOverlap,
+      maxExecutions: options?.maxExecutions,
+      maxRandomDelay: options?.maxRandomDelay,
+      missedExecutionTolerance: options?.missedExecutionTolerance,
+      logger: this.logger,
+      beforeRun: (date, execution) => {
+        if (execution.reason === "scheduled") {
+          this.changeState("running");
+        }
+        this.emitter.emit("execution:started", this.createContext(date, execution));
+        return true;
+      },
+      onFinished: (date, execution) => {
+        if (execution.reason === "scheduled") {
+          this.changeState("idle");
+        }
+        this.recordLastRun(execution);
+        this.emitter.emit("execution:finished", this.createContext(date, execution));
+        return true;
+      },
+      onError: (date, error, execution) => {
+        this.logger.error(error);
+        this.recordLastRun(execution);
+        this.emitter.emit("execution:failed", this.createContext(date, execution));
+        this.changeState("idle");
+      },
+      onOverlap: (date) => {
+        this.emitter.emit("execution:overlap", this.createContext(date));
+      },
+      onMissedExecution: (date) => {
+        const handled = this.emitter.listenerCount("execution:missed") > 0;
+        if (!this.suppressMissedWarning && !handled) {
+          this.logger.warn(`missed execution at ${date}! Possible blocking IO or high CPU user at the same process used by node-cron.`);
+        }
+        this.emitter.emit("execution:missed", this.createContext(date));
+      },
+      onMaxExecutions: (date) => {
+        this.emitter.emit("execution:maxReached", this.createContext(date));
+        this.destroy();
+      },
+      runCoordinator: options?.distributed ? resolveRunCoordinator(options?.runCoordinator) : void 0,
+      coordinatorKeyPrefix: this.name,
+      coordinatorTtl: options?.distributedLease,
+      onSkipped: (date, reason) => {
+        this.emitter.emit("execution:skipped", this.createContext(date, void 0, reason));
+      }
+    };
+    this.runner = new Runner(this.timeMatcher, (date, execution) => {
+      return taskFn(this.createContext(date, execution));
+    }, runnerOptions);
+  }
+  getNextRun() {
+    if (this.stateMachine.state !== "stopped") {
+      return this.runner.nextRun();
+    }
+    return null;
+  }
+  getNextRuns(count) {
+    const runs = [];
+    let from = /* @__PURE__ */ new Date();
+    for (let i = 0; i < count; i++) {
+      from = this.timeMatcher.getNextMatch(from);
+      runs.push(from);
+    }
+    return runs;
+  }
+  match(date) {
+    return this.timeMatcher.match(date);
+  }
+  msToNext() {
+    const next = this.getNextRun();
+    return next ? next.getTime() - Date.now() : null;
+  }
+  isBusy() {
+    return this.getStatus() === "running";
+  }
+  runsLeft() {
+    if (this.runner.maxExecutions == null)
+      return void 0;
+    return Math.max(0, this.runner.maxExecutions - this.runner.runCount);
+  }
+  getPattern() {
+    return this.cronExpression;
+  }
+  lastRun() {
+    return this._lastRun;
+  }
+  recordLastRun(execution) {
+    const date = execution.finishedAt;
+    const lastRun = { date };
+    if (execution.error) {
+      lastRun.error = execution.error;
+    } else {
+      lastRun.result = execution.result;
+    }
+    this._lastRun = lastRun;
+  }
+  changeState(state) {
+    if (this.runner.isStarted()) {
+      this.stateMachine.changeState(state);
+    }
+  }
+  start() {
+    if (this.runner.isStopped()) {
+      this.runner.start();
+      this.stateMachine.changeState("idle");
+      this.emitter.emit("task:started", this.createContext(/* @__PURE__ */ new Date()));
+    }
+  }
+  stop() {
+    if (this.runner.isStarted()) {
+      this.runner.stop();
+      this.stateMachine.changeState("stopped");
+      this.emitter.emit("task:stopped", this.createContext(/* @__PURE__ */ new Date()));
+    }
+  }
+  getStatus() {
+    return this.stateMachine.state;
+  }
+  destroy() {
+    if (this.stateMachine.state === "destroyed")
+      return;
+    this.stop();
+    this.stateMachine.changeState("destroyed");
+    this.emitter.emit("task:destroyed", this.createContext(/* @__PURE__ */ new Date()));
+  }
+  execute() {
+    return new Promise((resolve2, reject) => {
+      const onFail = (context) => {
+        this.off("execution:finished", onFinished);
+        reject(context.execution?.error);
+      };
+      const onFinished = (context) => {
+        this.off("execution:failed", onFail);
+        resolve2(context.execution?.result);
+      };
+      this.once("execution:finished", onFinished);
+      this.once("execution:failed", onFail);
+      this.runner.execute();
+    });
+  }
+  on(event, fun) {
+    this.emitter.on(event, fun);
+  }
+  off(event, fun) {
+    this.emitter.off(event, fun);
+  }
+  once(event, fun) {
+    this.emitter.once(event, fun);
+  }
+  createContext(executionDate, execution, reason) {
+    const localTime = new LocalizedTime(executionDate, this.timezone);
+    const ctx = {
+      date: localTime.toDate(),
+      dateLocalIso: localTime.toISO(),
+      triggeredAt: /* @__PURE__ */ new Date(),
+      task: this,
+      execution
+    };
+    if (reason)
+      ctx.reason = reason;
+    return ctx;
+  }
+};
+
+// ../../node_modules/.pnpm/node-cron@4.5.0/node_modules/node-cron/dist/node-cron.js
+import path, { resolve, dirname } from "path";
+import { fileURLToPath, pathToFileURL } from "url";
+import { fork } from "child_process";
+import { EventEmitter as EventEmitter2 } from "events";
+var tasks = /* @__PURE__ */ new Map();
+var TaskRegistry = class {
+  add(task) {
+    if (this.has(task.id)) {
+      throw Error(`task ${task.id} already registered!`);
+    }
+    tasks.set(task.id, task);
+    task.on("task:destroyed", () => {
+      this.remove(task);
+    });
+  }
+  get(taskId) {
+    return tasks.get(taskId);
+  }
+  remove(task) {
+    if (this.has(task.id)) {
+      task?.destroy();
+      tasks.delete(task.id);
+    }
+  }
+  all() {
+    return tasks;
+  }
+  has(taskId) {
+    return tasks.has(taskId);
+  }
+  killAll() {
+    tasks.forEach((id) => this.remove(id));
+  }
+};
+var validationRegex = /^(?:\d+|\*|\*\/\d+)$/;
+var ALLOWED_CHARS_REGEX = /^[a-zA-Z0-9-*/,# ]+$/;
+function isValidExpression(expression, min, max) {
+  const options = expression;
+  for (const option of options) {
+    const optionAsInt = parseInt(option, 10);
+    if (!Number.isNaN(optionAsInt) && (optionAsInt < min || optionAsInt > max) || !validationRegex.test(option))
+      return false;
+  }
+  return true;
+}
+function isInvalidSecond(expression) {
+  return !isValidExpression(expression, 0, 59);
+}
+function isInvalidMinute(expression) {
+  return !isValidExpression(expression, 0, 59);
+}
+function isInvalidHour(expression) {
+  return !isValidExpression(expression, 0, 23);
+}
+function isInvalidDayOfMonth(expression) {
+  const days = expression.filter((value) => value !== "L");
+  return !isValidExpression(days, 1, 31);
+}
+function isInvalidMonth(expression) {
+  return !isValidExpression(expression, 1, 12);
+}
+function isInvalidWeekDay(expression) {
+  const days = expression.filter((value) => !isNthWeekdayToken(value) && !/^[0-7]L$/.test(value));
+  return !isValidExpression(days, 0, 7);
+}
+function validateFields(patterns, executablePatterns) {
+  if (isInvalidSecond(executablePatterns[0]))
+    throw new Error(`${patterns[0]} is a invalid expression for second`);
+  if (isInvalidMinute(executablePatterns[1]))
+    throw new Error(`${patterns[1]} is a invalid expression for minute`);
+  if (isInvalidHour(executablePatterns[2]))
+    throw new Error(`${patterns[2]} is a invalid expression for hour`);
+  if (isInvalidDayOfMonth(executablePatterns[3]))
+    throw new Error(`${patterns[3]} is a invalid expression for day of month`);
+  if (isInvalidMonth(executablePatterns[4]))
+    throw new Error(`${patterns[4]} is a invalid expression for month`);
+  if (isInvalidWeekDay(executablePatterns[5]))
+    throw new Error(`${patterns[5]} is a invalid expression for week day`);
+}
+var FIELDS = [
+  { key: "second", label: "second", invalid: isInvalidSecond },
+  { key: "minute", label: "minute", invalid: isInvalidMinute },
+  { key: "hour", label: "hour", invalid: isInvalidHour },
+  { key: "dayOfMonth", label: "day of month", invalid: isInvalidDayOfMonth },
+  { key: "month", label: "month", invalid: isInvalidMonth },
+  { key: "dayOfWeek", label: "week day", invalid: isInvalidWeekDay }
+];
+function validateDetailed$1(pattern) {
+  if (typeof pattern !== "string")
+    return { valid: false, errors: [{ field: "expression", message: "pattern must be a string" }] };
+  if (!ALLOWED_CHARS_REGEX.test(pattern))
+    return { valid: false, errors: [{ field: "expression", value: pattern, message: "pattern includes illegal characters" }] };
+  const raw = pattern.replace(/\s{2,}/g, " ").trim().split(" ");
+  if (raw.length !== 5 && raw.length !== 6)
+    return { valid: false, errors: [{ field: "expression", value: pattern, message: `expected 5 or 6 fields but got ${raw.length}` }] };
+  const patterns = raw.length === 5 ? ["0", ...raw] : raw;
+  const executable = convertExpression(pattern);
+  const errors = [];
+  FIELDS.forEach((f, i) => {
+    if (f.invalid(executable[i]))
+      errors.push({ field: f.key, value: patterns[i], message: `${patterns[i]} is a invalid expression for ${f.label}` });
+  });
+  if (errors.length)
+    return { valid: false, errors };
+  return {
+    valid: true,
+    errors: [],
+    fields: {
+      second: executable[0],
+      minute: executable[1],
+      hour: executable[2],
+      dayOfMonth: executable[3],
+      month: executable[4],
+      dayOfWeek: executable[5]
+    }
+  };
+}
+function parse$1(pattern) {
+  const result = validateDetailed$1(pattern);
+  if (!result.valid)
+    throw new Error(result.errors[0].message);
+  return result.fields;
+}
+function validate$1(pattern) {
+  if (typeof pattern !== "string")
+    throw new TypeError("pattern must be a string!");
+  if (!ALLOWED_CHARS_REGEX.test(pattern))
+    throw new TypeError("pattern includes illegal characters!");
+  const patterns = pattern.split(" ");
+  const executablePatterns = convertExpression(pattern);
+  if (patterns.length === 5)
+    patterns.unshift("0");
+  validateFields(patterns, executablePatterns);
+}
+var daemonPath = resolve(dirname(fileURLToPath(import.meta.url)), "daemon.js");
+var TaskEmitter2 = class extends EventEmitter2 {
+};
+var BackgroundScheduledTask = class {
+  emitter;
+  id;
+  name;
+  cronExpression;
+  taskPath;
+  options;
+  forkProcess;
+  stateMachine;
+  logger;
+  suppressMissedWarning;
+  timeMatcher;
+  runCount;
+  runCoordinator;
+  _lastRun = null;
+  constructor(cronExpression, taskPath, options) {
+    this.cronExpression = cronExpression;
+    this.taskPath = taskPath;
+    this.options = options;
+    this.id = createID();
+    this.name = options?.name || this.id;
+    this.emitter = new TaskEmitter2();
+    this.stateMachine = new StateMachine("stopped");
+    this.timeMatcher = new TimeMatcher(cronExpression, options?.timezone);
+    this.runCount = 0;
+    this.on("execution:started", () => {
+      this.runCount++;
+    });
+    this.on("execution:finished", (context) => {
+      this.recordLastRun(context.execution);
+    });
+    this.on("execution:failed", (context) => {
+      this.recordLastRun(context.execution);
+    });
+    this.logger = options?.logger || logger2;
+    this.suppressMissedWarning = options?.suppressMissedWarning || false;
+    this.runCoordinator = options?.distributed ? resolveRunCoordinator(options?.runCoordinator) : void 0;
+    this.on("task:stopped", () => {
+      this.forkProcess?.kill();
+      this.forkProcess = void 0;
+      this.stateMachine.changeState("stopped");
+    });
+    this.on("task:destroyed", () => {
+      this.forkProcess?.kill();
+      this.forkProcess = void 0;
+      this.stateMachine.changeState("destroyed");
+    });
+  }
+  getNextRun() {
+    if (this.stateMachine.state !== "stopped") {
+      return this.timeMatcher.getNextMatch(/* @__PURE__ */ new Date());
+    }
+    return null;
+  }
+  getNextRuns(count) {
+    const runs = [];
+    let from = /* @__PURE__ */ new Date();
+    for (let i = 0; i < count; i++) {
+      from = this.timeMatcher.getNextMatch(from);
+      runs.push(from);
+    }
+    return runs;
+  }
+  match(date) {
+    return this.timeMatcher.match(date);
+  }
+  msToNext() {
+    const next = this.getNextRun();
+    return next ? next.getTime() - Date.now() : null;
+  }
+  isBusy() {
+    return this.getStatus() === "running";
+  }
+  runsLeft() {
+    if (this.options?.maxExecutions == null)
+      return void 0;
+    return Math.max(0, this.options.maxExecutions - this.runCount);
+  }
+  getPattern() {
+    return this.cronExpression;
+  }
+  lastRun() {
+    return this._lastRun;
+  }
+  recordLastRun(execution) {
+    if (!execution)
+      return;
+    const raw = execution.finishedAt ?? execution.startedAt;
+    const date = raw ? new Date(raw) : /* @__PURE__ */ new Date();
+    const lastRun = { date };
+    if (execution.error) {
+      lastRun.error = execution.error;
+    } else {
+      lastRun.result = execution.result;
+    }
+    this._lastRun = lastRun;
+  }
+  start() {
+    return new Promise((resolve2, reject) => {
+      if (this.forkProcess) {
+        return resolve2(void 0);
+      }
+      const startTimeout = this.options?.startTimeout ?? 5e3;
+      const failStart = (error) => {
+        clearTimeout(timeout);
+        this.forkProcess?.kill();
+        this.forkProcess = void 0;
+        reject(error);
+      };
+      const timeout = setTimeout(() => {
+        failStart(new Error(`Start operation timed out after ${startTimeout}ms. The background task file may have failed to load or taken too long to import; verify it runs on its own and consider increasing the \`startTimeout\` option.`));
+      }, startTimeout);
+      try {
+        this.forkProcess = fork(daemonPath);
+        this.forkProcess.on("error", (err) => {
+          failStart(new Error(`Error on daemon: ${err.message}`));
+        });
+        this.forkProcess.on("exit", (code, signal) => {
+          if (code !== 0 && signal !== "SIGTERM") {
+            const erro = new Error(`node-cron daemon exited with code ${code || signal}`);
+            this.logger.error(erro);
+            failStart(erro);
+          }
+        });
+        this.forkProcess.on("message", (message) => {
+          if (message.type === "coordinator:shouldRun") {
+            void this.handleShouldRun(message);
+            return;
+          }
+          if (message.type === "coordinator:complete") {
+            this.runCoordinator?.onComplete?.(message.key)?.catch?.((err) => this.logger.error("Run coordinator onComplete failed", err));
+            return;
+          }
+          if (message.event === "daemon:error") {
+            failStart(message.jsonError ? deserializeError(message.jsonError) : new Error("Background task failed to start"));
+            return;
+          }
+          if (message.jsonError) {
+            if (message.context?.execution) {
+              message.context.execution.error = deserializeError(message.jsonError);
+              delete message.jsonError;
+            }
+          }
+          if (message.context?.task?.state) {
+            this.stateMachine.changeState(message.context?.task?.state);
+          }
+          if (message.context) {
+            const execution = message.context?.execution;
+            delete execution?.hasError;
+            const context = this.createContext(new Date(message.context.date), execution, message.context.reason);
+            this.logEvent(message.event, context);
+            this.emitter.emit(message.event, context);
+          }
+        });
+        this.once("task:started", () => {
+          this.stateMachine.changeState("idle");
+          clearTimeout(timeout);
+          resolve2(void 0);
+        });
+        this.forkProcess.send({
+          command: "task:start",
+          path: this.taskPath,
+          cron: this.cronExpression,
+          options: serializableOptions(this.options)
+        });
+      } catch (error) {
+        failStart(error);
+      }
+    });
+  }
+  stop() {
+    return new Promise((resolve2, reject) => {
+      if (!this.forkProcess) {
+        return resolve2(void 0);
+      }
+      const timeoutId = setTimeout(() => {
+        clearTimeout(timeoutId);
+        reject(new Error("Stop operation timed out"));
+      }, 5e3);
+      const cleanupAndResolve = () => {
+        clearTimeout(timeoutId);
+        this.off("task:stopped", onStopped);
+        this.forkProcess = void 0;
+        resolve2(void 0);
+      };
+      const onStopped = () => {
+        cleanupAndResolve();
+      };
+      this.once("task:stopped", onStopped);
+      this.forkProcess.send({
+        command: "task:stop"
+      });
+    });
+  }
+  getStatus() {
+    return this.stateMachine.state;
+  }
+  destroy() {
+    return new Promise((resolve2, reject) => {
+      if (!this.forkProcess) {
+        return resolve2(void 0);
+      }
+      const timeoutId = setTimeout(() => {
+        clearTimeout(timeoutId);
+        reject(new Error("Destroy operation timed out"));
+      }, 5e3);
+      const onDestroy = () => {
+        clearTimeout(timeoutId);
+        this.off("task:destroyed", onDestroy);
+        resolve2(void 0);
+      };
+      this.once("task:destroyed", onDestroy);
+      this.forkProcess.send({
+        command: "task:destroy"
+      });
+    });
+  }
+  execute() {
+    return new Promise((resolve2, reject) => {
+      if (!this.forkProcess) {
+        return reject(new Error("Cannot execute background task because it hasn't been started yet. Please initialize the task using the start() method before attempting to execute it."));
+      }
+      let timeoutId;
+      if (typeof this.options?.executeTimeout === "number") {
+        timeoutId = setTimeout(() => {
+          cleanupListeners();
+          reject(new Error("Execution timeout exceeded"));
+        }, this.options.executeTimeout);
+      }
+      const cleanupListeners = () => {
+        if (timeoutId)
+          clearTimeout(timeoutId);
+        this.off("execution:finished", onFinished);
+        this.off("execution:failed", onFail);
+      };
+      const onFinished = (context) => {
+        cleanupListeners();
+        resolve2(context.execution?.result);
+      };
+      const onFail = (context) => {
+        cleanupListeners();
+        reject(context.execution?.error || new Error("Execution failed without specific error"));
+      };
+      this.once("execution:finished", onFinished);
+      this.once("execution:failed", onFail);
+      this.forkProcess.send({
+        command: "task:execute"
+      });
+    });
+  }
+  async handleShouldRun(message) {
+    let allowed = false;
+    let error;
+    try {
+      allowed = this.runCoordinator ? await this.runCoordinator.shouldRun(message.key, message.ttlMs) : false;
+    } catch (err) {
+      error = err?.message ?? String(err);
+    }
+    this.forkProcess?.send({ type: "coordinator:result", reqId: message.reqId, allowed, error });
+  }
+  on(event, fun) {
+    this.emitter.on(event, fun);
+  }
+  off(event, fun) {
+    this.emitter.off(event, fun);
+  }
+  once(event, fun) {
+    this.emitter.once(event, fun);
+  }
+  logEvent(event, context) {
+    switch (event) {
+      case "execution:missed": {
+        const handled = this.emitter.listenerCount("execution:missed") > 0;
+        if (!this.suppressMissedWarning && !handled) {
+          this.logger.warn(`missed execution at ${context.date}! Possible blocking IO or high CPU user at the same process used by node-cron.`);
+        }
+        break;
+      }
+      case "execution:overlap":
+        if (this.options?.noOverlap) {
+          this.logger.warn("task still running, new execution blocked by overlap prevention!");
+        }
+        break;
+      case "execution:failed":
+        if (context.execution?.error) {
+          this.logger.error(context.execution.error);
+        }
+        break;
+    }
+  }
+  createContext(executionDate, execution, reason) {
+    const localTime = new LocalizedTime(executionDate, this.options?.timezone);
+    const ctx = {
+      date: localTime.toDate(),
+      dateLocalIso: localTime.toISO(),
+      triggeredAt: /* @__PURE__ */ new Date(),
+      task: this,
+      execution
+    };
+    if (reason)
+      ctx.reason = reason;
+    return ctx;
+  }
+};
+function serializableOptions(options) {
+  if (!options)
+    return options;
+  const { logger: _logger, runCoordinator: _runCoordinator, ...rest } = options;
+  return rest;
+}
+function deserializeError(str) {
+  const data = JSON.parse(str);
+  const Err = globalThis[data.name] || Error;
+  const err = new Err(data.message);
+  if (data.stack) {
+    err.stack = data.stack;
+  }
+  Object.keys(data).forEach((key) => {
+    if (!["name", "message", "stack"].includes(key)) {
+      err[key] = data[key];
+    }
+  });
+  return err;
+}
+var moduleFilename = fileURLToPath(import.meta.url);
+var registry = new TaskRegistry();
+function schedule(expression, func, options) {
+  const task = createTask(expression, func, options);
+  const started = task.start();
+  if (started && typeof started.catch === "function") {
+    started.catch((error) => {
+      (options?.logger || logger2).error(`Failed to start scheduled task: ${error?.message ?? error}`);
+    });
+  }
+  return task;
+}
+function createTask(expression, func, options) {
+  if (options?.distributed && !options.name) {
+    throw new Error("`distributed` requires a `name` (it forms the coordination key shared across instances).");
+  }
+  let task;
+  if (func instanceof Function) {
+    task = new InlineScheduledTask(expression, func, options);
+  } else {
+    const taskPath = solvePath(func);
+    task = new BackgroundScheduledTask(expression, taskPath, options);
+  }
+  registry.add(task);
+  return task;
+}
+function solvePath(filePath) {
+  if (path.isAbsolute(filePath))
+    return pathToFileURL(filePath).href;
+  if (filePath.startsWith("file://"))
+    return filePath;
+  const stackLines = new Error().stack?.split("\n");
+  if (stackLines) {
+    stackLines?.shift();
+    const callerLine = stackLines?.find((line) => {
+      return line.indexOf(moduleFilename) === -1;
+    });
+    const match = callerLine?.match(/(file:\/\/)?(((\/?)(\w:))?([/\\].+)):\d+:\d+/);
+    if (match) {
+      const dir = `${match[5] ?? ""}${path.dirname(match[6])}`;
+      return pathToFileURL(path.resolve(dir, filePath)).href;
+    }
+  }
+  throw new Error(`Could not locate task file ${filePath}`);
+}
+function validate(expression) {
+  try {
+    validate$1(expression);
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+var validateDetailed = validateDetailed$1;
+var parse = parse$1;
+var getTasks = registry.all;
+var getTask = registry.get;
+var nodeCron = {
+  schedule,
+  createTask,
+  validate,
+  validateDetailed,
+  parse,
+  getTasks,
+  getTask,
+  setLogger,
+  setRunCoordinator
+};
+
+// src/lib/cronReports.ts
+import { cert, getApp, getApps, initializeApp } from "firebase-admin/app";
+import { getFirestore } from "firebase-admin/firestore";
+function getAdminDb() {
+  if (getApps().length === 0) {
+    const sa = process.env["FIREBASE_SERVICE_ACCOUNT"];
+    if (!sa) {
+      logger.warn("[CronReports] FIREBASE_SERVICE_ACCOUNT env var not set \u2014 cron disabled");
+      return null;
+    }
+    try {
+      initializeApp({ credential: cert(JSON.parse(sa)) });
+    } catch (e) {
+      logger.error({ err: e }, "[CronReports] Firebase Admin init failed");
+      return null;
+    }
+  }
+  return getFirestore(getApp());
+}
+function daysInMonth(month, year) {
+  return new Date(year, month, 0).getDate();
+}
+function padDate(n) {
+  return String(n).padStart(2, "0");
+}
+function isLastDayOfMonth() {
+  const istNow = new Date(Date.now() + 5.5 * 60 * 60 * 1e3);
+  const y = istNow.getUTCFullYear();
+  const m = istNow.getUTCMonth() + 1;
+  const d = istNow.getUTCDate();
+  return d === daysInMonth(m, y);
+}
+function getISTDate() {
+  const istNow = new Date(Date.now() + 5.5 * 60 * 60 * 1e3);
+  return { year: istNow.getUTCFullYear(), month: istNow.getUTCMonth() + 1 };
+}
+async function generateMonthlyReport() {
+  const db = getAdminDb();
+  if (!db) return;
+  if (!isLastDayOfMonth()) {
+    logger.info("[CronReports] Not last day of month \u2014 skipping");
+    return;
+  }
+  const { year, month } = getISTDate();
+  const mm = padDate(month);
+  const startDate = `${year}-${mm}-01`;
+  const totalDays = daysInMonth(month, year);
+  const endDate = `${year}-${mm}-${padDate(totalDays)}`;
+  const reportId = `RPT-M-${year}-${mm}-AUTO`;
+  logger.info(`[CronReports] Generating monthly report ${reportId} for ${startDate} \u2192 ${endDate}`);
+  try {
+    const existing = await db.collection("reportHistory").doc(reportId).get();
+    if (existing.exists) {
+      logger.info(`[CronReports] Report ${reportId} already exists \u2014 skipping`);
+      return;
+    }
+    const [housesSnap, houseVisitsSnap, wardsSnap, recipientsSnap] = await Promise.all([
+      db.collection("houses").get(),
+      db.collection("houseVisits").where("visitDate", ">=", startDate).where("visitDate", "<=", endDate).get(),
+      db.collection("wards").get(),
+      db.collection("settings").doc("reportRecipients").get()
+    ]);
+    const houses = housesSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
+    const houseVisits = houseVisitsSnap.docs.map((d) => d.data());
+    const dayHeaders = Array.from({ length: totalDays }, (_, i) => i + 1);
+    const rows = houses.map((house, idx) => {
+      const visits = houseVisits.filter((v) => v.houseId === house.id);
+      const dailyStatus = {};
+      let totalPresent = 0, totalAbsent = 0, totalLate = 0;
+      for (const day of dayHeaders) {
+        const dateStr = `${year}-${mm}-${padDate(day)}`;
+        const visit = visits.find((v) => v.visitDate === dateStr);
+        let status = "N";
+        if (visit && visit.collectedGarbage) {
+          status = visit.isLate ? "L" : "P";
+        }
+        dailyStatus[day] = status;
+        if (status === "P") totalPresent++;
+        else if (status === "L") {
+          totalLate++;
+          totalPresent++;
+        } else totalAbsent++;
+      }
+      const pct = dayHeaders.length > 0 ? (totalPresent / dayHeaders.length * 100).toFixed(2) + "%" : "0%";
+      return {
+        sNo: idx + 1,
+        houseId: house.id,
+        houseRegNo: house.registrationNumber ?? "",
+        wardNo: house.wardNumber ?? "",
+        dailyStatus,
+        totalPresent,
+        totalAbsent,
+        totalLate,
+        totalDays: dayHeaders.length,
+        percentage: pct
+      };
+    });
+    const MONTH_NAMES = [
+      "January",
+      "February",
+      "March",
+      "April",
+      "May",
+      "June",
+      "July",
+      "August",
+      "September",
+      "October",
+      "November",
+      "December"
+    ];
+    const report = {
+      id: reportId,
+      type: "monthly",
+      label: `${MONTH_NAMES[month - 1]} ${year} (Auto)`,
+      year,
+      month,
+      wardId: null,
+      wardNumber: null,
+      generatedAt: (/* @__PURE__ */ new Date()).toISOString(),
+      generatedBy: "auto",
+      rowCount: rows.length,
+      rows,
+      daysInPeriod: totalDays,
+      dayHeaders
+    };
+    await db.collection("reportHistory").doc(reportId).set(report);
+    const recipientIds = recipientsSnap.exists ? recipientsSnap.data()?.userIds ?? [] : [];
+    if (recipientIds.length > 0) {
+      const totP = rows.reduce((a, r) => a + r.totalPresent, 0);
+      const totN = rows.reduce((a, r) => a + r.totalAbsent, 0);
+      await db.collection("reportDistributions").doc(reportId).set({
+        reportId,
+        label: report.label,
+        type: "monthly",
+        year,
+        month,
+        rowCount: rows.length,
+        collected: totP,
+        missed: totN,
+        sentAt: (/* @__PURE__ */ new Date()).toISOString(),
+        recipients: recipientIds,
+        autoGenerated: true
+      });
+    }
+    logger.info(`[CronReports] \u2705 Report ${reportId} saved \u2014 ${rows.length} houses, ${recipientIds.length} recipients`);
+  } catch (e) {
+    logger.error({ err: e }, `[CronReports] \u274C Failed to generate report ${reportId}`);
+  }
+}
+function startCronJobs() {
+  const sa = process.env["FIREBASE_SERVICE_ACCOUNT"];
+  if (!sa) {
+    logger.warn("[CronReports] FIREBASE_SERVICE_ACCOUNT not set \u2014 auto report cron disabled. Set this secret to enable.");
+    return;
+  }
+  nodeCron.schedule("0 30 15 28-31 * *", () => {
+    logger.info("[CronReports] Cron triggered \u2014 checking if last day of month...");
+    generateMonthlyReport().catch((e) => logger.error({ err: e }, "[CronReports] Unhandled error"));
+  }, { timezone: "UTC" });
+  logger.info("[CronReports] Monthly auto-report cron scheduled (9 PM IST / 3:30 PM UTC, last day of month)");
+}
+
 // src/index.ts
 var rawPort = process.env["PORT"];
 if (!rawPort) {
@@ -32528,6 +34290,7 @@ app_default.listen(port, (err) => {
     process.exit(1);
   }
   logger.info({ port }, "Server listening");
+  startCronJobs();
 });
 /*! Bundled license information:
 
