@@ -578,7 +578,7 @@ export default function AdminReports() {
       // ── Load logo as base64 for PDF ────────────────────────────────
       let logoDataUri = '';
       try {
-        const asset = Asset.fromModule(require('../../assets/dnp360-logo-transparent.png'));
+        const asset = Asset.fromModule(require('../../assets/dnp360-logo-pdf.png'));
         await asset.downloadAsync();
         if (asset.localUri) {
           const b64 = await FileSystem.readAsStringAsync(asset.localUri, { encoding: FileSystem.EncodingType.Base64 });
