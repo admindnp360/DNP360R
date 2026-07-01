@@ -412,13 +412,13 @@ export default function AdminUsers() {
           <TouchableOpacity onPress={exitSel} style={{ width: 28, height: 28, borderRadius: 8, backgroundColor: 'rgba(255,255,255,0.07)', justifyContent: 'center', alignItems: 'center' }}>
             <Feather name="x" size={14} color={MUTED} />
           </TouchableOpacity>
-          <Text style={{ fontSize: 13, fontFamily: 'Inter_700Bold', color: TEXT }}>{selIds.length} selected</Text>
+          <Text style={{ fontSize: 15, fontFamily: 'Inter_700Bold', color: TEXT }}>{selIds.length} selected</Text>
           <TouchableOpacity
             onPress={() => selIds.length === tabList.length ? setSelIds([]) : setSelIds(tabList.map(u => u.id))}
             style={{ flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 9, paddingVertical: 4, borderRadius: 9, backgroundColor: 'rgba(99,102,241,0.12)', borderWidth: 1, borderColor: 'rgba(99,102,241,0.28)' }}
           >
             <Feather name={selIds.length === tabList.length ? 'check-square' : 'square'} size={11} color="#818CF8" />
-            <Text style={{ color: '#818CF8', fontSize: 11, fontFamily: 'Inter_600SemiBold' }}>{selIds.length === tabList.length ? 'Deselect All' : 'Select All'}</Text>
+            <Text style={{ color: '#818CF8', fontSize: 13, fontFamily: 'Inter_600SemiBold' }}>{selIds.length === tabList.length ? 'Deselect All' : 'Select All'}</Text>
           </TouchableOpacity>
           <View style={{ flex: 1 }} />
           <TouchableOpacity
@@ -427,7 +427,7 @@ export default function AdminUsers() {
             style={{ flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 9, paddingVertical: 5, borderRadius: 9, backgroundColor: 'rgba(251,191,36,0.12)', borderWidth: 1, borderColor: 'rgba(251,191,36,0.28)' }}
           >
             <Feather name="lock" size={11} color="#FBBF24" />
-            <Text style={{ color: '#FBBF24', fontSize: 11, fontFamily: 'Inter_600SemiBold' }}>Freeze</Text>
+            <Text style={{ color: '#FBBF24', fontSize: 13, fontFamily: 'Inter_600SemiBold' }}>Freeze</Text>
           </TouchableOpacity>
           <TouchableOpacity
             onPress={handleBulkDelete}
@@ -435,7 +435,7 @@ export default function AdminUsers() {
             style={{ flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 9, paddingVertical: 5, borderRadius: 9, backgroundColor: 'rgba(239,68,68,0.12)', borderWidth: 1, borderColor: 'rgba(239,68,68,0.28)' }}
           >
             <Feather name="trash-2" size={11} color="#EF4444" />
-            <Text style={{ color: '#EF4444', fontSize: 11, fontFamily: 'Inter_600SemiBold' }}>Delete</Text>
+            <Text style={{ color: '#EF4444', fontSize: 13, fontFamily: 'Inter_600SemiBold' }}>Delete</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -578,7 +578,7 @@ export default function AdminUsers() {
               <Feather name="x" size={18} color="#fff" />
             </Pressable>
             <View style={{ flex: 1, alignItems: 'center' }}>
-              <Text style={{ color: '#fff', fontSize: 17, fontFamily: 'Inter_700Bold', textAlign: 'center' }}>Create New User</Text>
+              <Text style={{ color: '#fff', fontSize: 20, fontFamily: 'Inter_700Bold', textAlign: 'center' }}>Create New User</Text>
               <Text style={s.modalHdrSub}>Provision a staff or citizen account</Text>
             </View>
             <View style={{ width: 34 }} />
@@ -805,7 +805,7 @@ export default function AdminUsers() {
                               <View style={{ gap: 8 }}>
                                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: 'rgba(192,132,252,0.08)', borderRadius: 12, borderWidth: 1, borderColor: 'rgba(192,132,252,0.22)', paddingHorizontal: 14, paddingVertical: 11 }}>
                                   <Feather name="key" size={14} color="#C084FC" />
-                                  <Text style={{ color: '#C084FC', fontSize: 13, fontFamily: 'Inter_700Bold', letterSpacing: 1.5, flex: 1 }}>{userKey.code}</Text>
+                                  <Text style={{ color: '#C084FC', fontSize: 15, fontFamily: 'Inter_700Bold', letterSpacing: 1.5, flex: 1 }}>{userKey.code}</Text>
                                   <TouchableOpacity onPress={async () => { await Clipboard.setStringAsync(userKey.code); setCopiedId('editkey_' + profileUser.id); setTimeout(() => setCopiedId(null), 1400); }} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}>
                                     <Feather name={copiedId === 'editkey_' + profileUser.id ? 'check' : 'copy'} size={13} color={copiedId === 'editkey_' + profileUser.id ? '#34D399' : MUTED} />
                                   </TouchableOpacity>
@@ -813,7 +813,7 @@ export default function AdminUsers() {
                                 <TouchableOpacity onPress={() => handleRegenerateKey(profileUser)} activeOpacity={0.85}>
                                   <LinearGradient colors={['#7C3AED','#6D28D9']} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, borderRadius: 12, paddingVertical: 12 }}>
                                     <Feather name="refresh-cw" size={14} color="#fff" />
-                                    <Text style={{ color: '#fff', fontSize: 13, fontFamily: 'Inter_700Bold' }}>Regenerate Key</Text>
+                                    <Text style={{ color: '#fff', fontSize: 15, fontFamily: 'Inter_700Bold' }}>Regenerate Key</Text>
                                   </LinearGradient>
                                 </TouchableOpacity>
                               </View>
@@ -824,7 +824,7 @@ export default function AdminUsers() {
                               }} activeOpacity={0.85}>
                                 <LinearGradient colors={['#059669','#047857']} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, borderRadius: 12, paddingVertical: 12 }}>
                                   <Feather name="key" size={14} color="#fff" />
-                                  <Text style={{ color: '#fff', fontSize: 13, fontFamily: 'Inter_700Bold' }}>Assign Secret Key</Text>
+                                  <Text style={{ color: '#fff', fontSize: 15, fontFamily: 'Inter_700Bold' }}>Assign Secret Key</Text>
                                 </LinearGradient>
                               </TouchableOpacity>
                             )}
@@ -863,7 +863,7 @@ export default function AdminUsers() {
                                   <Feather name="refresh-cw" size={18} color="#C084FC" />
                                   <View style={{ flex: 1 }}>
                                     <Text style={[s.actionCardText, { color: '#C084FC' }]}>Regenerate Secret Key</Text>
-                                    <Text style={{ color: 'rgba(192,132,252,0.6)', fontSize: 10, fontFamily: 'Inter_500Medium', marginTop: 2 }}>{userKey.code}</Text>
+                                    <Text style={{ color: 'rgba(192,132,252,0.6)', fontSize: 12, fontFamily: 'Inter_500Medium', marginTop: 2 }}>{userKey.code}</Text>
                                   </View>
                                 </TouchableOpacity>
                               );
@@ -880,7 +880,7 @@ export default function AdminUsers() {
                                 <Feather name="key" size={18} color="#34D399" />
                                 <View style={{ flex: 1 }}>
                                   <Text style={[s.actionCardText, { color: '#34D399' }]}>Assign Secret Key</Text>
-                                  <Text style={{ color: 'rgba(52,211,153,0.6)', fontSize: 10, fontFamily: 'Inter_500Medium', marginTop: 2 }}>No key assigned yet — tap to generate one</Text>
+                                  <Text style={{ color: 'rgba(52,211,153,0.6)', fontSize: 12, fontFamily: 'Inter_500Medium', marginTop: 2 }}>No key assigned yet — tap to generate one</Text>
                                 </View>
                               </TouchableOpacity>
                             );
@@ -939,8 +939,8 @@ function InfoPill({ icon, label, value, color }: { icon: string; label: string; 
 }
 const ip = StyleSheet.create({
   wrap: { alignItems: 'center', flex: 1, gap: 1 },
-  val:  { fontSize: 15, fontFamily: 'Inter_700Bold', lineHeight: 18 },
-  lbl:  { fontSize: 9, fontFamily: 'Inter_500Medium', color: MUTED, letterSpacing: 0.3 },
+  val:  { fontSize: 17, fontFamily: 'Inter_700Bold', lineHeight: 18 },
+  lbl:  { fontSize: 10, fontFamily: 'Inter_500Medium', color: MUTED, letterSpacing: 0.3 },
 });
 
 function SectionHeading({ icon, label, color }: { icon: string; label: string; color: string }) {
@@ -954,7 +954,7 @@ function SectionHeading({ icon, label, color }: { icon: string; label: string; c
 }
 const sh = StyleSheet.create({
   wrap:  { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 },
-  label: { fontSize: 10, fontFamily: 'Inter_700Bold', letterSpacing: 0.5, textTransform: 'uppercase' },
+  label: { fontSize: 12, fontFamily: 'Inter_700Bold', letterSpacing: 0.5, textTransform: 'uppercase' },
   line:  { flex: 1, height: 1 },
 });
 
@@ -990,8 +990,8 @@ const ir = StyleSheet.create({
   row:     { flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: 12, borderWidth: 1, padding: 12 },
   iconBox: { width: 34, height: 34, borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
   copyHint:{ width: 26, height: 26, borderRadius: 8, justifyContent: 'center', alignItems: 'center', backgroundColor: GLASS },
-  label:   { fontSize: 10, fontFamily: 'Inter_500Medium', marginBottom: 2 },
-  value:   { fontSize: 14, lineHeight: 19 },
+  label:   { fontSize: 12, fontFamily: 'Inter_500Medium', marginBottom: 2 },
+  value:   { fontSize: 16, lineHeight: 19 },
 });
 
 function EditField({
@@ -1018,9 +1018,9 @@ function EditField({
   );
 }
 const ef = StyleSheet.create({
-  label: { fontSize: 10, fontFamily: 'Inter_600SemiBold', color: MUTED, marginBottom: 5 },
+  label: { fontSize: 12, fontFamily: 'Inter_600SemiBold', color: MUTED, marginBottom: 5 },
   row:   { flexDirection: 'row', alignItems: 'center', gap: 10, borderRadius: 12, borderWidth: 1.5, paddingHorizontal: 13, paddingVertical: 2, backgroundColor: GLASS },
-  input: { flex: 1, fontSize: 14, fontFamily: 'Inter_400Regular', paddingVertical: 12, color: TEXT },
+  input: { flex: 1, fontSize: 16, fontFamily: 'Inter_400Regular', paddingVertical: 12, color: TEXT },
 });
 
 /* ── main styles ──────────────────────────────────────────────── */
@@ -1038,23 +1038,23 @@ const s = StyleSheet.create({
   infoDivider: { width: 1, height: 28, backgroundColor: GLASS_BD, marginHorizontal: 2 },
   syncPill: { flex: 1, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 4 },
   syncDot:  { width: 6, height: 6, borderRadius: 3, backgroundColor: '#10B981' },
-  syncText: { fontSize: 10, fontFamily: 'Inter_700Bold', color: '#10B981', letterSpacing: 0.3 },
+  syncText: { fontSize: 12, fontFamily: 'Inter_700Bold', color: '#10B981', letterSpacing: 0.3 },
 
   /* search — 30% compact */
   searchWrap: { paddingHorizontal: 12, paddingTop: 8, paddingBottom: 7, gap: 6, borderBottomWidth: 1, borderBottomColor: GLASS_BD },
   searchBox:  { flexDirection: 'row', alignItems: 'center', gap: 8, borderRadius: 12, borderWidth: 1, borderColor: GLASS_BD, backgroundColor: GLASS, paddingHorizontal: 12, paddingVertical: 9 },
-  searchInput:{ flex: 1, fontSize: 13, fontFamily: 'Inter_400Regular', color: TEXT, padding: 0 },
+  searchInput:{ flex: 1, fontSize: 15, fontFamily: 'Inter_400Regular', color: TEXT, padding: 0 },
 
   /* filters — 30% compact */
   filterRow:      { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 4 },
   filterGroup:    { flexDirection: 'row', alignItems: 'center', gap: 3 },
   filterChip:     { flexDirection: 'row', alignItems: 'center', gap: 3, borderRadius: 99, borderWidth: 1, paddingHorizontal: 6, paddingVertical: 3 },
-  filterChipText: { fontSize: 9, fontFamily: 'Inter_600SemiBold' },
+  filterChipText: { fontSize: 10, fontFamily: 'Inter_600SemiBold' },
   filterDot:      { width: 4, height: 4, borderRadius: 2 },
   filterResultRow:{ flexDirection: 'row', alignItems: 'center', gap: 4, marginLeft: 'auto' },
-  filterCount:    { fontSize: 9, fontFamily: 'Inter_600SemiBold' },
+  filterCount:    { fontSize: 10, fontFamily: 'Inter_600SemiBold' },
   clearAllBtn:    { flexDirection: 'row', alignItems: 'center', gap: 3, borderRadius: 99, borderWidth: 1, paddingHorizontal: 6, paddingVertical: 2 },
-  clearAllText:   { fontSize: 8, fontFamily: 'Inter_600SemiBold' },
+  clearAllText:   { fontSize: 9, fontFamily: 'Inter_600SemiBold' },
 
   /* tabs — 30% compact */
   tabRow:  { flexDirection: 'row', gap: 4, paddingHorizontal: 9, paddingVertical: 7, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.08)', borderBottomWidth: 1, borderBottomColor: 'rgba(0,0,0,0.3)', backgroundColor: 'rgba(255,255,255,0.03)' },
@@ -1065,125 +1065,125 @@ const s = StyleSheet.create({
     borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.20)',
     borderBottomWidth: 1, borderBottomColor: 'rgba(0,0,0,0.28)',
   },
-  tabLabelActive:  { color: '#fff', fontSize: 8, fontFamily: 'Inter_700Bold' },
+  tabLabelActive:  { color: '#fff', fontSize: 9, fontFamily: 'Inter_700Bold' },
   tabCountBubble:  { backgroundColor: 'rgba(255,255,255,0.28)', borderRadius: 99, paddingHorizontal: 3, paddingVertical: 1 },
-  tabCountText:    { color: '#fff', fontSize: 7, fontFamily: 'Inter_700Bold' },
+  tabCountText:    { color: '#fff', fontSize: 8, fontFamily: 'Inter_700Bold' },
   tabPillInactive: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
     gap: 3, borderRadius: 99, paddingVertical: 5, paddingHorizontal: 3,
     borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', backgroundColor: 'rgba(255,255,255,0.04)',
   },
-  tabLabelInactive: { fontSize: 8, fontFamily: 'Inter_500Medium', color: MUTED },
-  tabCountInactive: { fontSize: 7, fontFamily: 'Inter_600SemiBold', color: MUTED },
+  tabLabelInactive: { fontSize: 9, fontFamily: 'Inter_500Medium', color: MUTED },
+  tabCountInactive: { fontSize: 8, fontFamily: 'Inter_600SemiBold', color: MUTED },
 
   /* table */
   tableHead: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 7, borderTopWidth: 1, borderTopColor: 'rgba(99,102,241,0.15)', borderBottomWidth: 1, borderBottomColor: 'rgba(0,0,0,0.25)', backgroundColor: 'rgba(99,102,241,0.07)' },
-  thNo:   { width: 30, fontSize: 9, fontFamily: 'Inter_700Bold', color: '#818CF8', textTransform: 'uppercase', letterSpacing: 0.4 },
-  thName: { flex: 1,   fontSize: 9, fontFamily: 'Inter_700Bold', color: '#818CF8', textTransform: 'uppercase', letterSpacing: 0.4 },
-  thRole: { width: 46, fontSize: 9, fontFamily: 'Inter_700Bold', color: '#818CF8', textTransform: 'uppercase', letterSpacing: 0.4, marginRight: 4, textAlign: 'center' },
-  thCode: { width: 76, fontSize: 9, fontFamily: 'Inter_700Bold', color: '#818CF8', textTransform: 'uppercase', letterSpacing: 0.4, marginRight: 4 },
-  thActs: { width: 57, fontSize: 9, fontFamily: 'Inter_700Bold', color: '#818CF8', textTransform: 'uppercase', letterSpacing: 0.4, textAlign: 'center' },
+  thNo:   { width: 30, fontSize: 10, fontFamily: 'Inter_700Bold', color: '#818CF8', textTransform: 'uppercase', letterSpacing: 0.4 },
+  thName: { flex: 1,   fontSize: 10, fontFamily: 'Inter_700Bold', color: '#818CF8', textTransform: 'uppercase', letterSpacing: 0.4 },
+  thRole: { width: 46, fontSize: 10, fontFamily: 'Inter_700Bold', color: '#818CF8', textTransform: 'uppercase', letterSpacing: 0.4, marginRight: 4, textAlign: 'center' },
+  thCode: { width: 76, fontSize: 10, fontFamily: 'Inter_700Bold', color: '#818CF8', textTransform: 'uppercase', letterSpacing: 0.4, marginRight: 4 },
+  thActs: { width: 57, fontSize: 10, fontFamily: 'Inter_700Bold', color: '#818CF8', textTransform: 'uppercase', letterSpacing: 0.4, textAlign: 'center' },
 
   tableRow:    { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 7, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: GLASS_BD },
-  tdNo:        { width: 26, fontSize: 10, fontFamily: 'Inter_500Medium', color: MUTED },
+  tdNo:        { width: 26, fontSize: 12, fontFamily: 'Inter_500Medium', color: MUTED },
   tdNameCell:  { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 7, paddingRight: 4 },
   rowAvatar:     { width: 28, height: 28, borderRadius: 14 },
   rowAvatarGrad: { width: 28, height: 28, borderRadius: 14, justifyContent: 'center', alignItems: 'center' },
-  rowAvatarLetter: { color: '#fff', fontSize: 11, fontFamily: 'Inter_700Bold' },
-  tdName:    { fontSize: 11, fontFamily: 'Inter_600SemiBold', color: TEXT },
+  rowAvatarLetter: { color: '#fff', fontSize: 13, fontFamily: 'Inter_700Bold' },
+  tdName:    { fontSize: 13, fontFamily: 'Inter_600SemiBold', color: TEXT },
   statusRow: { flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 1 },
   statusDot: { width: 4, height: 4, borderRadius: 2 },
-  statusLabel: { fontSize: 8, fontFamily: 'Inter_600SemiBold' },
-  empIdLabel:  { fontSize: 8, fontFamily: 'Inter_400Regular', color: MUTED, marginLeft: 1 },
+  statusLabel: { fontSize: 9, fontFamily: 'Inter_600SemiBold' },
+  empIdLabel:  { fontSize: 9, fontFamily: 'Inter_400Regular', color: MUTED, marginLeft: 1 },
   tdRoleCell:  { width: 46, alignItems: 'center', marginRight: 4 },
   rolePill:    { borderRadius: 6, paddingHorizontal: 5, paddingVertical: 2 },
-  rolePillText:{ fontSize: 8, fontFamily: 'Inter_700Bold', color: '#fff', letterSpacing: 0.3 },
+  rolePillText:{ fontSize: 9, fontFamily: 'Inter_700Bold', color: '#fff', letterSpacing: 0.3 },
   tdCodeCell:  { width: 76, alignItems: 'flex-start', marginRight: 4 },
   codePill:    { borderRadius: 6, paddingHorizontal: 5, paddingVertical: 2, maxWidth: 74 },
-  codeText:    { fontSize: 8, fontFamily: 'Inter_700Bold', letterSpacing: 0.4 },
+  codeText:    { fontSize: 9, fontFamily: 'Inter_700Bold', letterSpacing: 0.4 },
   rowActions:  { flexDirection: 'row', gap: 5, alignItems: 'center' },
   rowActionBtn:{ width: 26, height: 26, borderRadius: 8, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(129,140,248,0.12)', borderWidth: 1, borderColor: 'rgba(129,140,248,0.25)' },
 
   /* empty */
   emptyWrap:  { margin: 24, borderRadius: 18, borderWidth: 1, borderTopColor: 'rgba(255,255,255,0.16)', borderLeftColor: 'rgba(255,255,255,0.08)', borderRightColor: 'rgba(255,255,255,0.04)', borderBottomColor: 'rgba(0,0,0,0.3)', padding: 36, alignItems: 'center', gap: 12, backgroundColor: GLASS },
   emptyIcon:  { width: 52, height: 52, borderRadius: 16, justifyContent: 'center', alignItems: 'center' },
-  emptyTitle: { fontSize: 15, fontFamily: 'Inter_700Bold', color: TEXT },
-  emptyHint:  { fontSize: 12, fontFamily: 'Inter_400Regular', color: MUTED },
+  emptyTitle: { fontSize: 17, fontFamily: 'Inter_700Bold', color: TEXT },
+  emptyHint:  { fontSize: 14, fontFamily: 'Inter_400Regular', color: MUTED },
 
   /* modal */
   modalHdr:      { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingVertical: 14 },
   modalBack:     { width: 34, height: 34, borderRadius: 17, backgroundColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center' },
-  modalHdrTitle: { flex: 1, color: '#fff', fontSize: 17, fontFamily: 'Inter_700Bold' },
+  modalHdrTitle: { flex: 1, color: '#fff', fontSize: 20, fontFamily: 'Inter_700Bold' },
   modalEditBtn:  { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6 },
-  modalEditBtnText: { color: '#fff', fontSize: 11, fontFamily: 'Inter_600SemiBold' },
+  modalEditBtnText: { color: '#fff', fontSize: 13, fontFamily: 'Inter_600SemiBold' },
 
   /* avatar section */
   avatarSection:     { alignItems: 'center', paddingVertical: 22, gap: 10 },
   avatarWrap:        { position: 'relative' },
   profileAvatar:     { width: 86, height: 86, borderRadius: 43, justifyContent: 'center', alignItems: 'center' },
-  profileAvatarLetter: { color: '#fff', fontSize: 34, fontFamily: 'Inter_700Bold' },
+  profileAvatarLetter: { color: '#fff', fontSize: 39, fontFamily: 'Inter_700Bold' },
   cameraBtn:         { position: 'absolute', bottom: 0, right: 0 },
   cameraBtnGrad:     { width: 26, height: 26, borderRadius: 13, justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: BG },
-  profileName:       { fontSize: 19, fontFamily: 'Inter_700Bold', textAlign: 'center', color: TEXT },
+  profileName:       { fontSize: 22, fontFamily: 'Inter_700Bold', textAlign: 'center', color: TEXT },
   profileRolePill:   { paddingHorizontal: 14, paddingVertical: 4, borderRadius: 99 },
-  profileRoleText:   { color: '#fff', fontSize: 11, fontFamily: 'Inter_700Bold' },
+  profileRoleText:   { color: '#fff', fontSize: 13, fontFamily: 'Inter_700Bold' },
   profileStatusPill: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 5, borderRadius: 99, borderWidth: 1 },
   profileStatusDot:  { width: 6, height: 6, borderRadius: 3 },
-  profileStatusText: { fontSize: 11, fontFamily: 'Inter_600SemiBold' },
+  profileStatusText: { fontSize: 13, fontFamily: 'Inter_600SemiBold' },
 
   /* key card */
   keyCard:     { flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: 14, borderWidth: 1, padding: 14 },
   keyIconBox:  { width: 38, height: 38, borderRadius: 11, justifyContent: 'center', alignItems: 'center' },
-  keyCardCode: { fontSize: 15, fontFamily: 'Inter_700Bold', color: '#A78BFA', letterSpacing: 1.5 },
-  keyCardMeta: { fontSize: 10, fontFamily: 'Inter_400Regular', marginTop: 2, color: MUTED },
+  keyCardCode: { fontSize: 17, fontFamily: 'Inter_700Bold', color: '#A78BFA', letterSpacing: 1.5 },
+  keyCardMeta: { fontSize: 12, fontFamily: 'Inter_400Regular', marginTop: 2, color: MUTED },
   keyStatusPill: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 99 },
   keyStatusDot:  { width: 5, height: 5, borderRadius: 3 },
-  keyStatusText: { fontSize: 9, fontFamily: 'Inter_700Bold' },
+  keyStatusText: { fontSize: 10, fontFamily: 'Inter_700Bold' },
 
   /* key edit */
   keyInfoBox:  { flexDirection: 'row', alignItems: 'center', gap: 8, borderRadius: 10, borderWidth: 1, padding: 12 },
-  keyInfoText: { fontSize: 12, fontFamily: 'Inter_500Medium', color: '#A78BFA', flex: 1 },
+  keyInfoText: { fontSize: 14, fontFamily: 'Inter_500Medium', color: '#A78BFA', flex: 1 },
   keyInfoCode: { fontFamily: 'Inter_700Bold', letterSpacing: 1 },
   editRow:     { flexDirection: 'row', alignItems: 'center', gap: 10, borderRadius: 12, borderWidth: 1.5, paddingHorizontal: 13, backgroundColor: GLASS },
-  editInput:   { flex: 1, fontSize: 14, paddingVertical: 12, color: TEXT },
+  editInput:   { flex: 1, fontSize: 16, paddingVertical: 12, color: TEXT },
   keyWarnBox:  { flexDirection: 'row', alignItems: 'flex-start', gap: 7, backgroundColor: '#D9770610', borderRadius: 10, borderWidth: 1, borderColor: '#D9770625', padding: 10 },
-  keyWarnText: { color: '#D97706', fontSize: 11, fontFamily: 'Inter_400Regular', flex: 1, lineHeight: 16 },
+  keyWarnText: { color: '#D97706', fontSize: 13, fontFamily: 'Inter_400Regular', flex: 1, lineHeight: 16 },
   assignKeyBtn:     { borderRadius: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 13 },
-  assignKeyBtnText: { color: '#fff', fontSize: 14, fontFamily: 'Inter_700Bold' },
+  assignKeyBtnText: { color: '#fff', fontSize: 16, fontFamily: 'Inter_700Bold' },
   newKeyReveal:    { flexDirection: 'row', alignItems: 'center', gap: 10, borderRadius: 12, borderWidth: 1, padding: 12 },
-  newKeyRevealTxt: { flex: 1, fontSize: 14, fontFamily: 'Inter_700Bold', letterSpacing: 1.5 },
-  newKeyRevealHint:{ fontSize: 10, fontFamily: 'Inter_400Regular', color: MUTED },
+  newKeyRevealTxt: { flex: 1, fontSize: 16, fontFamily: 'Inter_700Bold', letterSpacing: 1.5 },
+  newKeyRevealHint:{ fontSize: 12, fontFamily: 'Inter_400Regular', color: MUTED },
 
   /* actions */
   actionsGrid:  { flexDirection: 'row', gap: 12 },
   actionCard:   { borderRadius: 14, padding: 16, alignItems: 'center', gap: 8, borderWidth: 1 },
-  actionCardText: { fontSize: 12, fontFamily: 'Inter_700Bold', textAlign: 'center' },
+  actionCardText: { fontSize: 14, fontFamily: 'Inter_700Bold', textAlign: 'center' },
 
   /* protected */
   protectedNote: { flexDirection: 'row', alignItems: 'center', gap: 10, borderRadius: 12, borderWidth: 1, padding: 14 },
   protectedIcon: { width: 34, height: 34, borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
-  protectedText: { flex: 1, fontSize: 12, fontFamily: 'Inter_500Medium', color: '#A78BFA', lineHeight: 18 },
+  protectedText: { flex: 1, fontSize: 14, fontFamily: 'Inter_500Medium', color: '#A78BFA', lineHeight: 18 },
 
   /* save */
   saveBtn:     { borderRadius: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 15 },
-  saveBtnText: { color: '#fff', fontSize: 14, fontFamily: 'Inter_700Bold' },
+  saveBtnText: { color: '#fff', fontSize: 16, fontFamily: 'Inter_700Bold' },
 
   /* FAB */
   fab:     { position: 'absolute', bottom: 90, right: 20, borderRadius: 28, overflow: 'hidden', elevation: 12, shadowColor: '#6366F1', shadowOpacity: 0.55, shadowRadius: 14, shadowOffset: { width: 0, height: 4 } },
   fabGrad: { width: 56, height: 56, justifyContent: 'center', alignItems: 'center' },
 
   /* create user modal */
-  createLabel:          { fontSize: 11, fontFamily: 'Inter_600SemiBold', color: MUTED, letterSpacing: 0.4 },
-  createHint:           { fontSize: 10, fontFamily: 'Inter_400Regular', color: MUTED, marginTop: -8 },
+  createLabel:          { fontSize: 13, fontFamily: 'Inter_600SemiBold', color: MUTED, letterSpacing: 0.4 },
+  createHint:           { fontSize: 12, fontFamily: 'Inter_400Regular', color: MUTED, marginTop: -8 },
   createRoleRow:        { flexDirection: 'row', gap: 8 },
   createRoleItem:       { flex: 1, borderRadius: 12, overflow: 'hidden' },
   createRolePillActive: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, paddingVertical: 11, borderRadius: 12 },
   createRolePillInactive: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, paddingVertical: 11, borderRadius: 12, borderWidth: 1, borderColor: GLASS_BD, backgroundColor: GLASS },
-  createRoleTxtActive:   { fontSize: 11, fontFamily: 'Inter_700Bold', color: '#fff' },
-  createRoleTxtInactive: { fontSize: 11, fontFamily: 'Inter_600SemiBold', color: MUTED },
+  createRoleTxtActive:   { fontSize: 13, fontFamily: 'Inter_700Bold', color: '#fff' },
+  createRoleTxtInactive: { fontSize: 13, fontFamily: 'Inter_600SemiBold', color: MUTED },
   createInputRow:       { flexDirection: 'row', alignItems: 'center', gap: 10, borderRadius: 12, borderWidth: 1, borderColor: GLASS_BD, backgroundColor: GLASS, paddingHorizontal: 13, paddingVertical: 2 },
-  createInput:          { flex: 1, fontSize: 14, fontFamily: 'Inter_400Regular', paddingVertical: 12, color: TEXT },
+  createInput:          { flex: 1, fontSize: 16, fontFamily: 'Inter_400Regular', paddingVertical: 12, color: TEXT },
 
   /* modal header subtitle */
-  modalHdrSub: { color: 'rgba(255,255,255,0.7)', fontSize: 11, fontFamily: 'Inter_400Regular', marginTop: 1 },
+  modalHdrSub: { color: 'rgba(255,255,255,0.7)', fontSize: 13, fontFamily: 'Inter_400Regular', marginTop: 1 },
 });
