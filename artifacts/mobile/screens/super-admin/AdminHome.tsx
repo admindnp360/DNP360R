@@ -287,21 +287,29 @@ export default function AdminHome() {
               <Text style={{ color: '#475569', fontSize: 9, fontFamily: 'Inter_600SemiBold', letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 2 }}>
                 Ward Breakdown
               </Text>
-              {wardAttToday.map(w => {
-                const clr = w.pct == null ? '#475569' : w.pct >= 80 ? '#34D399' : w.pct >= 50 ? '#FCD34D' : '#FB7185';
-                return (
-                  <View key={w.wn} style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                    <Text style={{ color: '#64748B', fontSize: 9, fontFamily: 'Inter_600SemiBold', width: 32 }}>W{w.wn}</Text>
-                    <View style={{ flex: 1, height: 8, backgroundColor: 'rgba(255,255,255,0.07)', borderRadius: 4, overflow: 'hidden' }}>
-                      <View style={{ width: `${w.pct ?? 0}%`, height: 8, backgroundColor: clr, borderRadius: 4 }} />
-                    </View>
-                    <Text style={{ color: clr, fontSize: 9, fontFamily: 'Inter_700Bold', width: 30, textAlign: 'right' }}>
-                      {w.pct != null ? `${w.pct}%` : '—'}
-                    </Text>
-                    <Text style={{ color: '#475569', fontSize: 9, width: 22 }}>({w.total})</Text>
-                  </View>
-                );
-              })}
+              <ScrollView
+                style={{ maxHeight: 130 }}
+                nestedScrollEnabled
+                showsVerticalScrollIndicator={false}
+              >
+                <View style={{ gap: 7 }}>
+                  {wardAttToday.map(w => {
+                    const clr = w.pct == null ? '#475569' : w.pct >= 80 ? '#34D399' : w.pct >= 50 ? '#FCD34D' : '#FB7185';
+                    return (
+                      <View key={w.wn} style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                        <Text style={{ color: '#64748B', fontSize: 9, fontFamily: 'Inter_600SemiBold', width: 32 }}>W{w.wn}</Text>
+                        <View style={{ flex: 1, height: 8, backgroundColor: 'rgba(255,255,255,0.07)', borderRadius: 4, overflow: 'hidden' }}>
+                          <View style={{ width: `${w.pct ?? 0}%`, height: 8, backgroundColor: clr, borderRadius: 4 }} />
+                        </View>
+                        <Text style={{ color: clr, fontSize: 9, fontFamily: 'Inter_700Bold', width: 30, textAlign: 'right' }}>
+                          {w.pct != null ? `${w.pct}%` : '—'}
+                        </Text>
+                        <Text style={{ color: '#475569', fontSize: 9, width: 22 }}>({w.total})</Text>
+                      </View>
+                    );
+                  })}
+                </View>
+              </ScrollView>
             </View>
           )}
 
