@@ -575,8 +575,9 @@ export default function AdminReports() {
     }
     setExportingPDF(true);
     try {
-      // ── Load logo as base64 for PDF ────────────────────────────────
+      // ── Load assets as base64 for PDF ──────────────────────────────
       let logoDataUri = '';
+      let bgDataUri = '';
       try {
         const asset = Asset.fromModule(require('../../assets/dnp360-logo-transparent.png'));
         await asset.downloadAsync();
@@ -584,7 +585,15 @@ export default function AdminReports() {
           const b64 = await FileSystem.readAsStringAsync(asset.localUri, { encoding: FileSystem.EncodingType.Base64 });
           logoDataUri = `data:image/png;base64,${b64}`;
         }
-      } catch { /* fallback to text if logo load fails */ }
+      } catch { /* logo fallback */ }
+      try {
+        const bgAsset = Asset.fromModule(require('../../assets/dnp360-report-bg.png'));
+        await bgAsset.downloadAsync();
+        if (bgAsset.localUri) {
+          const b64 = await FileSystem.readAsStringAsync(bgAsset.localUri, { encoding: FileSystem.EncodingType.Base64 });
+          bgDataUri = `data:image/png;base64,${b64}`;
+        }
+      } catch { /* bg fallback */ }
 
       // ── Core stats ─────────────────────────────────────────────────
       const totP   = rpt.rows.reduce((a, r) => a + r.totalPresent, 0);
@@ -767,76 +776,59 @@ export default function AdminReports() {
       }).join('');
 
       // ── Full HTML ─────────────────────────────────────────────────
-      // Watermark: transparent logo centered behind all content, low opacity, no color filter
-      const watermarkTag = logoDataUri
-        ? `<div style="position:fixed;top:50%;left:50%;transform:translate(-50%,-50%) rotate(-15deg);opacity:0.13;pointer-events:none;z-index:0">
-             <img src="${logoDataUri}" style="width:420px;height:auto" />
+      const bgTag = bgDataUri
+        ? `<div style="position:fixed;top:0;left:0;width:100%;height:100%;z-index:0;pointer-events:none">
+             <img src="${bgDataUri}" style="width:100%;height:100%;object-fit:cover" />
            </div>`
         : '';
 
       const html = `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
 <style>
-  @page{size:A4;margin:10mm}
+  @page{size:A4;margin:0}
   *{box-sizing:border-box;margin:0;padding:0}
   body{font-family:Arial,Helvetica,sans-serif;background:#fff;color:#0f172a;font-size:9px;line-height:1.4;position:relative}
-
-  /* ── Header ── */
-  .hdr{border:2px solid #1e3a8a;border-radius:10px;padding:10px 18px;margin-bottom:8px;background:linear-gradient(135deg,#eff6ff 0%,#dbeafe 60%,#e0e7ff 100%);display:flex;align-items:center;gap:14px;box-shadow:0 2px 8px rgba(30,58,138,0.08)}
-  .hdr-text{flex:1;text-align:center}
-  .hdr-title{font-size:14px;font-weight:900;color:#1e3a8a;letter-spacing:0.5px;line-height:1.2;text-transform:uppercase}
-  .hdr-sub{font-size:9.5px;font-weight:700;color:#1e40af;margin-top:2px}
-  .hdr-tag{font-size:7px;color:#64748b;margin-top:2px}
-  .hdr-badge{background:linear-gradient(90deg,#1e3a8a,#1e40af);color:#fff;font-size:7px;font-weight:700;padding:3px 10px;border-radius:12px;display:inline-block;margin-top:4px;letter-spacing:0.8px;box-shadow:0 1px 4px rgba(30,58,138,0.3)}
+  .content{position:relative;z-index:1;padding:8mm 10mm 6mm 10mm;margin-top:42mm}
 
   /* ── Info box ── */
-  .info{border:1px solid #bfdbfe;border-radius:7px;padding:8px 14px;margin-bottom:8px;background:linear-gradient(135deg,#f0f9ff,#eff6ff);display:grid;grid-template-columns:1fr 1fr;gap:3px 24px}
+  .info{border:1px solid rgba(30,58,138,0.25);border-radius:7px;padding:6px 12px;margin-bottom:7px;background:rgba(240,249,255,0.85);display:grid;grid-template-columns:1fr 1fr;gap:2px 20px}
   .ir{font-size:8px;display:flex;gap:4px;padding:1px 0}
   .ik{color:#1d4ed8;font-weight:700;min-width:110px}
   .iv{color:#0f172a}
 
   /* ── Stat cards ── */
-  .cards{display:flex;gap:6px;margin-bottom:6px}
-  .card{flex:1;border-radius:8px;padding:8px 6px;text-align:center;border:1px solid transparent;box-shadow:0 1px 3px rgba(0,0,0,0.06)}
-  .cv{font-size:16px;font-weight:900;line-height:1}
+  .cards{display:flex;gap:5px;margin-bottom:5px}
+  .card{flex:1;border-radius:8px;padding:7px 6px;text-align:center;border:1px solid transparent;box-shadow:0 1px 3px rgba(0,0,0,0.08);background:rgba(255,255,255,0.9)}
+  .cv{font-size:15px;font-weight:900;line-height:1}
   .cl{font-size:6.5px;text-transform:uppercase;font-weight:700;color:#475569;letter-spacing:0.5px;margin-top:3px}
-  .ci{font-size:12px;margin-bottom:2px}
+  .ci{font-size:11px;margin-bottom:2px}
 
   /* ── Chart grid ── */
-  .cgrid{display:flex;gap:6px;margin-bottom:8px}
-  .cbox{flex:1;border:1px solid #e2e8f0;border-radius:7px;padding:8px;position:relative;z-index:1;box-shadow:0 1px 3px rgba(0,0,0,0.04)}
-  .ct{font-size:7.5px;font-weight:700;color:#1e3a8a;border-bottom:2px solid #dbeafe;padding-bottom:4px;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px}
+  .cgrid{display:flex;gap:5px;margin-bottom:7px}
+  .cbox{flex:1;border:1px solid rgba(226,232,240,0.9);border-radius:7px;padding:7px;position:relative;z-index:1;background:rgba(255,255,255,0.88)}
+  .ct{font-size:7.5px;font-weight:700;color:#1e3a8a;border-bottom:2px solid #dbeafe;padding-bottom:3px;margin-bottom:5px;text-transform:uppercase;letter-spacing:0.4px}
 
   /* ── Section headers ── */
-  .sh{background:linear-gradient(90deg,#1e3a8a,#2563eb);color:#fff;padding:6px 12px;font-size:9px;font-weight:700;border-radius:5px 5px 0 0;margin-top:8px;display:flex;align-items:center;gap:4px;position:relative;z-index:1;letter-spacing:0.3px}
-  table{border-collapse:collapse;width:100%;position:relative;z-index:1}
+  .sh{background:linear-gradient(90deg,#1e3a8a,#2563eb);color:#fff;padding:5px 12px;font-size:9px;font-weight:700;border-radius:5px 5px 0 0;margin-top:7px;display:flex;align-items:center;gap:4px;position:relative;z-index:1;letter-spacing:0.3px}
+  table{border-collapse:collapse;width:100%;position:relative;z-index:1;background:rgba(255,255,255,0.9)}
   th{background:linear-gradient(180deg,#dbeafe,#bfdbfe);color:#1e3a8a;padding:4px 6px;text-align:center;font-size:8px;font-weight:700;border:1px solid #bfdbfe}
   td{padding:3px 5px;text-align:center;font-size:7.5px;border:1px solid #e2e8f0}
-  tr:nth-child(even) td{background:#f8fafc}
-  tr:hover td{background:#eff6ff}
+  tr:nth-child(even) td{background:rgba(248,250,252,0.95)}
   td:first-child,th:first-child{text-align:left}
 
-  /* ── House data table (smaller for compactness) ── */
+  /* ── House data table ── */
   table.dt th{font-size:7px;padding:3px 4px}
   table.dt td{padding:2px 3px;font-size:7px}
 
   /* ── Footer ── */
-  .ftr{margin-top:10px;padding-top:6px;border-top:2px solid #bfdbfe;display:flex;justify-content:space-between;align-items:center;position:relative;z-index:1}
+  .ftr{margin-top:8px;padding-top:5px;border-top:2px solid rgba(191,219,254,0.8);display:flex;justify-content:space-between;align-items:center;position:relative;z-index:1}
   .ftr-l{font-size:7px;color:#475569;line-height:1.6}
   .ftr-r{font-size:7px;color:#1e3a8a;font-weight:700;text-align:right;line-height:1.6}
 </style>
 </head><body>
 
-${watermarkTag}
+${bgTag}
 
-<!-- ══ HEADER ══ -->
-<div class="hdr">
-  <div class="hdr-text">
-    <div class="hdr-title">Nagar Parishad, Daudnagar</div>
-    <div class="hdr-sub">DNP360 — Smart Governance System</div>
-    <div class="hdr-tag">Garbage Collection Management · Bihar, India</div>
-    <div class="hdr-badge">✦ OFFICIAL REPORT ✦</div>
-  </div>
-</div>
+<div class="content">
 
 <!-- ══ REPORT INFO BOX ══ -->
 <div class="info">
@@ -934,6 +926,7 @@ ${watermarkTag}
   <div class="ftr-r">DNP360 · Nagar Parishad Daudnagar</div>
 </div>
 
+</div>
 </body></html>`;
 
       if (Platform.OS === 'web') {
