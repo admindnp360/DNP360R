@@ -81,6 +81,7 @@ export default function SuperAdminHouseDB() {
   const [wardForm, setWardForm]           = useState({ wardNumber: '', area: '' });
   const [showAddGroupModal, setShowAddGroupModal] = useState(false);
   const [groupForm, setGroupForm]         = useState({ name: '', description: '' });
+  const [showWardPickerModal, setShowWardPickerModal] = useState(false);
   const [workerModalWard, setWorkerModalWard] = useState<Ward | null>(null);
   const [workerSearch, setWorkerSearch]   = useState('');
   const [editingWard, setEditingWard]     = useState<Ward | null>(null);
@@ -644,36 +645,44 @@ export default function SuperAdminHouseDB() {
               <View>
                 {/* All Houses bar + quick-add buttons */}
                 {!wardSelMode && (
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginHorizontal: 14, marginBottom: 10 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7, marginHorizontal: 14, marginBottom: 10 }}>
                     <TouchableOpacity
-                      style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 10, paddingVertical: 8, borderRadius: 12, backgroundColor: 'rgba(99,102,241,0.10)', borderWidth: 1, borderColor: 'rgba(99,102,241,0.28)' }}
+                      style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 7, paddingHorizontal: 10, paddingVertical: 8, borderRadius: 12, backgroundColor: 'rgba(99,102,241,0.10)', borderWidth: 1, borderColor: 'rgba(99,102,241,0.28)' }}
                       onPress={() => goToHouses(null)}
                       activeOpacity={0.75}
                     >
-                      <LinearGradient colors={['#6366F1','#8B5CF6']} style={{ width: 28, height: 28, borderRadius: 8, justifyContent: 'center', alignItems: 'center' }}>
-                        <Feather name="database" size={12} color="#fff" />
+                      <LinearGradient colors={['#6366F1','#8B5CF6']} style={{ width: 26, height: 26, borderRadius: 7, justifyContent: 'center', alignItems: 'center' }}>
+                        <Feather name="database" size={11} color="#fff" />
                       </LinearGradient>
                       <View style={{ flex: 1 }}>
-                        <Text style={{ color: '#F0F4FF', fontSize: 12, fontFamily: 'Inter_700Bold' }}>All Houses</Text>
-                        <Text style={{ color: '#818CF8', fontSize: 10, fontFamily: 'Inter_400Regular' }}>{houses.length} total</Text>
+                        <Text style={{ color: '#F0F4FF', fontSize: 11, fontFamily: 'Inter_700Bold' }}>All Houses</Text>
+                        <Text style={{ color: '#818CF8', fontSize: 9, fontFamily: 'Inter_400Regular' }}>{houses.length} total</Text>
                       </View>
-                      <Feather name="chevron-right" size={13} color="#818CF8" />
+                      <Feather name="chevron-right" size={12} color="#818CF8" />
                     </TouchableOpacity>
                     <TouchableOpacity
-                      style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 8, borderRadius: 12, backgroundColor: 'rgba(249,115,22,0.12)', borderWidth: 1, borderColor: 'rgba(249,115,22,0.3)' }}
+                      style={{ flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2, paddingHorizontal: 10, paddingVertical: 7, borderRadius: 12, backgroundColor: 'rgba(14,165,233,0.12)', borderWidth: 1, borderColor: 'rgba(14,165,233,0.3)' }}
+                      onPress={() => setShowWardPickerModal(true)}
+                      activeOpacity={0.75}
+                    >
+                      <Feather name="plus" size={14} color="#38BDF8" />
+                      <Text style={{ color: '#38BDF8', fontSize: 10, fontFamily: 'Inter_700Bold' }}>Add</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={{ flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2, paddingHorizontal: 10, paddingVertical: 7, borderRadius: 12, backgroundColor: 'rgba(249,115,22,0.12)', borderWidth: 1, borderColor: 'rgba(249,115,22,0.3)' }}
                       onPress={() => setShowAddWardModal(true)}
                       activeOpacity={0.75}
                     >
-                      <Feather name="plus" size={13} color="#F97316" />
-                      <Text style={{ color: '#F97316', fontSize: 11, fontFamily: 'Inter_700Bold' }}>Ward</Text>
+                      <Feather name="map-pin" size={14} color="#F97316" />
+                      <Text style={{ color: '#F97316', fontSize: 10, fontFamily: 'Inter_700Bold' }}>Ward</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
-                      style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 8, borderRadius: 12, backgroundColor: 'rgba(52,211,153,0.12)', borderWidth: 1, borderColor: 'rgba(52,211,153,0.3)' }}
+                      style={{ flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2, paddingHorizontal: 10, paddingVertical: 7, borderRadius: 12, backgroundColor: 'rgba(52,211,153,0.12)', borderWidth: 1, borderColor: 'rgba(52,211,153,0.3)' }}
                       onPress={() => setShowAddGroupModal(true)}
                       activeOpacity={0.75}
                     >
-                      <Feather name="plus" size={13} color="#34D399" />
-                      <Text style={{ color: '#34D399', fontSize: 11, fontFamily: 'Inter_700Bold' }}>Group</Text>
+                      <Feather name="layers" size={14} color="#34D399" />
+                      <Text style={{ color: '#34D399', fontSize: 10, fontFamily: 'Inter_700Bold' }}>Group</Text>
                     </TouchableOpacity>
                   </View>
                 )}
@@ -1082,6 +1091,42 @@ export default function SuperAdminHouseDB() {
                 <Text style={s.saveBtnText}>{saving ? 'Saving…' : 'Save Changes'}</Text>
               </LinearGradient>
             </TouchableOpacity>
+          </ScrollView>
+        </SafeAreaView>
+      </Modal>
+
+      {/* Ward Picker Modal (for quick-add house) */}
+      <Modal visible={showWardPickerModal} animationType="slide" presentationStyle="pageSheet">
+        <SafeAreaView style={{ flex: 1, backgroundColor: BG }}>
+          <LinearGradient colors={['#0EA5E9','#0284C7']} style={s.modalHdr}>
+            <Text style={s.modalTitle}>Select Ward</Text>
+            <Pressable onPress={() => setShowWardPickerModal(false)} style={s.closeBtn}><Feather name="x" size={19} color="#fff" /></Pressable>
+          </LinearGradient>
+          <ScrollView contentContainerStyle={{ padding: 16, gap: 8 }}>
+            <Text style={{ color: MUTED, fontSize: 12, fontFamily: 'Inter_400Regular', marginBottom: 4 }}>Pick a ward to add a house into:</Text>
+            {[...wards].sort((a, b) => Number(a.wardNumber) - Number(b.wardNumber)).map(w => (
+              <TouchableOpacity
+                key={w.id}
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 14, paddingVertical: 12, borderRadius: 12, backgroundColor: GLASS, borderWidth: 1, borderColor: GLASS_BD }}
+                onPress={() => { setSelectedWard(w); setShowWardPickerModal(false); setHouseForm({ ownerName: '', fatherOrHusband: '', mobile: '', address: '', propertyType: 'Residential' }); setShowAddHouseModal(true); }}
+                activeOpacity={0.75}
+              >
+                <LinearGradient colors={['#0EA5E9','#0284C7']} style={{ width: 34, height: 34, borderRadius: 9, justifyContent: 'center', alignItems: 'center' }}>
+                  <Text style={{ color: '#fff', fontSize: 11, fontFamily: 'Inter_700Bold' }}>W{w.wardNumber}</Text>
+                </LinearGradient>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ color: TEXT, fontSize: 13, fontFamily: 'Inter_700Bold' }}>{w.name}</Text>
+                  <Text style={{ color: MUTED, fontSize: 11, fontFamily: 'Inter_400Regular' }}>{w.area} · {houses.filter(h => h.wardId === w.id).length} houses</Text>
+                </View>
+                <Feather name="chevron-right" size={14} color={MUTED2} />
+              </TouchableOpacity>
+            ))}
+            {wards.length === 0 && (
+              <View style={{ alignItems: 'center', paddingVertical: 40 }}>
+                <Feather name="map" size={28} color={MUTED2} />
+                <Text style={{ color: MUTED, fontSize: 13, fontFamily: 'Inter_500Medium', marginTop: 10 }}>No wards yet. Create a ward first.</Text>
+              </View>
+            )}
           </ScrollView>
         </SafeAreaView>
       </Modal>
