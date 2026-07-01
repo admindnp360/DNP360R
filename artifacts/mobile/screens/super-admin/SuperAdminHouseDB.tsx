@@ -42,6 +42,7 @@ export default function SuperAdminHouseDB() {
     addHouse, updateHouse, deleteHouse,
     addWard, updateWard, deleteWard,
     assignWorkerToWard,
+    addGroup,
     syncStatus,
   } = useAppData();
   const { user } = useAuth();
@@ -77,7 +78,9 @@ export default function SuperAdminHouseDB() {
   // ── Form state ─────────────────────────────────────────────────────
   const [editingHouse, setEditingHouse]   = useState<House | null>(null);
   const [houseForm, setHouseForm]         = useState({ ownerName: '', fatherOrHusband: '', mobile: '', address: '', propertyType: 'Residential' as any });
-  const [wardForm, setWardForm]           = useState({ wardNumber: '', name: '', area: '' });
+  const [wardForm, setWardForm]           = useState({ wardNumber: '', area: '' });
+  const [showAddGroupModal, setShowAddGroupModal] = useState(false);
+  const [groupForm, setGroupForm]         = useState({ name: '', description: '' });
   const [workerModalWard, setWorkerModalWard] = useState<Ward | null>(null);
   const [workerSearch, setWorkerSearch]   = useState('');
   const [editingWard, setEditingWard]     = useState<Ward | null>(null);
@@ -278,29 +281,39 @@ export default function SuperAdminHouseDB() {
 
   // ── Ward CRUD ─────────────────────────────────────────────────────
   async function handleAddWard() {
-    if (!wardForm.wardNumber.trim() || !wardForm.name.trim()) {
-      showAlert('Missing', 'Ward number and name are required.', undefined, 'warning'); return;
+    const num = wardForm.wardNumber.trim();
+    if (!num) { showAlert('Missing', 'Ward number is required.', undefined, 'warning'); return; }
+    if (!/^\d+$/.test(num)) { showAlert('Invalid', 'Ward number must be digits only.', undefined, 'warning'); return; }
+    if (wards.some(w => w.wardNumber === num)) {
+      showAlert('Duplicate', `Ward ${num} already exists.`, undefined, 'warning'); return;
     }
-    if (wards.some(w => w.wardNumber === wardForm.wardNumber.trim())) {
-      showAlert('Duplicate', `Ward ${wardForm.wardNumber} already exists.`, undefined, 'warning'); return;
-    }
+    const autoName = `Ward No. ${num}`;
     setSaving(true);
     try {
-      await addWard({ wardNumber: wardForm.wardNumber.trim(), name: wardForm.name.trim(), area: wardForm.area.trim() || wardForm.name.trim(), assignedWorkers: [], totalHouses: 0 });
-      setWardForm({ wardNumber: '', name: '', area: '' }); setShowAddWardModal(false);
-      showAlert('Ward Created', wardForm.name.trim(), undefined, 'success');
+      await addWard({ wardNumber: num, name: autoName, area: wardForm.area.trim() || autoName, assignedWorkers: [], totalHouses: 0 });
+      setWardForm({ wardNumber: '', area: '' }); setShowAddWardModal(false);
+      showAlert('Ward Created', autoName, undefined, 'success');
     } finally { setSaving(false); }
   }
 
   async function handleSaveEditWard() {
-    if (!editingWard || !editWardForm.name.trim()) {
-      showAlert('Missing', 'Ward name is required.', undefined, 'warning'); return;
-    }
+    if (!editingWard) return;
+    const autoName = `Ward No. ${editingWard.wardNumber}`;
     setSaving(true);
     try {
-      await updateWard(editingWard.id, { name: editWardForm.name.trim(), area: editWardForm.area.trim() || editWardForm.name.trim() });
+      await updateWard(editingWard.id, { name: autoName, area: editWardForm.area.trim() || autoName });
       setShowEditWardModal(false); setEditingWard(null);
       showAlert('Updated', 'Ward details saved.', undefined, 'success');
+    } finally { setSaving(false); }
+  }
+
+  async function handleAddGroup() {
+    if (!groupForm.name.trim()) { showAlert('Missing', 'Group name is required.', undefined, 'warning'); return; }
+    setSaving(true);
+    try {
+      await addGroup({ name: groupForm.name.trim(), description: groupForm.description.trim(), createdAt: new Date().toISOString() });
+      setGroupForm({ name: '', description: '' }); setShowAddGroupModal(false);
+      showAlert('Group Created', groupForm.name.trim(), undefined, 'success');
     } finally { setSaving(false); }
   }
 
@@ -410,7 +423,7 @@ export default function SuperAdminHouseDB() {
       {view === 'wards' && (
         <View style={s.waHdr}>
           <View style={{ flex: 1 }}>
-            <Text style={s.waHdrTitle}>Wards</Text>
+            <Text style={s.waHdrTitle}>HOUSE DB</Text>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 2 }}>
               <Animated.View style={[s.waSyncDot, { backgroundColor: syncColor, opacity: syncPulse }]} />
               <Text style={s.waHdrSub}>{wards.length} wards · {totalHouses} houses</Text>
@@ -629,22 +642,40 @@ export default function SuperAdminHouseDB() {
               </View>
             ) : (
               <View>
-                {/* All Houses bar */}
+                {/* All Houses bar + quick-add buttons */}
                 {!wardSelMode && (
-                  <TouchableOpacity
-                    style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginHorizontal: 14, marginBottom: 10, paddingHorizontal: 14, paddingVertical: 13, borderRadius: 14, backgroundColor: 'rgba(99,102,241,0.10)', borderWidth: 1, borderColor: 'rgba(99,102,241,0.28)' }}
-                    onPress={() => goToHouses(null)}
-                    activeOpacity={0.75}
-                  >
-                    <LinearGradient colors={['#6366F1','#8B5CF6']} style={{ width: 36, height: 36, borderRadius: 10, justifyContent: 'center', alignItems: 'center' }}>
-                      <Feather name="database" size={15} color="#fff" />
-                    </LinearGradient>
-                    <View style={{ flex: 1 }}>
-                      <Text style={{ color: '#F0F4FF', fontSize: 13, fontFamily: 'Inter_700Bold' }}>All Houses</Text>
-                      <Text style={{ color: '#818CF8', fontSize: 11, fontFamily: 'Inter_400Regular', marginTop: 1 }}>{houses.length} total across all wards</Text>
-                    </View>
-                    <Feather name="chevron-right" size={15} color="#818CF8" />
-                  </TouchableOpacity>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginHorizontal: 14, marginBottom: 10 }}>
+                    <TouchableOpacity
+                      style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 10, paddingVertical: 8, borderRadius: 12, backgroundColor: 'rgba(99,102,241,0.10)', borderWidth: 1, borderColor: 'rgba(99,102,241,0.28)' }}
+                      onPress={() => goToHouses(null)}
+                      activeOpacity={0.75}
+                    >
+                      <LinearGradient colors={['#6366F1','#8B5CF6']} style={{ width: 28, height: 28, borderRadius: 8, justifyContent: 'center', alignItems: 'center' }}>
+                        <Feather name="database" size={12} color="#fff" />
+                      </LinearGradient>
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ color: '#F0F4FF', fontSize: 12, fontFamily: 'Inter_700Bold' }}>All Houses</Text>
+                        <Text style={{ color: '#818CF8', fontSize: 10, fontFamily: 'Inter_400Regular' }}>{houses.length} total</Text>
+                      </View>
+                      <Feather name="chevron-right" size={13} color="#818CF8" />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 8, borderRadius: 12, backgroundColor: 'rgba(249,115,22,0.12)', borderWidth: 1, borderColor: 'rgba(249,115,22,0.3)' }}
+                      onPress={() => setShowAddWardModal(true)}
+                      activeOpacity={0.75}
+                    >
+                      <Feather name="plus" size={13} color="#F97316" />
+                      <Text style={{ color: '#F97316', fontSize: 11, fontFamily: 'Inter_700Bold' }}>Ward</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 8, borderRadius: 12, backgroundColor: 'rgba(52,211,153,0.12)', borderWidth: 1, borderColor: 'rgba(52,211,153,0.3)' }}
+                      onPress={() => setShowAddGroupModal(true)}
+                      activeOpacity={0.75}
+                    >
+                      <Feather name="plus" size={13} color="#34D399" />
+                      <Text style={{ color: '#34D399', fontSize: 11, fontFamily: 'Inter_700Bold' }}>Group</Text>
+                    </TouchableOpacity>
+                  </View>
                 )}
                 <View style={s.waSecHdr}>
                   <Text style={s.waSecTxt}>{wards.length} Ward{wards.length !== 1 ? 's' : ''}</Text>
@@ -988,22 +1019,30 @@ export default function SuperAdminHouseDB() {
             <Pressable onPress={() => setShowAddWardModal(false)} style={s.closeBtn}><Feather name="x" size={19} color="#fff" /></Pressable>
           </LinearGradient>
           <ScrollView contentContainerStyle={{ padding: 20, gap: 14 }}>
-            {[
-              { label: 'Ward Number *', key: 'wardNumber', placeholder: '1', keyboard: 'numeric' },
-              { label: 'Ward Name *', key: 'name', placeholder: 'Ward 1 Central' },
-              { label: 'Area / Locality', key: 'area', placeholder: 'Station Road Area' },
-            ].map(f => (
-              <View key={f.key}>
-                <Text style={[s.fieldLabel, { color: MUTED }]}>{f.label}</Text>
-                <TextInput
-                  style={[s.fieldInput, { backgroundColor: GLASS, borderColor: GLASS_BD, color: TEXT }]}
-                  placeholder={f.placeholder} placeholderTextColor={MUTED2}
-                  value={(wardForm as any)[f.key]}
-                  onChangeText={v => setWardForm(p => ({ ...p, [f.key]: v }))}
-                  keyboardType={f.keyboard as any}
-                />
-              </View>
-            ))}
+            <View>
+              <Text style={[s.fieldLabel, { color: MUTED }]}>Ward Number *</Text>
+              <TextInput
+                style={[s.fieldInput, { backgroundColor: GLASS, borderColor: GLASS_BD, color: TEXT }]}
+                placeholder="e.g. 5" placeholderTextColor={MUTED2}
+                value={wardForm.wardNumber}
+                onChangeText={v => setWardForm(p => ({ ...p, wardNumber: v.replace(/[^0-9]/g, '') }))}
+                keyboardType="numeric"
+              />
+              {wardForm.wardNumber.trim() ? (
+                <Text style={{ color: '#818CF8', fontSize: 11, fontFamily: 'Inter_400Regular', marginTop: 4 }}>
+                  Ward name will be: Ward No. {wardForm.wardNumber.trim()}
+                </Text>
+              ) : null}
+            </View>
+            <View>
+              <Text style={[s.fieldLabel, { color: MUTED }]}>Area / Locality *</Text>
+              <TextInput
+                style={[s.fieldInput, { backgroundColor: GLASS, borderColor: GLASS_BD, color: TEXT }]}
+                placeholder="e.g. Station Road Area" placeholderTextColor={MUTED2}
+                value={wardForm.area}
+                onChangeText={v => setWardForm(p => ({ ...p, area: v }))}
+              />
+            </View>
             <TouchableOpacity onPress={handleAddWard} disabled={saving} activeOpacity={0.85}>
               <LinearGradient colors={['#4F46E5','#6366F1']} style={s.saveBtn}>
                 <Text style={s.saveBtnText}>{saving ? 'Saving…' : 'Create Ward'}</Text>
@@ -1021,23 +1060,61 @@ export default function SuperAdminHouseDB() {
             <Pressable onPress={() => setShowEditWardModal(false)} style={s.closeBtn}><Feather name="x" size={19} color="#fff" /></Pressable>
           </LinearGradient>
           <ScrollView contentContainerStyle={{ padding: 20, gap: 14 }}>
-            {[
-              { label: 'Ward Name *', key: 'name', placeholder: 'Ward 1 Central' },
-              { label: 'Area / Locality', key: 'area', placeholder: 'Station Road Area' },
-            ].map(f => (
-              <View key={f.key}>
-                <Text style={[s.fieldLabel, { color: MUTED }]}>{f.label}</Text>
-                <TextInput
-                  style={[s.fieldInput, { backgroundColor: GLASS, borderColor: GLASS_BD, color: TEXT }]}
-                  placeholder={f.placeholder} placeholderTextColor={MUTED2}
-                  value={(editWardForm as any)[f.key]}
-                  onChangeText={v => setEditWardForm(p => ({ ...p, [f.key]: v }))}
-                />
+            <View>
+              <Text style={[s.fieldLabel, { color: MUTED }]}>Ward Name (auto)</Text>
+              <View style={[s.fieldInput, { backgroundColor: 'rgba(255,255,255,0.04)', borderColor: GLASS_BD, justifyContent: 'center' }]}>
+                <Text style={{ color: MUTED, fontSize: 14, fontFamily: 'Inter_500Medium' }}>
+                  Ward No. {editingWard?.wardNumber}
+                </Text>
               </View>
-            ))}
+            </View>
+            <View>
+              <Text style={[s.fieldLabel, { color: MUTED }]}>Area / Locality</Text>
+              <TextInput
+                style={[s.fieldInput, { backgroundColor: GLASS, borderColor: GLASS_BD, color: TEXT }]}
+                placeholder="Station Road Area" placeholderTextColor={MUTED2}
+                value={editWardForm.area}
+                onChangeText={v => setEditWardForm(p => ({ ...p, area: v }))}
+              />
+            </View>
             <TouchableOpacity onPress={handleSaveEditWard} disabled={saving} activeOpacity={0.85}>
               <LinearGradient colors={['#4F46E5','#6366F1']} style={s.saveBtn}>
                 <Text style={s.saveBtnText}>{saving ? 'Saving…' : 'Save Changes'}</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          </ScrollView>
+        </SafeAreaView>
+      </Modal>
+
+      {/* Add Group Modal */}
+      <Modal visible={showAddGroupModal} animationType="slide" presentationStyle="pageSheet">
+        <SafeAreaView style={{ flex: 1, backgroundColor: BG }}>
+          <LinearGradient colors={['#059669','#10B981']} style={s.modalHdr}>
+            <Text style={s.modalTitle}>Add Group</Text>
+            <Pressable onPress={() => setShowAddGroupModal(false)} style={s.closeBtn}><Feather name="x" size={19} color="#fff" /></Pressable>
+          </LinearGradient>
+          <ScrollView contentContainerStyle={{ padding: 20, gap: 14 }}>
+            <View>
+              <Text style={[s.fieldLabel, { color: MUTED }]}>Group Name *</Text>
+              <TextInput
+                style={[s.fieldInput, { backgroundColor: GLASS, borderColor: GLASS_BD, color: TEXT }]}
+                placeholder="e.g. Zone A, Colony 1" placeholderTextColor={MUTED2}
+                value={groupForm.name}
+                onChangeText={v => setGroupForm(p => ({ ...p, name: v }))}
+              />
+            </View>
+            <View>
+              <Text style={[s.fieldLabel, { color: MUTED }]}>Description (optional)</Text>
+              <TextInput
+                style={[s.fieldInput, { backgroundColor: GLASS, borderColor: GLASS_BD, color: TEXT }]}
+                placeholder="e.g. North zone houses" placeholderTextColor={MUTED2}
+                value={groupForm.description}
+                onChangeText={v => setGroupForm(p => ({ ...p, description: v }))}
+              />
+            </View>
+            <TouchableOpacity onPress={handleAddGroup} disabled={saving} activeOpacity={0.85}>
+              <LinearGradient colors={['#059669','#10B981']} style={s.saveBtn}>
+                <Text style={s.saveBtnText}>{saving ? 'Saving…' : 'Create Group'}</Text>
               </LinearGradient>
             </TouchableOpacity>
           </ScrollView>
