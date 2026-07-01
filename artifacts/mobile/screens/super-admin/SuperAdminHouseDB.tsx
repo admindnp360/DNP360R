@@ -12,7 +12,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAlert } from '@/contexts/AlertContext';
 import { useAppData } from '@/contexts/AppContext';
 import { useAuth } from '@/contexts/AuthContext';
-import type { Group, House, User, Ward } from '@/types';
+import type { House, User, Ward } from '@/types';
 import { PROPERTY_TYPES } from '@/types';
 import SuperAdminImport from './SuperAdminImport';
 
@@ -25,7 +25,7 @@ const TEXT      = '#F0F4FF';
 const MUTED     = '#64748B';
 const MUTED2    = 'rgba(255,255,255,0.25)';
 
-type View_ = 'wards' | 'groups' | 'houses';
+type View_ = 'wards' | 'houses';
 
 const WARD_GRADS: readonly [string, string][] = [
   ['#4F46E5', '#7C3AED'],
@@ -36,15 +36,12 @@ const WARD_GRADS: readonly [string, string][] = [
   ['#8B5CF6', '#6D28D9'],
 ];
 
-const GROUP_COLORS = ['#10B981','#0EA5E9','#F97316','#8B5CF6','#EC4899','#EF4444','#F59E0B','#06B6D4'];
-
 export default function SuperAdminHouseDB() {
   const {
-    houses, wards, groups, users, complaints, attendance,
+    houses, wards, users, complaints, attendance,
     addHouse, updateHouse, deleteHouse,
-    addGroup, updateGroup, deleteGroup,
     addWard, updateWard, deleteWard,
-    assignWorkerToWard, assignGroupToHouses, removeGroupFromHouses,
+    assignWorkerToWard,
     syncStatus,
   } = useAppData();
   const { user } = useAuth();
@@ -55,12 +52,11 @@ export default function SuperAdminHouseDB() {
   const [view, setView]                   = useState<View_>('wards');
 
   useEffect(() => {
-    if (initView && ['wards','groups','houses'].includes(initView)) {
+    if (initView && ['wards','houses'].includes(initView)) {
       setView(initView as View_);
     }
   }, [initView]);
   const [selectedWard, setSelectedWard]   = useState<Ward | null>(null);
-  const [selectedGroup, setSelectedGroup] = useState<Group | null>(null);
   const [expandedHouseId, setExpandedHouseId] = useState<string | null>(null);
   const [search, setSearch]               = useState('');
   const [globalSearch, setGlobalSearch]   = useState('');
@@ -70,12 +66,10 @@ export default function SuperAdminHouseDB() {
 
   // ── Modal state ────────────────────────────────────────────────────
   const [showAddHouseModal, setShowAddHouseModal]   = useState(false);
-  const [showAddGroupModal, setShowAddGroupModal]   = useState(false);
   const [showEditHouseModal, setShowEditHouseModal] = useState(false);
   const [showAddWardModal, setShowAddWardModal]     = useState(false);
   const [showWorkerModal, setShowWorkerModal]       = useState(false);
   const [showEditWardModal, setShowEditWardModal]   = useState(false);
-  const [showEditGroupModal, setShowEditGroupModal] = useState(false);
   const [showMoveModal, setShowMoveModal]           = useState(false);
   const [showExportModal, setShowExportModal]       = useState(false);
   const [showImportModal, setShowImportModal]       = useState(false);
@@ -83,16 +77,12 @@ export default function SuperAdminHouseDB() {
   // ── Form state ─────────────────────────────────────────────────────
   const [editingHouse, setEditingHouse]   = useState<House | null>(null);
   const [houseForm, setHouseForm]         = useState({ ownerName: '', fatherOrHusband: '', mobile: '', address: '', propertyType: 'Residential' as any });
-  const [groupForm, setGroupForm]         = useState({ name: '', description: '', color: GROUP_COLORS[0] });
   const [wardForm, setWardForm]           = useState({ wardNumber: '', name: '', area: '' });
   const [workerModalWard, setWorkerModalWard] = useState<Ward | null>(null);
   const [workerSearch, setWorkerSearch]   = useState('');
   const [editingWard, setEditingWard]     = useState<Ward | null>(null);
   const [editWardForm, setEditWardForm]   = useState({ name: '', area: '' });
-  const [editingGroup, setEditingGroup]   = useState<Group | null>(null);
-  const [editGroupForm, setEditGroupForm] = useState({ name: '', description: '' });
   const [moveWardId, setMoveWardId]       = useState<string>('');
-  const [moveGroupId, setMoveGroupId]     = useState<string | null>(null);
 
   // ── Selection (DB tab) ─────────────────────────────────────────────
   const [selectionMode, setSelectionMode]       = useState(false);
@@ -130,23 +120,6 @@ export default function SuperAdminHouseDB() {
       { text: 'Delete All', style: 'destructive', onPress: async () => {
           setSaving(true);
           try { await Promise.all(selectedWardIds.map(id => deleteWard(id))); exitWardSel(); showAlert('Deleted', 'Wards removed.', undefined, 'success'); }
-          finally { setSaving(false); }
-        },
-      },
-    ], 'error');
-  }
-
-  // ── Group selection ────────────────────────────────────────────────
-  const [groupSelMode, setGroupSelMode]       = useState(false);
-  const [selectedGroupIds, setSelectedGroupIds] = useState<string[]>([]);
-  function exitGroupSel() { setGroupSelMode(false); setSelectedGroupIds([]); }
-  function toggleGroupSel(id: string) { setSelectedGroupIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]); }
-  async function handleBulkDeleteGroups() {
-    showAlert('Delete Groups?', `Delete ${selectedGroupIds.length} group(s)? Houses become ungrouped.`, [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Delete All', style: 'destructive', onPress: async () => {
-          setSaving(true);
-          try { await Promise.all(selectedGroupIds.map(id => deleteGroup(id))); exitGroupSel(); showAlert('Deleted', 'Groups removed.', undefined, 'success'); }
           finally { setSaving(false); }
         },
       },
@@ -192,7 +165,6 @@ export default function SuperAdminHouseDB() {
   // ── Derived stats ─────────────────────────────────────────────────
   const totalHouses     = useMemo(() => houses.length, [houses]);
   const activeHouses    = useMemo(() => houses.filter(h => h.isActive).length, [houses]);
-  const ungroupedHouses = useMemo(() => houses.filter(h => !h.groupId).length, [houses]);
 
   // ── Universal search across all data ──────────────────────────────
   const globalResults = useMemo(() => {
@@ -220,11 +192,9 @@ export default function SuperAdminHouseDB() {
   }, [houses, users, wards, globalSearch]);
 
   // ── DB Tab – navigation helpers ───────────────────────────────────
-  function goToGroups(ward: Ward) { setSelectedWard(ward); setView('groups'); setSearch(''); setGlobalSearch(''); exitWardSel(); exitGroupSel(); }
-  function goToHouses(group: Group | null) { setSelectedGroup(group); setView('houses'); setSearch(''); setExpandedHouseId(null); exitGroupSel(); }
+  function goToHouses(ward: Ward) { setSelectedWard(ward); setView('houses'); setSearch(''); setGlobalSearch(''); exitWardSel(); }
   function goBack() {
-    if (view === 'houses') { setView('groups'); setExpandedHouseId(null); setSearch(''); exitSelectionMode(); }
-    else if (view === 'groups') { setView('wards'); setSelectedWard(null); setSearch(''); exitGroupSel(); }
+    if (view === 'houses') { setView('wards'); setSelectedWard(null); setExpandedHouseId(null); setSearch(''); exitSelectionMode(); }
   }
 
   function exitSelectionMode() { setSelectionMode(false); setSelectedHouseIds([]); }
@@ -233,7 +203,6 @@ export default function SuperAdminHouseDB() {
   }
   function openMoveModal() {
     setMoveWardId(selectedWard?.id ?? wards[0]?.id ?? '');
-    setMoveGroupId(null);
     setShowMoveModal(true);
   }
 
@@ -243,9 +212,7 @@ export default function SuperAdminHouseDB() {
 
   // ── House CRUD ────────────────────────────────────────────────────
   const houseList = useMemo(() => {
-    let list: House[] = selectedGroup !== null
-      ? houses.filter(h => h.groupId === selectedGroup.id)
-      : selectedWard ? houses.filter(h => h.wardId === selectedWard.id) : [];
+    let list: House[] = selectedWard ? houses.filter(h => h.wardId === selectedWard.id) : [];
     if (search.trim()) {
       const q = search.toLowerCase();
       list = list.filter(h =>
@@ -255,7 +222,7 @@ export default function SuperAdminHouseDB() {
       );
     }
     return list;
-  }, [houses, selectedGroup, selectedWard, search]);
+  }, [houses, selectedWard, search]);
 
   async function handleAddHouse() {
     if (!selectedWard) return;
@@ -270,7 +237,6 @@ export default function SuperAdminHouseDB() {
         fatherOrHusband: houseForm.fatherOrHusband.trim() || undefined,
         mobile: houseForm.mobile.trim(), address: houseForm.address.trim(),
         wardId: selectedWard.id, wardNumber: selectedWard.wardNumber,
-        groupId: selectedGroup?.id, groupName: selectedGroup?.name,
         propertyType: houseForm.propertyType, status: 'Active', isActive: true, createdBy: user?.name,
       });
       setHouseForm({ ownerName: '', fatherOrHusband: '', mobile: '', address: '', propertyType: 'Residential' });
@@ -353,39 +319,6 @@ export default function SuperAdminHouseDB() {
     setEditingWard(ward); setEditWardForm({ name: ward.name, area: ward.area || '' }); setShowEditWardModal(true);
   }
 
-  // ── Group CRUD ────────────────────────────────────────────────────
-  async function handleAddGroup() {
-    if (!groupForm.name.trim()) { showAlert('Missing', 'Group name is required.', undefined, 'warning'); return; }
-    setSaving(true);
-    try {
-      await addGroup({ name: groupForm.name.trim(), description: groupForm.description.trim(), color: groupForm.color, createdAt: new Date().toISOString().split('T')[0], createdBy: user?.name });
-      setGroupForm({ name: '', description: '', color: GROUP_COLORS[0] }); setShowAddGroupModal(false);
-      showAlert('Group Created', groupForm.name.trim(), undefined, 'success');
-    } finally { setSaving(false); }
-  }
-
-  async function handleSaveEditGroup() {
-    if (!editingGroup || !editGroupForm.name.trim()) { showAlert('Missing', 'Group name is required.', undefined, 'warning'); return; }
-    setSaving(true);
-    try {
-      await updateGroup(editingGroup.id, { name: editGroupForm.name.trim(), description: editGroupForm.description.trim() });
-      setShowEditGroupModal(false); setEditingGroup(null);
-      showAlert('Updated', 'Group details saved.', undefined, 'success');
-    } finally { setSaving(false); }
-  }
-
-  async function handleDeleteGroup(g: Group) {
-    const count = houses.filter(h => h.groupId === g.id).length;
-    showAlert('Delete Group?', `"${g.name}" has ${count} house(s). Houses will become ungrouped.`, [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Delete', style: 'destructive', onPress: () => deleteGroup(g.id) },
-    ], 'error');
-  }
-
-  function openEditGroup(g: Group) {
-    setEditingGroup(g); setEditGroupForm({ name: g.name, description: g.description || '' }); setShowEditGroupModal(true);
-  }
-
   // ── Worker assignment ─────────────────────────────────────────────
   const safaikarmis = users.filter(u => u.role === 'safaikarmi' && u.isActive !== false);
 
@@ -415,64 +348,31 @@ export default function SuperAdminHouseDB() {
     if (selectedHouseIds.length === 0) return;
     setSaving(true);
     try {
-      const targetWard  = wards.find(w => w.id === moveWardId);
-      const targetGroup = moveGroupId ? groups.find(g => g.id === moveGroupId) : null;
-      const isCrossWard = targetWard && targetWard.id !== selectedWard?.id;
-      if (isCrossWard || moveGroupId === null) {
-        await Promise.all(selectedHouseIds.map(id => updateHouse(id, {
-          wardId: targetWard?.id ?? selectedWard?.id, wardNumber: targetWard?.wardNumber ?? selectedWard?.wardNumber,
-          groupId: targetGroup?.id, groupName: targetGroup?.name,
-        })));
-      } else if (targetGroup) {
-        await assignGroupToHouses(selectedHouseIds, targetGroup.id, targetGroup.name);
-      }
+      const targetWard = wards.find(w => w.id === moveWardId);
+      await Promise.all(selectedHouseIds.map(id => updateHouse(id, {
+        wardId: targetWard?.id ?? selectedWard?.id,
+        wardNumber: targetWard?.wardNumber ?? selectedWard?.wardNumber,
+      })));
       setShowMoveModal(false); exitSelectionMode();
       showAlert('Done', `${selectedHouseIds.length} house(s) moved successfully.`, undefined, 'success');
     } catch { showAlert('Error', 'Failed to move houses.', undefined, 'error'); }
     finally { setSaving(false); }
   }
 
-  async function handleUngroupSelected() {
-    if (selectedHouseIds.length === 0) return;
-    showAlert('Ungroup Houses?', `Remove ${selectedHouseIds.length} house(s) from their group?`, [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Ungroup', style: 'destructive', onPress: async () => {
-          setSaving(true);
-          try { await removeGroupFromHouses(selectedHouseIds); exitSelectionMode(); showAlert('Done', 'Houses ungrouped.', undefined, 'success'); }
-          finally { setSaving(false); }
-        },
-      },
-    ], 'warning');
-  }
-
-  async function handleUngroupSearchSelected() {
-    if (selectedSearchIds.length === 0) return;
-    showAlert('Ungroup Houses?', `Remove ${selectedSearchIds.length} house(s) from their group?`, [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Ungroup', style: 'destructive', onPress: async () => {
-          setSaving(true);
-          try { await removeGroupFromHouses(selectedSearchIds); exitSearchSel(); showAlert('Done', 'Houses ungrouped.', undefined, 'success'); }
-          finally { setSaving(false); }
-        },
-      },
-    ], 'warning');
-  }
-
   function openMoveModalFromSearch() {
     if (selectedSearchIds.length === 0) return;
     setSelectedHouseIds([...selectedSearchIds]);
     setMoveWardId(wards[0]?.id ?? '');
-    setMoveGroupId(null);
     setShowMoveModal(true);
   }
 
   // ── Export CSV ────────────────────────────────────────────────────
   function buildCSV(list: House[]): string {
     const escape = (v: string) => `"${(v ?? '').replace(/"/g, '""')}"`;
-    const headers = ['S.No','Registration No','Owner Name','Father/Husband','Ward No','Group','Address','Mobile','Property Type','Status','Added On'];
+    const headers = ['S.No','Registration No','Owner Name','Father/Husband','Ward No','Address','Mobile','Property Type','Status','Added On'];
     const rows = list.map((h, i) => [
       String(i+1), escape(h.registrationNumber), escape(h.ownerName), escape(h.fatherOrHusband||''),
-      escape(`Ward ${h.wardNumber}`), escape(h.groupName||'Ungrouped'), escape(h.address),
+      escape(`Ward ${h.wardNumber}`), escape(h.address),
       escape(h.mobile||''), escape(h.propertyType||'Residential'), escape(h.status||'Active'), escape(h.createdAt||''),
     ].join(','));
     return [headers.join(','), ...rows].join('\n');
@@ -486,9 +386,8 @@ export default function SuperAdminHouseDB() {
     try {
       const csv = buildCSV(houseList);
       const ward = selectedWard ? `Ward${selectedWard.wardNumber}` : 'AllWards';
-      const grp  = selectedGroup ? `_${selectedGroup.name.replace(/\s+/g,'')}` : '';
       const date = new Date().toISOString().slice(0,10).replace(/-/g,'');
-      const filename = `HouseDB_${ward}${grp}_${date}.csv`;
+      const filename = `HouseDB_${ward}_${date}.csv`;
       const path = FileSystem.cacheDirectory + filename;
       await FileSystem.writeAsStringAsync(path, csv, { encoding: FileSystem.EncodingType.UTF8 });
       await Sharing.shareAsync(path, { mimeType: 'text/csv', dialogTitle: `Export ${filename}`, UTI: 'public.comma-separated-values-text' });
@@ -528,41 +427,24 @@ export default function SuperAdminHouseDB() {
         </View>
       )}
 
-      {/* ── Back header (groups / houses) ──────────────────────────── */}
-      {view !== 'wards' && (
+      {/* ── Back header (houses) ────────────────────────────────────── */}
+      {view === 'houses' && (
         <View style={s.waSubHdr}>
           <TouchableOpacity onPress={goBack} style={s.waBackCircle} activeOpacity={0.75}>
             <Feather name="arrow-left" size={17} color="#fff" />
           </TouchableOpacity>
           <View style={{ flex: 1 }}>
-            {view === 'groups' && selectedWard && (
-              <>
-                <Text style={s.waHdrTitle} numberOfLines={1}>{selectedWard.name}</Text>
-                <Text style={s.waHdrSub}>Ward {selectedWard.wardNumber}</Text>
-              </>
-            )}
-            {view === 'houses' && (
-              <>
-                <Text style={s.waHdrTitle} numberOfLines={1}>{selectedGroup?.name ?? 'All Houses'}</Text>
-                <Text style={s.waHdrSub}>{selectedWard?.name} · {houseList.length} houses</Text>
-              </>
-            )}
+            <Text style={s.waHdrTitle} numberOfLines={1}>{selectedWard?.name ?? 'Houses'}</Text>
+            <Text style={s.waHdrSub}>Ward {selectedWard?.wardNumber} · {houseList.length} houses</Text>
           </View>
-          {view === 'groups' && (
-            <TouchableOpacity style={[s.waHdrBtn, { backgroundColor: 'rgba(16,185,129,0.14)', borderColor: 'rgba(16,185,129,0.28)' }]} onPress={() => setShowAddGroupModal(true)} activeOpacity={0.8}>
-              <Feather name="plus" size={16} color="#34D399" />
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            <TouchableOpacity style={s.waHdrBtn} onPress={() => setShowExportModal(true)} activeOpacity={0.8} disabled={exporting}>
+              {exporting ? <ActivityIndicator size={12} color="#818CF8" /> : <Feather name="download-cloud" size={15} color="#818CF8" />}
             </TouchableOpacity>
-          )}
-          {view === 'houses' && (
-            <View style={{ flexDirection: 'row', gap: 8 }}>
-              <TouchableOpacity style={s.waHdrBtn} onPress={() => setShowExportModal(true)} activeOpacity={0.8} disabled={exporting}>
-                {exporting ? <ActivityIndicator size={12} color="#818CF8" /> : <Feather name="download-cloud" size={15} color="#818CF8" />}
-              </TouchableOpacity>
-              <TouchableOpacity style={[s.waHdrBtn, { backgroundColor: 'rgba(79,70,229,0.14)', borderColor: 'rgba(79,70,229,0.28)' }]} onPress={() => setShowAddHouseModal(true)} activeOpacity={0.8}>
-                <Feather name="plus" size={15} color="#818CF8" />
-              </TouchableOpacity>
-            </View>
-          )}
+            <TouchableOpacity style={[s.waHdrBtn, { backgroundColor: 'rgba(79,70,229,0.14)', borderColor: 'rgba(79,70,229,0.28)' }]} onPress={() => setShowAddHouseModal(true)} activeOpacity={0.8}>
+              <Feather name="plus" size={15} color="#818CF8" />
+            </TouchableOpacity>
+          </View>
         </View>
       )}
 
@@ -627,10 +509,6 @@ export default function SuperAdminHouseDB() {
                       <Text style={[s.selActionText, { color: '#818CF8' }]}>{selectedSearchIds.length === globalResults.houses.length ? 'Deselect All' : 'Select All'}</Text>
                     </TouchableOpacity>
                     <View style={{ flex: 1 }} />
-                    <TouchableOpacity style={[s.selAction, { backgroundColor: 'rgba(249,115,22,0.12)', borderColor: 'rgba(249,115,22,0.28)' }]} onPress={handleUngroupSearchSelected} disabled={selectedSearchIds.length === 0 || saving}>
-                      <Feather name="scissors" size={12} color="#F97316" />
-                      <Text style={[s.selActionText, { color: '#F97316' }]}>Ungroup</Text>
-                    </TouchableOpacity>
                     <TouchableOpacity style={[s.selAction, { backgroundColor: 'rgba(99,102,241,0.12)', borderColor: 'rgba(99,102,241,0.28)' }]} onPress={openMoveModalFromSearch} disabled={selectedSearchIds.length === 0 || saving}>
                       <Feather name="move" size={12} color="#818CF8" />
                       <Text style={[s.selActionText, { color: '#818CF8' }]}>Move</Text>
@@ -685,7 +563,7 @@ export default function SuperAdminHouseDB() {
                           <View style={{ flex: 1 }}>
                             <Text style={[s.waRowName, { color: '#818CF8' }]} numberOfLines={1}>{h.registrationNumber}</Text>
                             <Text style={[s.waRowSub, { color: TEXT }]} numberOfLines={1}>{h.ownerName}</Text>
-                            <Text style={[s.waRowSub, { color: MUTED, fontSize: 10 }]} numberOfLines={1}>W{h.wardNumber}{h.groupName ? ` · ${h.groupName}` : ''} · {h.address}</Text>
+                            <Text style={[s.waRowSub, { color: MUTED, fontSize: 10 }]} numberOfLines={1}>W{h.wardNumber} · {h.address}</Text>
                           </View>
                           {!searchSelMode && <Feather name="chevron-right" size={14} color={MUTED2} />}
                         </TouchableOpacity>
@@ -731,7 +609,7 @@ export default function SuperAdminHouseDB() {
                       <Text style={[s.waSecTxt, { color: '#F97316', fontSize: 10 }]}>Wards ({globalResults.wards.length})</Text>
                     </View>
                     {globalResults.wards.map(w => (
-                      <TouchableOpacity key={w.id} style={s.waListRow} onPress={() => { setGlobalSearch(''); goToGroups(w); }} activeOpacity={0.7}>
+                      <TouchableOpacity key={w.id} style={s.waListRow} onPress={() => { setGlobalSearch(''); goToHouses(w); }} activeOpacity={0.7}>
                         <LinearGradient colors={['#F97316','#EA580C']} style={s.waListAvatar}>
                           <Text style={{ color: '#fff', fontSize: 11, fontFamily: 'Inter_700Bold' }}>W{w.wardNumber}</Text>
                         </LinearGradient>
@@ -766,7 +644,7 @@ export default function SuperAdminHouseDB() {
                     <View key={ward.id}>
                       <TouchableOpacity
                         style={[s.waCommRow, isSelW && { backgroundColor: 'rgba(99,102,241,0.07)' }]}
-                        onPress={() => wardSelMode ? toggleWardSel(ward.id) : goToGroups(ward)}
+                        onPress={() => wardSelMode ? toggleWardSel(ward.id) : goToHouses(ward)}
                         onLongPress={() => { if (!wardSelMode) setWardSelMode(true); toggleWardSel(ward.id); }}
                         activeOpacity={0.7}
                       >
@@ -820,103 +698,6 @@ export default function SuperAdminHouseDB() {
         </View>
       )}
 
-      {/* ═══════════════════════ GROUPS VIEW ═══════════════════════ */}
-      {view === 'groups' && selectedWard && (
-        <View style={{ flex: 1 }}>
-          {/* Group selection bar */}
-          {groupSelMode && (
-            <View style={s.selBar}>
-              <TouchableOpacity onPress={exitGroupSel} style={s.selBarCancel}>
-                <Feather name="x" size={14} color={MUTED} />
-              </TouchableOpacity>
-              <Text style={[s.selBarCount, { color: TEXT }]}>{selectedGroupIds.length} selected</Text>
-              <TouchableOpacity
-                onPress={() => selectedGroupIds.length === groups.length ? setSelectedGroupIds([]) : setSelectedGroupIds(groups.map(g => g.id))}
-                style={[s.selAction, { backgroundColor: 'rgba(16,185,129,0.12)', borderColor: 'rgba(16,185,129,0.28)' }]}
-              >
-                <Feather name={selectedGroupIds.length === groups.length ? 'check-square' : 'square'} size={12} color="#34D399" />
-                <Text style={[s.selActionText, { color: '#34D399' }]}>{selectedGroupIds.length === groups.length ? 'Deselect All' : 'Select All'}</Text>
-              </TouchableOpacity>
-              <View style={{ flex: 1 }} />
-              <TouchableOpacity style={[s.selAction, { backgroundColor: 'rgba(239,68,68,0.12)', borderColor: 'rgba(239,68,68,0.28)' }]} onPress={handleBulkDeleteGroups} disabled={selectedGroupIds.length === 0 || saving}>
-                <Feather name="trash-2" size={12} color="#EF4444" />
-                <Text style={[s.selActionText, { color: '#EF4444' }]}>Delete</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
-            <View style={s.waSecHdr}>
-              <Text style={s.waSecTxt}>{groups.length + 1} group{groups.length + 1 !== 1 ? 's' : ''}</Text>
-              {!groupSelMode && <Text style={[s.waSecTxt, { fontFamily: 'Inter_400Regular', color: MUTED, textTransform: 'none' }]}>Long-press to select</Text>}
-            </View>
-            {/* "All Houses" row — not selectable */}
-            <TouchableOpacity style={s.waCommRow} onPress={() => !groupSelMode && goToHouses(null)} activeOpacity={0.7}>
-              <LinearGradient colors={['#4F46E5','#7C3AED']} style={s.waCommAvatar}>
-                <Feather name="grid" size={14} color="#fff" />
-              </LinearGradient>
-              <View style={{ flex: 1 }}>
-                <Text style={[s.waRowName, { color: TEXT }]}>All Houses</Text>
-                <Text style={[s.waRowSub, { color: MUTED }]}>{houses.filter(h => h.wardId === selectedWard.id).length} houses in ward</Text>
-              </View>
-              {!groupSelMode && <Feather name="chevron-right" size={14} color={MUTED2} />}
-            </TouchableOpacity>
-            <View style={s.waSep} />
-            {groups.map((g, idx) => {
-              const color = g.color || GROUP_COLORS[idx % GROUP_COLORS.length];
-              const count = houses.filter(h => h.groupId === g.id).length;
-              const isSelG = selectedGroupIds.includes(g.id);
-              return (
-                <View key={g.id}>
-                  <TouchableOpacity
-                    style={[s.waCommRow, isSelG && { backgroundColor: 'rgba(99,102,241,0.07)' }]}
-                    onPress={() => groupSelMode ? toggleGroupSel(g.id) : goToHouses(g)}
-                    onLongPress={() => { if (!groupSelMode) setGroupSelMode(true); toggleGroupSel(g.id); }}
-                    activeOpacity={0.7}
-                  >
-                    {groupSelMode ? (
-                      <View style={[s.checkbox, { borderColor: isSelG ? '#6366F1' : GLASS_BD, backgroundColor: isSelG ? '#6366F1' : 'transparent' }]}>
-                        {isSelG && <Feather name="check" size={10} color="#fff" />}
-                      </View>
-                    ) : (
-                      <View style={[s.waCommAvatar, { backgroundColor: color }]}>
-                        <Feather name="layers" size={14} color="#fff" />
-                      </View>
-                    )}
-                    <View style={{ flex: 1 }}>
-                      <Text style={[s.waRowName, { color: TEXT }]} numberOfLines={1}>{g.name}</Text>
-                      <Text style={[s.waRowSub, { color: MUTED }]} numberOfLines={1}>{g.description || `${count} houses`}</Text>
-                    </View>
-                    {!groupSelMode && (
-                      <View style={{ alignItems: 'flex-end', gap: 6 }}>
-                        <View style={[s.waCountBubble, { backgroundColor: color + '22', borderColor: color + '40' }]}>
-                          <Text style={[s.waCountBubbleTxt, { color }]}>{count}</Text>
-                        </View>
-                        <View style={{ flexDirection: 'row', gap: 5 }}>
-                          <TouchableOpacity onPress={() => openEditGroup(g)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} style={s.waMiniBtn}>
-                            <Feather name="edit-2" size={10} color="#34D399" />
-                          </TouchableOpacity>
-                          <TouchableOpacity onPress={() => handleDeleteGroup(g)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} style={[s.waMiniBtn, { backgroundColor: 'rgba(239,68,68,0.14)', borderColor: 'rgba(239,68,68,0.28)' }]}>
-                            <Feather name="trash-2" size={10} color="#EF4444" />
-                          </TouchableOpacity>
-                        </View>
-                      </View>
-                    )}
-                  </TouchableOpacity>
-                  <View style={s.waSep} />
-                </View>
-              );
-            })}
-            {groups.length === 0 && (
-              <View style={s.waEmpty}>
-                <Feather name="layers" size={30} color={MUTED2} />
-                <Text style={[s.waEmptyT, { color: TEXT }]}>No groups yet</Text>
-                <Text style={[s.waEmptyS, { color: MUTED }]}>Tap + to add a group</Text>
-              </View>
-            )}
-          </ScrollView>
-        </View>
-      )}
-
       {/* ════════════════════════ HOUSES VIEW ════════════════════════ */}
       {view === 'houses' && selectedWard && (
         <View style={{ flex: 1 }}>
@@ -927,10 +708,6 @@ export default function SuperAdminHouseDB() {
               </TouchableOpacity>
               <Text style={[s.selBarCount, { color: TEXT }]}>{selectedHouseIds.length} selected</Text>
               <View style={{ flex: 1 }} />
-              <TouchableOpacity style={[s.selAction, { backgroundColor: 'rgba(249,115,22,0.12)', borderColor: 'rgba(249,115,22,0.28)' }]} onPress={handleUngroupSelected} disabled={selectedHouseIds.length === 0}>
-                <Feather name="link-2" size={12} color="#F97316" />
-                <Text style={[s.selActionText, { color: '#F97316' }]}>Ungroup</Text>
-              </TouchableOpacity>
               <TouchableOpacity style={[s.selAction, { backgroundColor: 'rgba(99,102,241,0.12)', borderColor: 'rgba(99,102,241,0.28)' }]} onPress={openMoveModal} disabled={selectedHouseIds.length === 0}>
                 <Feather name="move" size={12} color="#818CF8" />
                 <Text style={[s.selActionText, { color: '#818CF8' }]}>Move</Text>
@@ -962,7 +739,6 @@ export default function SuperAdminHouseDB() {
             </View>
             {houseList.map((h, idx) => {
               const isSelected = selectedHouseIds.includes(h.id);
-              const grpColor = groups.find(g => g.id === h.groupId)?.color ?? '#6366F1';
               return (
                 <View key={h.id}>
                   <TouchableOpacity
@@ -982,7 +758,6 @@ export default function SuperAdminHouseDB() {
                       <Text style={{ fontSize: 13, fontFamily: 'Inter_700Bold', color: '#818CF8' }} numberOfLines={1}>{h.registrationNumber}</Text>
                       <Text style={{ fontSize: 12, fontFamily: 'Inter_500Medium', color: TEXT, maxWidth: '45%' }} numberOfLines={1}>{h.ownerName}</Text>
                     </View>
-                    {h.groupId && <View style={[s.waGrpDot, { backgroundColor: grpColor }]} />}
                     <Feather name="chevron-right" size={13} color={MUTED2} />
                   </TouchableOpacity>
                   <View style={s.waSep} />
@@ -1184,76 +959,6 @@ export default function SuperAdminHouseDB() {
         </SafeAreaView>
       </Modal>
 
-      {/* Add Group Modal */}
-      <Modal visible={showAddGroupModal} animationType="slide" presentationStyle="pageSheet">
-        <SafeAreaView style={{ flex: 1, backgroundColor: BG }}>
-          <LinearGradient colors={['#10B981','#059669']} style={s.modalHdr}>
-            <Text style={s.modalTitle}>Create Group</Text>
-            <Pressable onPress={() => setShowAddGroupModal(false)} style={s.closeBtn}><Feather name="x" size={19} color="#fff" /></Pressable>
-          </LinearGradient>
-          <ScrollView contentContainerStyle={{ padding: 20, gap: 14 }}>
-            {[
-              { label: 'Group Name *', key: 'name', placeholder: 'Zone A' },
-              { label: 'Description', key: 'description', placeholder: 'Optional description…' },
-            ].map(f => (
-              <View key={f.key}>
-                <Text style={[s.fieldLabel, { color: MUTED }]}>{f.label}</Text>
-                <TextInput
-                  style={[s.fieldInput, { backgroundColor: GLASS, borderColor: GLASS_BD, color: TEXT }]}
-                  placeholder={f.placeholder} placeholderTextColor={MUTED2}
-                  value={(groupForm as any)[f.key]}
-                  onChangeText={v => setGroupForm(p => ({ ...p, [f.key]: v }))}
-                />
-              </View>
-            ))}
-            <Text style={[s.fieldLabel, { color: MUTED }]}>Color</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10 }}>
-              {GROUP_COLORS.map(c => (
-                <TouchableOpacity key={c} onPress={() => setGroupForm(p => ({ ...p, color: c }))}>
-                  <View style={[s.colorDot, { backgroundColor: c, borderWidth: groupForm.color === c ? 3 : 0, borderColor: '#fff' }]} />
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-            <TouchableOpacity onPress={handleAddGroup} disabled={saving} activeOpacity={0.85}>
-              <LinearGradient colors={['#10B981','#059669']} style={s.saveBtn}>
-                <Text style={s.saveBtnText}>{saving ? 'Saving…' : 'Create Group'}</Text>
-              </LinearGradient>
-            </TouchableOpacity>
-          </ScrollView>
-        </SafeAreaView>
-      </Modal>
-
-      {/* Edit Group Modal */}
-      <Modal visible={showEditGroupModal} animationType="slide" presentationStyle="pageSheet">
-        <SafeAreaView style={{ flex: 1, backgroundColor: BG }}>
-          <LinearGradient colors={['#10B981','#059669']} style={s.modalHdr}>
-            <Text style={s.modalTitle}>Edit Group</Text>
-            <Pressable onPress={() => setShowEditGroupModal(false)} style={s.closeBtn}><Feather name="x" size={19} color="#fff" /></Pressable>
-          </LinearGradient>
-          <ScrollView contentContainerStyle={{ padding: 20, gap: 14 }}>
-            {[
-              { label: 'Group Name *', key: 'name', placeholder: 'Zone A' },
-              { label: 'Description', key: 'description', placeholder: 'Optional description…' },
-            ].map(f => (
-              <View key={f.key}>
-                <Text style={[s.fieldLabel, { color: MUTED }]}>{f.label}</Text>
-                <TextInput
-                  style={[s.fieldInput, { backgroundColor: GLASS, borderColor: GLASS_BD, color: TEXT }]}
-                  placeholder={f.placeholder} placeholderTextColor={MUTED2}
-                  value={(editGroupForm as any)[f.key]}
-                  onChangeText={v => setEditGroupForm(p => ({ ...p, [f.key]: v }))}
-                />
-              </View>
-            ))}
-            <TouchableOpacity onPress={handleSaveEditGroup} disabled={saving} activeOpacity={0.85}>
-              <LinearGradient colors={['#10B981','#059669']} style={s.saveBtn}>
-                <Text style={s.saveBtnText}>{saving ? 'Saving…' : 'Save Changes'}</Text>
-              </LinearGradient>
-            </TouchableOpacity>
-          </ScrollView>
-        </SafeAreaView>
-      </Modal>
-
       {/* Add Ward Modal */}
       <Modal visible={showAddWardModal} animationType="slide" presentationStyle="pageSheet">
         <SafeAreaView style={{ flex: 1, backgroundColor: BG }}>
@@ -1384,7 +1089,7 @@ export default function SuperAdminHouseDB() {
                   const grad = WARD_GRADS[idx % WARD_GRADS.length];
                   const active = moveWardId === w.id;
                   return (
-                    <TouchableOpacity key={w.id} onPress={() => { setMoveWardId(w.id); setMoveGroupId(null); }}>
+                    <TouchableOpacity key={w.id} onPress={() => setMoveWardId(w.id)}>
                       {active
                         ? <LinearGradient colors={grad} style={s.wardPillActive}><Text style={s.wardPillActiveText}>Ward {w.wardNumber}</Text></LinearGradient>
                         : <View style={s.wardPill}><Text style={[s.wardPillText, { color: MUTED }]}>Ward {w.wardNumber}</Text></View>
@@ -1393,23 +1098,6 @@ export default function SuperAdminHouseDB() {
                   );
                 })}
               </ScrollView>
-            </View>
-            <View>
-              <Text style={[s.fieldLabel, { color: MUTED, marginBottom: 10 }]}>Select Group (optional)</Text>
-              <TouchableOpacity style={[s.moveGroupRow, { borderColor: moveGroupId === null ? '#6366F150' : GLASS_BD, backgroundColor: moveGroupId === null ? '#6366F112' : GLASS }]} onPress={() => setMoveGroupId(null)} activeOpacity={0.8}>
-                <Text style={[s.moveGroupName, { color: moveGroupId === null ? '#6366F1' : MUTED }]}>Ungrouped (no group)</Text>
-                {moveGroupId === null && <Feather name="check" size={14} color="#6366F1" />}
-              </TouchableOpacity>
-              {groups.filter(g => !moveWardId || wards.find(w => w.id === moveWardId)).map((g, idx) => {
-                const color = g.color || GROUP_COLORS[idx % GROUP_COLORS.length];
-                return (
-                  <TouchableOpacity key={g.id} style={[s.moveGroupRow, { borderColor: moveGroupId === g.id ? color + '50' : GLASS_BD, backgroundColor: moveGroupId === g.id ? color + '12' : GLASS, marginTop: 8 }]} onPress={() => setMoveGroupId(g.id)} activeOpacity={0.8}>
-                    <View style={[s.groupDot, { backgroundColor: color }]} />
-                    <Text style={[s.moveGroupName, { color: moveGroupId === g.id ? color : TEXT }]}>{g.name}</Text>
-                    {moveGroupId === g.id && <Feather name="check" size={14} color={color} />}
-                  </TouchableOpacity>
-                );
-              })}
             </View>
             <TouchableOpacity onPress={handleMoveHouses} disabled={saving} activeOpacity={0.85}>
               <LinearGradient colors={['#4F46E5','#7C3AED']} style={s.saveBtn}>
@@ -1596,7 +1284,6 @@ export default function SuperAdminHouseDB() {
                     <Text style={{ color: '#38BDF8', fontSize: 9, fontFamily: 'Inter_700Bold', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 8 }}>Location</Text>
                     {[
                       { icon: 'map-pin' as const, label: 'Ward',    value: `Ward ${detailHouse.wardNumber}` },
-                      { icon: 'layers' as const,  label: 'Group',   value: detailHouse.groupName || 'Ungrouped' },
                       { icon: 'home' as const,    label: 'Address', value: detailHouse.address },
                     ].map((row, i, arr) => (
                       <View key={row.label} style={{ flexDirection: 'row', alignItems: 'flex-start', paddingVertical: 9, borderBottomWidth: i < arr.length - 1 ? 1 : 0, borderBottomColor: 'rgba(255,255,255,0.05)' }}>
@@ -1660,12 +1347,6 @@ export default function SuperAdminHouseDB() {
                   <Feather name="map-pin" size={12} color="#6366F1" />
                   <Text style={[s.exportScopeValue, { color: TEXT }]}>Ward {selectedWard?.wardNumber} — {selectedWard?.name}</Text>
                 </View>
-                {selectedGroup && (
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 }}>
-                    <Feather name="layers" size={12} color="#10B981" />
-                    <Text style={[s.exportScopeValue, { color: TEXT }]}>{selectedGroup.name}</Text>
-                  </View>
-                )}
                 <View style={[s.exportCountBadge, { marginTop: 10 }]}>
                   <Feather name="home" size={12} color="#6366F1" />
                   <Text style={[s.exportCountText, { color: TEXT }]}>{houseList.length} houses will be exported</Text>
