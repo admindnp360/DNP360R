@@ -1,7 +1,7 @@
 import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { createContext, useCallback, useContext, useState } from 'react';
-import { Alert, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, Modal, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 
 export interface AlertButton {
   text: string;
@@ -46,7 +46,7 @@ export function AlertProvider({ children }: { children: React.ReactNode }) {
     const isConfirmation = buttons.length > 1 ||
       buttons.some(b => b.style === 'destructive' || b.style === 'cancel');
 
-    if (isConfirmation) {
+    if (isConfirmation && Platform.OS !== 'web') {
       Alert.alert(
         title,
         message,
