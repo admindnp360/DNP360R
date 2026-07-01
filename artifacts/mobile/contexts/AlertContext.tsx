@@ -1,7 +1,7 @@
 import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { createContext, useCallback, useContext, useState } from 'react';
-import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 
 export interface AlertButton {
   text: string;
@@ -43,7 +43,23 @@ export function AlertProvider({ children }: { children: React.ReactNode }) {
     buttons: AlertButton[] = [{ text: 'OK' }],
     type: AlertType = 'info',
   ) => {
-    setState({ visible: true, title, message, buttons, type });
+    const isConfirmation = buttons.length > 1 ||
+      buttons.some(b => b.style === 'destructive' || b.style === 'cancel');
+
+    if (isConfirmation) {
+      Alert.alert(
+        title,
+        message,
+        buttons.map(b => ({
+          text: b.text,
+          style: b.style,
+          onPress: b.onPress,
+        })),
+        { cancelable: true },
+      );
+    } else {
+      setState({ visible: true, title, message, buttons, type });
+    }
   }, []);
 
   function dismiss(btn?: AlertButton) {
@@ -86,36 +102,22 @@ export function AlertProvider({ children }: { children: React.ReactNode }) {
                 end={{ x: 1, y: 0 }}
               />
 
-              <View style={[styles.btnRow, state.buttons.length === 1 && { justifyContent: 'center' }]}>
-                {state.buttons.map((btn, i) => {
-                  const isDestructive = btn.style === 'destructive';
-                  const isCancel = btn.style === 'cancel';
-                  return (
-                    <Pressable
-                      key={i}
-                      onPress={() => dismiss(btn)}
-                      style={({ pressed }) => [
-                        styles.btn,
-                        state.buttons.length === 1 && { flex: 0, minWidth: 140 },
-                        pressed && { opacity: 0.75 },
-                      ]}
-                    >
-                      {isCancel ? (
-                        <View style={styles.cancelBtn}>
-                          <Text style={styles.cancelTxt}>{btn.text}</Text>
-                        </View>
-                      ) : isDestructive ? (
-                        <View style={styles.destructBtn}>
-                          <Text style={styles.destructTxt}>{btn.text}</Text>
-                        </View>
-                      ) : (
-                        <LinearGradient colors={cfg.grad} style={styles.gradBtn} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
-                          <Text style={styles.gradTxt}>{btn.text}</Text>
-                        </LinearGradient>
-                      )}
-                    </Pressable>
-                  );
-                })}
+              <View style={[styles.btnRow, { justifyContent: 'center' }]}>
+                {state.buttons.map((btn, i) => (
+                  <Pressable
+                    key={i}
+                    onPress={() => dismiss(btn)}
+                    style={({ pressed }) => [
+                      styles.btn,
+                      { flex: 0, minWidth: 140 },
+                      pressed && { opacity: 0.75 },
+                    ]}
+                  >
+                    <LinearGradient colors={cfg.grad} style={styles.gradBtn} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
+                      <Text style={styles.gradTxt}>{btn.text}</Text>
+                    </LinearGradient>
+                  </Pressable>
+                ))}
               </View>
             </LinearGradient>
           </View>
@@ -165,8 +167,4 @@ const styles = StyleSheet.create({
   btn: { flex: 1, borderRadius: 14 },
   gradBtn: { paddingVertical: 14, alignItems: 'center', borderRadius: 14, overflow: 'hidden' },
   gradTxt: { color: '#fff', fontSize: 14, fontFamily: 'Inter_700Bold' },
-  cancelBtn: { paddingVertical: 14, alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.07)', borderRadius: 14, borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)' },
-  cancelTxt: { color: 'rgba(255,255,255,0.55)', fontSize: 14, fontFamily: 'Inter_600SemiBold' },
-  destructBtn: { paddingVertical: 14, alignItems: 'center', backgroundColor: 'rgba(239,68,68,0.15)', borderRadius: 14, borderWidth: 1, borderColor: 'rgba(239,68,68,0.35)' },
-  destructTxt: { color: '#F87171', fontSize: 14, fontFamily: 'Inter_700Bold' },
 });
