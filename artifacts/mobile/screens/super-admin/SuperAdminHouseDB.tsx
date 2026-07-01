@@ -97,6 +97,11 @@ export default function SuperAdminHouseDB() {
   const [selectionMode, setSelectionMode]       = useState(false);
   const [selectedHouseIds, setSelectedHouseIds] = useState<string[]>([]);
 
+  // ── Group multi-select ─────────────────────────────────────────────
+  const [groupSelMode, setGroupSelMode]         = useState(false);
+  const [selectedGroupIds, setSelectedGroupIds] = useState<string[]>([]);
+  const [groupFilter, setGroupFilter]           = useState<string | null>(null);
+
   // ── Search result selection ────────────────────────────────────────
   const [searchSelMode, setSearchSelMode]       = useState(false);
   const [selectedSearchIds, setSelectedSearchIds] = useState<string[]>([]);
@@ -203,7 +208,7 @@ export default function SuperAdminHouseDB() {
   // ── DB Tab – navigation helpers ───────────────────────────────────
   function goToHouses(ward: Ward | null) { setSelectedWard(ward); setView('houses'); setSearch(''); setGlobalSearch(''); exitWardSel(); }
   function goBack() {
-    if (view === 'houses') { setView('wards'); setSelectedWard(null); setExpandedHouseId(null); setSearch(''); exitSelectionMode(); }
+    if (view === 'houses') { setView('wards'); setSelectedWard(null); setExpandedHouseId(null); setSearch(''); setGroupFilter(null); exitSelectionMode(); }
   }
 
   function exitSelectionMode() { setSelectionMode(false); setSelectedHouseIds([]); }
@@ -222,6 +227,7 @@ export default function SuperAdminHouseDB() {
   // ── House CRUD ────────────────────────────────────────────────────
   const houseList = useMemo(() => {
     let list: House[] = selectedWard ? houses.filter(h => h.wardId === selectedWard.id) : houses;
+    if (groupFilter) list = list.filter(h => h.groupId === groupFilter);
     if (search.trim()) {
       const q = search.toLowerCase();
       list = list.filter(h =>
@@ -231,7 +237,7 @@ export default function SuperAdminHouseDB() {
       );
     }
     return list;
-  }, [houses, selectedWard, search]);
+  }, [houses, selectedWard, groupFilter, search]);
 
   async function handleAddHouse() {
     if (!selectedWard) return;
@@ -472,9 +478,11 @@ export default function SuperAdminHouseDB() {
             <Feather name="arrow-left" size={17} color="#fff" />
           </TouchableOpacity>
           <View style={{ flex: 1 }}>
-            <Text style={s.waHdrTitle} numberOfLines={1}>{selectedWard?.name ?? 'All Houses'}</Text>
+            <Text style={s.waHdrTitle} numberOfLines={1}>
+              {groupFilter ? (groups.find(g => g.id === groupFilter)?.name ?? 'Group') : (selectedWard?.name ?? 'All Houses')}
+            </Text>
             <Text style={s.waHdrSub}>
-              {selectedWard ? `Ward ${selectedWard.wardNumber} · ` : ''}{houseList.length} houses
+              {groupFilter ? 'Group · ' : selectedWard ? `Ward ${selectedWard.wardNumber} · ` : ''}{houseList.length} houses
             </Text>
           </View>
           <View style={{ flexDirection: 'row', gap: 8 }}>
@@ -736,8 +744,43 @@ export default function SuperAdminHouseDB() {
                 {/* Groups list */}
                 {quickTab === 'group' && (
                   <View>
+                    {/* Group selection bar */}
+                    {groupSelMode && (
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginHorizontal: 14, marginBottom: 8, backgroundColor: 'rgba(99,102,241,0.10)', borderRadius: 10, borderWidth: 1, borderColor: 'rgba(99,102,241,0.25)', padding: 8 }}>
+                        <TouchableOpacity onPress={() => { setGroupSelMode(false); setSelectedGroupIds([]); }} style={{ padding: 4 }}>
+                          <Feather name="x" size={14} color={MUTED} />
+                        </TouchableOpacity>
+                        <Text style={{ flex: 1, color: '#818CF8', fontSize: 12, fontFamily: 'Inter_700Bold' }}>{selectedGroupIds.length} selected</Text>
+                        <TouchableOpacity
+                          style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8, backgroundColor: 'rgba(99,102,241,0.15)' }}
+                          onPress={() => setSelectedGroupIds(selectedGroupIds.length === groups.length ? [] : groups.map(g => g.id))}
+                        >
+                          <Feather name={selectedGroupIds.length === groups.length ? 'check-square' : 'square'} size={12} color="#818CF8" />
+                          <Text style={{ color: '#818CF8', fontSize: 11, fontFamily: 'Inter_600SemiBold' }}>
+                            {selectedGroupIds.length === groups.length ? 'Deselect All' : 'Select All'}
+                          </Text>
+                        </TouchableOpacity>
+                        {selectedGroupIds.length > 0 && (
+                          <TouchableOpacity
+                            style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8, backgroundColor: 'rgba(239,68,68,0.15)' }}
+                            onPress={() => showAlert('Delete Groups?', `Delete ${selectedGroupIds.length} group(s)? Houses will become ungrouped.`, [
+                              { text: 'Cancel', style: 'cancel' },
+                              { text: 'Delete', style: 'destructive', onPress: async () => {
+                                for (const id of selectedGroupIds) await deleteGroup(id);
+                                setGroupSelMode(false); setSelectedGroupIds([]);
+                                showAlert('Done', 'Groups deleted.', undefined, 'success');
+                              }},
+                            ], 'warning')}
+                          >
+                            <Feather name="trash-2" size={12} color="#EF4444" />
+                            <Text style={{ color: '#EF4444', fontSize: 11, fontFamily: 'Inter_600SemiBold' }}>Delete</Text>
+                          </TouchableOpacity>
+                        )}
+                      </View>
+                    )}
                     <View style={s.waSecHdr}>
                       <Text style={s.waSecTxt}>{groups.length} Group{groups.length !== 1 ? 's' : ''}</Text>
+                      {!groupSelMode && <Text style={[s.waSecTxt, { fontFamily: 'Inter_400Regular', color: MUTED, textTransform: 'none' }]}>Long-press to select</Text>}
                     </View>
                     {groups.length === 0 ? (
                       <View style={s.waEmpty}>
@@ -745,33 +788,60 @@ export default function SuperAdminHouseDB() {
                         <Text style={[s.waEmptyT, { color: TEXT }]}>No groups yet</Text>
                         <Text style={[s.waEmptyS, { color: MUTED }]}>Tap Add → Add Group</Text>
                       </View>
-                    ) : [...groups].sort((a, b) => a.name.localeCompare(b.name)).map(g => (
-                      <View key={g.id}>
-                        <View style={[s.waCommRow, { paddingVertical: 8 }]}>
-                          <LinearGradient colors={['#059669','#10B981']} style={s.waCommAvatar}>
-                            <Feather name="layers" size={10} color="#fff" />
-                          </LinearGradient>
-                          <View style={{ flex: 1 }}>
-                            <Text style={[s.waRowName, { color: TEXT }]} numberOfLines={1}>{g.name}</Text>
-                            {g.description ? <Text style={[s.waRowSub, { color: MUTED }]} numberOfLines={1}>{g.description}</Text> : null}
-                          </View>
-                          <View style={{ alignItems: 'flex-end', gap: 4 }}>
-                            <View style={{ flexDirection: 'row', gap: 5 }}>
-                              <TouchableOpacity onPress={() => showAlert('Workers', 'Worker assignment for groups coming soon.', undefined, 'info')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} style={s.waMiniBtn}>
-                                <Feather name="user-plus" size={10} color="#818CF8" />
-                              </TouchableOpacity>
-                              <TouchableOpacity onPress={() => openEditGroup(g)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} style={s.waMiniBtn}>
-                                <Feather name="edit-2" size={10} color="#34D399" />
-                              </TouchableOpacity>
-                              <TouchableOpacity onPress={() => handleDeleteGroup(g)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} style={[s.waMiniBtn, { backgroundColor: 'rgba(239,68,68,0.14)', borderColor: 'rgba(239,68,68,0.28)' }]}>
-                                <Feather name="trash-2" size={10} color="#EF4444" />
-                              </TouchableOpacity>
+                    ) : [...groups].sort((a, b) => a.name.localeCompare(b.name)).map(g => {
+                      const isSel = selectedGroupIds.includes(g.id);
+                      const hCount = houses.filter(h => h.groupId === g.id).length;
+                      return (
+                        <View key={g.id}>
+                          <Pressable
+                            style={({ pressed }) => [s.waCommRow, { paddingVertical: 10, backgroundColor: pressed ? 'rgba(255,255,255,0.04)' : isSel ? 'rgba(99,102,241,0.07)' : 'transparent' }]}
+                            onPress={() => {
+                              if (groupSelMode) {
+                                setSelectedGroupIds(prev => prev.includes(g.id) ? prev.filter(x => x !== g.id) : [...prev, g.id]);
+                              } else {
+                                setGroupFilter(g.id); goToHouses(null);
+                              }
+                            }}
+                            onLongPress={() => {
+                              setGroupSelMode(true);
+                              setSelectedGroupIds(prev => prev.includes(g.id) ? prev : [...prev, g.id]);
+                            }}
+                            delayLongPress={500}
+                          >
+                            {groupSelMode ? (
+                              <View style={[s.checkbox, { borderColor: isSel ? '#6366F1' : GLASS_BD, backgroundColor: isSel ? '#6366F1' : 'transparent' }]}>
+                                {isSel && <Feather name="check" size={10} color="#fff" />}
+                              </View>
+                            ) : (
+                              <LinearGradient colors={['#059669','#10B981']} style={s.waCommAvatar}>
+                                <Feather name="layers" size={10} color="#fff" />
+                              </LinearGradient>
+                            )}
+                            <View style={{ flex: 1 }}>
+                              <Text style={[s.waRowName, { color: TEXT }]} numberOfLines={1}>{g.name}</Text>
+                              {g.description ? <Text style={[s.waRowSub, { color: MUTED }]} numberOfLines={1}>{g.description}</Text> : null}
                             </View>
-                          </View>
+                            {!groupSelMode && (
+                              <View style={{ alignItems: 'flex-end', gap: 4 }}>
+                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(52,211,153,0.12)', borderRadius: 8, paddingHorizontal: 6, paddingVertical: 2 }}>
+                                  <Feather name="home" size={9} color="#34D399" />
+                                  <Text style={{ color: '#34D399', fontSize: 10, fontFamily: 'Inter_700Bold' }}>{hCount}</Text>
+                                </View>
+                                <View style={{ flexDirection: 'row', gap: 5 }}>
+                                  <TouchableOpacity onPress={() => openEditGroup(g)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} style={s.waMiniBtn}>
+                                    <Feather name="edit-2" size={10} color="#34D399" />
+                                  </TouchableOpacity>
+                                  <TouchableOpacity onPress={() => handleDeleteGroup(g)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} style={[s.waMiniBtn, { backgroundColor: 'rgba(239,68,68,0.14)', borderColor: 'rgba(239,68,68,0.28)' }]}>
+                                    <Feather name="trash-2" size={10} color="#EF4444" />
+                                  </TouchableOpacity>
+                                </View>
+                              </View>
+                            )}
+                          </Pressable>
+                          <View style={s.waSep} />
                         </View>
-                        <View style={s.waSep} />
-                      </View>
-                    ))}
+                      );
+                    })}
                   </View>
                 )}
 
