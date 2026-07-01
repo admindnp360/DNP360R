@@ -25,7 +25,7 @@ const GROUP_COLORS = ['#10B981', '#0EA5E9', '#F97316', '#8B5CF6', '#EC4899', '#E
 type ViewMode = 'groups' | 'houses';
 
 export default function SuperAdminGroups() {
-  const { houses, wards, groups, assignGroupToHouses, removeGroupFromHouses } = useAppData();
+  const { houses, wards, groups, assignGroupToHouses, removeGroupFromHouses, deleteGroup } = useAppData();
   const colors = useColors();
   const { showAlert } = useAlert();
 
@@ -37,6 +37,9 @@ export default function SuperAdminGroups() {
   const [selectedHouseIds, setSelectedHouseIds] = useState<Set<string>>(new Set());
   const [showGroupModal, setShowGroupModal] = useState(false);
   const [assigning, setAssigning] = useState(false);
+
+  const [groupSelectMode, setGroupSelectMode] = useState(false);
+  const [selectedGroupIds, setSelectedGroupIds] = useState<Set<string>>(new Set());
 
   const wardGroups = groups;
 
@@ -62,6 +65,33 @@ export default function SuperAdminGroups() {
     return list;
   })();
 
+  function toggleGroupSelect(id: string) {
+    setSelectedGroupIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
+
+  function exitGroupSelectMode() {
+    setGroupSelectMode(false);
+    setSelectedGroupIds(new Set());
+  }
+
+  async function handleDeleteSelectedGroups() {
+    showAlert('Delete Groups?', `Delete ${selectedGroupIds.size} group(s)? Houses will become ungrouped.`, [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete', style: 'destructive',
+        onPress: async () => {
+          for (const id of selectedGroupIds) { await deleteGroup(id); }
+          showAlert('Done', `${selectedGroupIds.size} group(s) deleted.`, undefined, 'success');
+          exitGroupSelectMode();
+        },
+      },
+    ], 'warning');
+  }
+
   function selectWard(ward: Ward) {
     setSelectedWard(ward);
     setViewMode('groups');
@@ -69,6 +99,7 @@ export default function SuperAdminGroups() {
     setShowingUngrouped(false);
     setSelectedHouseIds(new Set());
     setSearch('');
+    exitGroupSelectMode();
   }
 
   function openGroup(group: Group) {
@@ -184,16 +215,50 @@ export default function SuperAdminGroups() {
 
       ) : viewMode === 'groups' ? (
         /* ── GROUP CARDS VIEW ── */
-        <ScrollView contentContainerStyle={{ padding: 16, gap: 12, paddingBottom: 120 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-            <Text style={[s.sectionLabel, { color: colors.mutedForeground }]}>
-              All Groups · {wardGroups.length}
-            </Text>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#F9731615', borderRadius: 20, paddingHorizontal: 8, paddingVertical: 4 }}>
-              <Feather name="shuffle" size={10} color="#F97316" />
-              <Text style={{ fontSize: 10, fontFamily: 'Inter_600SemiBold', color: '#F97316' }}>Cross-ward</Text>
+        <View style={{ flex: 1 }}>
+          {/* Selection action bar */}
+          {groupSelectMode && (
+            <View style={[s.selBar, { backgroundColor: '#4F46E510', borderColor: '#4F46E530' }]}>
+              <TouchableOpacity onPress={exitGroupSelectMode} style={s.selBarCancel}>
+                <Feather name="x" size={14} color={colors.mutedForeground} />
+              </TouchableOpacity>
+              <Text style={[s.selBarCount, { color: '#4F46E5' }]}>{selectedGroupIds.size} selected</Text>
+              <TouchableOpacity
+                style={[s.selBarBtn, { backgroundColor: '#4F46E510' }]}
+                onPress={() => {
+                  const all = wardGroups.map(g => g.id);
+                  if (selectedGroupIds.size === all.length) setSelectedGroupIds(new Set());
+                  else setSelectedGroupIds(new Set(all));
+                }}
+              >
+                <Feather name={selectedGroupIds.size === wardGroups.length ? 'check-square' : 'square'} size={13} color="#4F46E5" />
+                <Text style={[s.selBarBtnText, { color: '#4F46E5' }]}>
+                  {selectedGroupIds.size === wardGroups.length ? 'Deselect All' : 'Select All'}
+                </Text>
+              </TouchableOpacity>
+              {selectedGroupIds.size > 0 && (
+                <TouchableOpacity
+                  style={[s.selBarBtn, { backgroundColor: '#EF444415' }]}
+                  onPress={handleDeleteSelectedGroups}
+                >
+                  <Feather name="trash-2" size={13} color="#EF4444" />
+                  <Text style={[s.selBarBtnText, { color: '#EF4444' }]}>Delete</Text>
+                </TouchableOpacity>
+              )}
             </View>
-          </View>
+          )}
+        <ScrollView contentContainerStyle={{ padding: 16, gap: 12, paddingBottom: 120 }}>
+          {!groupSelectMode && (
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+              <Text style={[s.sectionLabel, { color: colors.mutedForeground }]}>
+                All Groups · {wardGroups.length}
+              </Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#F9731615', borderRadius: 20, paddingHorizontal: 8, paddingVertical: 4 }}>
+                <Feather name="shuffle" size={10} color="#F97316" />
+                <Text style={{ fontSize: 10, fontFamily: 'Inter_600SemiBold', color: '#F97316' }}>Cross-ward</Text>
+              </View>
+            </View>
+          )}
 
           {wardGroups.length === 0 ? (
             <View style={[s.emptyCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
@@ -205,17 +270,25 @@ export default function SuperAdminGroups() {
             wardGroups.map((g, idx) => {
               const color = g.color || GROUP_COLORS[idx % GROUP_COLORS.length];
               const count = houses.filter(h => h.groupId === g.id).length;
+              const isGroupSelected = selectedGroupIds.has(g.id);
               return (
                 <TouchableOpacity
                   key={g.id}
-                  style={[s.groupCard, { backgroundColor: colors.card, borderColor: colors.border }]}
-                  onPress={() => openGroup(g)}
+                  style={[s.groupCard, { backgroundColor: colors.card, borderColor: isGroupSelected ? '#4F46E5' : colors.border }, isGroupSelected && { borderWidth: 1.5 }]}
+                  onPress={() => groupSelectMode ? toggleGroupSelect(g.id) : openGroup(g)}
+                  onLongPress={() => { if (!groupSelectMode) setGroupSelectMode(true); toggleGroupSelect(g.id); }}
                   activeOpacity={0.85}
                 >
                   <View style={[s.groupColorBar, { backgroundColor: color }]} />
-                  <View style={[s.groupIconBox, { backgroundColor: color + '20' }]}>
-                    <Feather name="layers" size={20} color={color} />
-                  </View>
+                  {groupSelectMode ? (
+                    <View style={[s.checkbox, { borderColor: isGroupSelected ? '#4F46E5' : colors.border, backgroundColor: isGroupSelected ? '#4F46E5' : 'transparent', marginLeft: 8 }]}>
+                      {isGroupSelected && <Feather name="check" size={10} color="#fff" />}
+                    </View>
+                  ) : (
+                    <View style={[s.groupIconBox, { backgroundColor: color + '20' }]}>
+                      <Feather name="layers" size={20} color={color} />
+                    </View>
+                  )}
                   <View style={{ flex: 1 }}>
                     <Text style={[s.groupName, { color: colors.text }]}>{g.name}</Text>
                     {g.description ? (
@@ -226,7 +299,7 @@ export default function SuperAdminGroups() {
                     <Feather name="home" size={11} color={color} />
                     <Text style={[s.countBadgeText, { color }]}>{count}</Text>
                   </View>
-                  <Feather name="chevron-right" size={18} color={colors.mutedForeground} style={{ marginLeft: 4 }} />
+                  {!groupSelectMode && <Feather name="chevron-right" size={18} color={colors.mutedForeground} style={{ marginLeft: 4 }} />}
                 </TouchableOpacity>
               );
             })
@@ -255,6 +328,7 @@ export default function SuperAdminGroups() {
             </TouchableOpacity>
           )}
         </ScrollView>
+        </View>
 
       ) : (
         /* ── INGROUP HOUSE LIST VIEW ── */
@@ -439,7 +513,7 @@ const s = StyleSheet.create({
 
   sectionLabel: { fontSize: 12, fontFamily: 'Inter_600SemiBold', marginBottom: 4 },
 
-  groupCard: { borderRadius: 16, borderWidth: 1, flexDirection: 'row', alignItems: 'center', overflow: 'hidden', paddingRight: 14, paddingVertical: 14, gap: 12 },
+  groupCard: { borderRadius: 16, borderWidth: 1, flexDirection: 'row', alignItems: 'center', overflow: 'hidden', paddingRight: 14, paddingVertical: 10, gap: 12 },
   groupColorBar: { width: 4, alignSelf: 'stretch' },
   groupIconBox: { width: 44, height: 44, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
   groupName: { fontSize: 15, fontFamily: 'Inter_700Bold' },
@@ -454,6 +528,11 @@ const s = StyleSheet.create({
   groupChipText: { fontSize: 12, fontFamily: 'Inter_700Bold' },
   houseCountLabel: { marginLeft: 'auto', fontSize: 12, fontFamily: 'Inter_500Medium' },
 
+  selBar: { flexDirection: 'row', alignItems: 'center', gap: 8, marginHorizontal: 16, marginTop: 10, borderRadius: 12, borderWidth: 1, padding: 10 },
+  selBarCancel: { width: 28, height: 28, borderRadius: 8, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.05)' },
+  selBarCount: { fontSize: 13, fontFamily: 'Inter_700Bold', marginRight: 4 },
+  selBarBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8 },
+  selBarBtnText: { fontSize: 12, fontFamily: 'Inter_600SemiBold' },
   selectionBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginHorizontal: 16, marginTop: 10, borderRadius: 12, borderWidth: 1, padding: 10 },
   selectAllBtn: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   checkbox: { width: 20, height: 20, borderRadius: 6, borderWidth: 1.5, justifyContent: 'center', alignItems: 'center' },

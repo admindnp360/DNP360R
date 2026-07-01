@@ -852,7 +852,7 @@ export default function SuperAdminHouseDB() {
       )}
 
       {/* ════════════════════════ HOUSES VIEW ════════════════════════ */}
-      {view === 'houses' && selectedWard && (
+      {view === 'houses' && (
         <View style={{ flex: 1 }}>
           {selectionMode && (
             <View style={s.selBar}>
