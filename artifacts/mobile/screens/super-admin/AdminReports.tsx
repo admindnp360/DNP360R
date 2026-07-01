@@ -789,6 +789,14 @@ export default function AdminReports() {
   body{font-family:Arial,Helvetica,sans-serif;background:#fff;color:#0f172a;font-size:9px;line-height:1.4;position:relative}
   .content{position:relative;z-index:1;padding:8mm 10mm 6mm 10mm;margin-top:42mm}
 
+  /* ── Header ── */
+  .hdr{border:2px solid rgba(30,58,138,0.3);border-radius:10px;padding:10px 18px;margin-bottom:8px;background:rgba(239,246,255,0.85);display:flex;align-items:center;gap:14px}
+  .hdr-text{flex:1;text-align:center}
+  .hdr-title{font-size:14px;font-weight:900;color:#1e3a8a;letter-spacing:0.5px;line-height:1.2;text-transform:uppercase}
+  .hdr-sub{font-size:9.5px;font-weight:700;color:#1e40af;margin-top:2px}
+  .hdr-tag{font-size:7px;color:#64748b;margin-top:2px}
+  .hdr-badge{background:linear-gradient(90deg,#1e3a8a,#1e40af);color:#fff;font-size:7px;font-weight:700;padding:3px 10px;border-radius:12px;display:inline-block;margin-top:4px;letter-spacing:0.8px}
+
   /* ── Info box ── */
   .info{border:1px solid rgba(30,58,138,0.25);border-radius:7px;padding:6px 12px;margin-bottom:7px;background:rgba(240,249,255,0.85);display:grid;grid-template-columns:1fr 1fr;gap:2px 20px}
   .ir{font-size:8px;display:flex;gap:4px;padding:1px 0}
@@ -829,6 +837,16 @@ export default function AdminReports() {
 ${bgTag}
 
 <div class="content">
+
+<!-- ══ HEADER ══ -->
+<div class="hdr">
+  <div class="hdr-text">
+    <div class="hdr-title">Nagar Parishad, Daudnagar</div>
+    <div class="hdr-sub">DNP360 — Smart Governance System</div>
+    <div class="hdr-tag">Garbage Collection Management · Bihar, India</div>
+    <div class="hdr-badge">✦ OFFICIAL REPORT ✦</div>
+  </div>
+</div>
 
 <!-- ══ REPORT INFO BOX ══ -->
 <div class="info">
