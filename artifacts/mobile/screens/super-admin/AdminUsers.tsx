@@ -1042,7 +1042,7 @@ const s = StyleSheet.create({
 
   /* search — 30% compact */
   searchWrap: { paddingHorizontal: 12, paddingTop: 8, paddingBottom: 7, gap: 6, borderBottomWidth: 1, borderBottomColor: GLASS_BD },
-  searchBox:  { flexDirection: 'row', alignItems: 'center', gap: 8, borderRadius: 12, borderWidth: 1, borderColor: GLASS_BD, backgroundColor: GLASS, paddingHorizontal: 12, paddingVertical: 10 },
+  searchBox:  { flexDirection: 'row', alignItems: 'center', gap: 8, borderRadius: 12, borderWidth: 1, borderColor: GLASS_BD, backgroundColor: GLASS, paddingHorizontal: 12, paddingVertical: 9 },
   searchInput:{ flex: 1, fontSize: 13, fontFamily: 'Inter_400Regular', color: TEXT, padding: 0 },
 
   /* filters — 30% compact */

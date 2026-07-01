@@ -13,7 +13,7 @@ export function SearchBar({ value, onChangeText, placeholder = 'Search...' }: Pr
   const colors = useColors();
   return (
     <View style={[styles.wrap, { backgroundColor: colors.card, borderColor: colors.border }]}>
-      <Feather name="search" size={16} color={colors.mutedForeground} />
+      <Feather name="search" size={14} color={colors.mutedForeground} />
       <TextInput
         value={value}
         onChangeText={onChangeText}
@@ -26,6 +26,6 @@ export function SearchBar({ value, onChangeText, placeholder = 'Search...' }: Pr
 }
 
 const styles = StyleSheet.create({
-  wrap: { flexDirection: 'row', alignItems: 'center', gap: 8, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10, borderWidth: 1 },
+  wrap: { flexDirection: 'row', alignItems: 'center', gap: 8, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 9, borderWidth: 1 },
   input: { flex: 1, fontSize: 13, fontFamily: 'Inter_400Regular', padding: 0 },
 });
