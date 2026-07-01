@@ -192,7 +192,7 @@ export default function SuperAdminHouseDB() {
   }, [houses, users, wards, globalSearch]);
 
   // ── DB Tab – navigation helpers ───────────────────────────────────
-  function goToHouses(ward: Ward) { setSelectedWard(ward); setView('houses'); setSearch(''); setGlobalSearch(''); exitWardSel(); }
+  function goToHouses(ward: Ward | null) { setSelectedWard(ward); setView('houses'); setSearch(''); setGlobalSearch(''); exitWardSel(); }
   function goBack() {
     if (view === 'houses') { setView('wards'); setSelectedWard(null); setExpandedHouseId(null); setSearch(''); exitSelectionMode(); }
   }
@@ -212,7 +212,7 @@ export default function SuperAdminHouseDB() {
 
   // ── House CRUD ────────────────────────────────────────────────────
   const houseList = useMemo(() => {
-    let list: House[] = selectedWard ? houses.filter(h => h.wardId === selectedWard.id) : [];
+    let list: House[] = selectedWard ? houses.filter(h => h.wardId === selectedWard.id) : houses;
     if (search.trim()) {
       const q = search.toLowerCase();
       list = list.filter(h =>
@@ -434,16 +434,20 @@ export default function SuperAdminHouseDB() {
             <Feather name="arrow-left" size={17} color="#fff" />
           </TouchableOpacity>
           <View style={{ flex: 1 }}>
-            <Text style={s.waHdrTitle} numberOfLines={1}>{selectedWard?.name ?? 'Houses'}</Text>
-            <Text style={s.waHdrSub}>Ward {selectedWard?.wardNumber} · {houseList.length} houses</Text>
+            <Text style={s.waHdrTitle} numberOfLines={1}>{selectedWard?.name ?? 'All Houses'}</Text>
+            <Text style={s.waHdrSub}>
+              {selectedWard ? `Ward ${selectedWard.wardNumber} · ` : ''}{houseList.length} houses
+            </Text>
           </View>
           <View style={{ flexDirection: 'row', gap: 8 }}>
             <TouchableOpacity style={s.waHdrBtn} onPress={() => setShowExportModal(true)} activeOpacity={0.8} disabled={exporting}>
               {exporting ? <ActivityIndicator size={12} color="#818CF8" /> : <Feather name="download-cloud" size={15} color="#818CF8" />}
             </TouchableOpacity>
-            <TouchableOpacity style={[s.waHdrBtn, { backgroundColor: 'rgba(79,70,229,0.14)', borderColor: 'rgba(79,70,229,0.28)' }]} onPress={() => setShowAddHouseModal(true)} activeOpacity={0.8}>
-              <Feather name="plus" size={15} color="#818CF8" />
-            </TouchableOpacity>
+            {selectedWard && (
+              <TouchableOpacity style={[s.waHdrBtn, { backgroundColor: 'rgba(79,70,229,0.14)', borderColor: 'rgba(79,70,229,0.28)' }]} onPress={() => setShowAddHouseModal(true)} activeOpacity={0.8}>
+                <Feather name="plus" size={15} color="#818CF8" />
+              </TouchableOpacity>
+            )}
           </View>
         </View>
       )}
@@ -625,6 +629,23 @@ export default function SuperAdminHouseDB() {
               </View>
             ) : (
               <View>
+                {/* All Houses bar */}
+                {!wardSelMode && (
+                  <TouchableOpacity
+                    style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginHorizontal: 14, marginBottom: 10, paddingHorizontal: 14, paddingVertical: 13, borderRadius: 14, backgroundColor: 'rgba(99,102,241,0.10)', borderWidth: 1, borderColor: 'rgba(99,102,241,0.28)' }}
+                    onPress={() => goToHouses(null)}
+                    activeOpacity={0.75}
+                  >
+                    <LinearGradient colors={['#6366F1','#8B5CF6']} style={{ width: 36, height: 36, borderRadius: 10, justifyContent: 'center', alignItems: 'center' }}>
+                      <Feather name="database" size={15} color="#fff" />
+                    </LinearGradient>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ color: '#F0F4FF', fontSize: 13, fontFamily: 'Inter_700Bold' }}>All Houses</Text>
+                      <Text style={{ color: '#818CF8', fontSize: 11, fontFamily: 'Inter_400Regular', marginTop: 1 }}>{houses.length} total across all wards</Text>
+                    </View>
+                    <Feather name="chevron-right" size={15} color="#818CF8" />
+                  </TouchableOpacity>
+                )}
                 <View style={s.waSecHdr}>
                   <Text style={s.waSecTxt}>{wards.length} Ward{wards.length !== 1 ? 's' : ''}</Text>
                   {!wardSelMode && <Text style={[s.waSecTxt, { fontFamily: 'Inter_400Regular', color: MUTED, textTransform: 'none' }]}>Long-press to select</Text>}
