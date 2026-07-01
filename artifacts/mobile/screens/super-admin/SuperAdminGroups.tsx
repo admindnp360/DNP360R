@@ -272,12 +272,22 @@ export default function SuperAdminGroups() {
               const count = houses.filter(h => h.groupId === g.id).length;
               const isGroupSelected = selectedGroupIds.has(g.id);
               return (
-                <TouchableOpacity
+                <Pressable
                   key={g.id}
-                  style={[s.groupCard, { backgroundColor: colors.card, borderColor: isGroupSelected ? '#4F46E5' : colors.border }, isGroupSelected && { borderWidth: 1.5 }]}
-                  onPress={() => groupSelectMode ? toggleGroupSelect(g.id) : openGroup(g)}
-                  onLongPress={() => { if (!groupSelectMode) setGroupSelectMode(true); toggleGroupSelect(g.id); }}
-                  activeOpacity={0.85}
+                  style={({ pressed }) => [
+                    s.groupCard,
+                    { backgroundColor: pressed ? colors.border : colors.card, borderColor: isGroupSelected ? '#4F46E5' : colors.border },
+                    isGroupSelected && { borderWidth: 1.5 },
+                  ]}
+                  onPress={() => {
+                    if (groupSelectMode) { toggleGroupSelect(g.id); }
+                    else { openGroup(g); }
+                  }}
+                  onLongPress={() => {
+                    setGroupSelectMode(true);
+                    setSelectedGroupIds(prev => { const n = new Set(prev); n.add(g.id); return n; });
+                  }}
+                  delayLongPress={500}
                 >
                   <View style={[s.groupColorBar, { backgroundColor: color }]} />
                   {groupSelectMode ? (
@@ -300,7 +310,7 @@ export default function SuperAdminGroups() {
                     <Text style={[s.countBadgeText, { color }]}>{count}</Text>
                   </View>
                   {!groupSelectMode && <Feather name="chevron-right" size={18} color={colors.mutedForeground} style={{ marginLeft: 4 }} />}
-                </TouchableOpacity>
+                </Pressable>
               );
             })
           )}
