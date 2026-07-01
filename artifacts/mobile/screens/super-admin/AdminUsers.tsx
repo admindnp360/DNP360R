@@ -1065,16 +1065,16 @@ const s = StyleSheet.create({
     borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.20)',
     borderBottomWidth: 1, borderBottomColor: 'rgba(0,0,0,0.28)',
   },
-  tabLabelActive:  { color: '#fff', fontSize: 9, fontFamily: 'Inter_700Bold' },
+  tabLabelActive:  { color: '#fff', fontSize: 12, fontFamily: 'Inter_700Bold' },
   tabCountBubble:  { backgroundColor: 'rgba(255,255,255,0.28)', borderRadius: 99, paddingHorizontal: 3, paddingVertical: 1 },
-  tabCountText:    { color: '#fff', fontSize: 8, fontFamily: 'Inter_700Bold' },
+  tabCountText:    { color: '#fff', fontSize: 11, fontFamily: 'Inter_700Bold' },
   tabPillInactive: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
     gap: 3, borderRadius: 99, paddingVertical: 5, paddingHorizontal: 3,
     borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', backgroundColor: 'rgba(255,255,255,0.04)',
   },
-  tabLabelInactive: { fontSize: 9, fontFamily: 'Inter_500Medium', color: MUTED },
-  tabCountInactive: { fontSize: 8, fontFamily: 'Inter_600SemiBold', color: MUTED },
+  tabLabelInactive: { fontSize: 12, fontFamily: 'Inter_500Medium', color: MUTED },
+  tabCountInactive: { fontSize: 11, fontFamily: 'Inter_600SemiBold', color: MUTED },
 
   /* table */
   tableHead: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 7, borderTopWidth: 1, borderTopColor: 'rgba(99,102,241,0.15)', borderBottomWidth: 1, borderBottomColor: 'rgba(0,0,0,0.25)', backgroundColor: 'rgba(99,102,241,0.07)' },
