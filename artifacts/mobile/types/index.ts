@@ -213,6 +213,14 @@ export interface ImportHistory {
   errorReport: ImportError[];
 }
 
+export interface ImportColumn {
+  id: string;
+  name: string;
+  key: string;
+  required: boolean;
+  isSystem?: boolean;
+}
+
 export const COMPLAINT_CATEGORIES: Record<ComplaintCategory, string> = {
   garbage_collection: 'Garbage Collection',
   drainage: 'Drainage',

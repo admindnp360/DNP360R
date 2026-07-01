@@ -17,7 +17,7 @@ import { signInAnonymously } from 'firebase/auth';
 import { db, firebaseAuth } from '@/lib/firebase';
 import type {
   Attendance, Complaint, ComplaintCategory, ComplaintStatus,
-  Group, House, HouseVisit, ImportHistory, Notice, PasswordResetRequest,
+  Group, House, HouseVisit, ImportColumn, ImportHistory, Notice, PasswordResetRequest,
   SecretKey, SupportDetails, User, Ward,
 } from '@/types';
 
@@ -81,6 +81,8 @@ interface AppContextType {
   updatePasswordResetRequest: (id: string, status: 'approved' | 'rejected', adminNote?: string, adminDescription?: string) => Promise<void>;
   addImportHistory: (h: Omit<ImportHistory, 'id'>) => Promise<void>;
   deleteImportHistory: (id: string) => Promise<void>;
+  importColumns: ImportColumn[];
+  saveImportColumns: (cols: ImportColumn[]) => Promise<void>;
   getHouseByRegistration: (regNum: string) => House | undefined;
   getComplaintsByUser: (userId: string) => Complaint[];
   getAttendanceByWorker: (workerId: string) => Attendance[];
@@ -199,6 +201,17 @@ const DEFAULT_SUPPORT: SupportDetails = {
   address: 'Municipal Office, Daudnagar, Bihar - 824143',
   hours: 'Mon–Sat, 10:00 AM – 5:00 PM',
 };
+
+const DEFAULT_IMPORT_COLUMNS: ImportColumn[] = [
+  { id: 'col_sno',      name: 'S.No',           key: 'sno',            required: false, isSystem: true },
+  { id: 'col_reg',      name: 'House Reg No',    key: 'registrationNo', required: true,  isSystem: true },
+  { id: 'col_owner',    name: 'Owner Name',      key: 'ownerName',      required: true,  isSystem: true },
+  { id: 'col_father',   name: 'Father/Husband',  key: 'fatherOrHusband',required: false, isSystem: true },
+  { id: 'col_ward',     name: 'Ward',            key: 'ward',           required: false, isSystem: true },
+  { id: 'col_address',  name: 'Address',         key: 'address',        required: true,  isSystem: true },
+  { id: 'col_mobile',   name: 'Mobile',          key: 'mobile',         required: false, isSystem: true },
+  { id: 'col_proptype', name: 'Property Type',   key: 'propertyType',   required: false, isSystem: true },
+];
 
 function seedAttendance(): Attendance[] {
   const records: Attendance[] = [];
@@ -343,6 +356,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [supportDetails, setSupportDetails] = useState<SupportDetails>(DEFAULT_SUPPORT);
   const [passwordResetRequests, setPasswordResetRequests] = useState<PasswordResetRequest[]>([]);
   const [importHistory, setImportHistory] = useState<ImportHistory[]>([]);
+  const [importColumns, setImportColumns] = useState<ImportColumn[]>(DEFAULT_IMPORT_COLUMNS);
   const [syncStatus, setSyncStatus] = useState<'synced' | 'pending' | 'error'>('synced');
   const _pendingWrites = useRef(0);
   const _hadFsError = useRef(false);
@@ -407,6 +421,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         seedIfEmpty('users',                 SEED_USERS),
         seedIfEmpty('secretKeys',            SEED_KEYS),
         seedDocIfEmpty('settings', 'support', DEFAULT_SUPPORT),
+        seedDocIfEmpty('settings', 'importColumns', { columns: DEFAULT_IMPORT_COLUMNS }),
       ]);
 
       if (!active) return;
@@ -486,6 +501,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           doc(db, 'settings', 'support'),
           (s) => { if (s.exists()) setSupportDetails(s.data() as SupportDetails); },
           (_err) => setSupportDetails(DEFAULT_SUPPORT),
+        ),
+        onSnapshot(
+          doc(db, 'settings', 'importColumns'),
+          (s) => { if (s.exists()) setImportColumns((s.data() as any).columns ?? DEFAULT_IMPORT_COLUMNS); },
+          () => setImportColumns(DEFAULT_IMPORT_COLUMNS),
         ),
       );
     })();
@@ -852,6 +872,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     await fsDeleteDoc('importHistory', id);
   }
 
+  async function saveImportColumns(cols: ImportColumn[]) {
+    setImportColumns(cols);
+    await fsUpdateSingleDoc('settings', 'importColumns', { columns: cols });
+  }
+
   const getHouseByRegistration = (regNum: string) =>
     houses.find(h => h.registrationNumber.toUpperCase() === regNum.toUpperCase());
 
@@ -883,6 +908,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       updateSupportDetails,
       addPasswordResetRequest, updatePasswordResetRequest,
       addImportHistory, deleteImportHistory,
+      importColumns, saveImportColumns,
       getHouseByRegistration, getComplaintsByUser,
       getAttendanceByWorker, getVisitsByWorker, isTodayAttendanceMarked,
       syncStatus,

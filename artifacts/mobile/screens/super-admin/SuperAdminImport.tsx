@@ -13,15 +13,29 @@ import { useAlert } from '@/contexts/AlertContext';
 import { useAppData } from '@/contexts/AppContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useColors } from '@/hooks/useColors';
-import type { House, ImportError } from '@/types';
+import type { House, ImportColumn, ImportError } from '@/types';
 import { PROPERTY_TYPES } from '@/types';
 
 type DupMode = 'skip' | 'update' | 'replace';
 type SubTab = 'import' | 'history';
 
-const CSV_TEMPLATE = `S.No,House Registration No,Owner Name,Father/Husband Name,Ward,Address,Mobile,Property Type
-1,DNPH001,Ramesh Prasad,Shiv Prasad,1,Ward 1 Station Road Daudnagar,9876543210,Residential
-2,DNPH002,Sunita Devi,Ram Kumar,2,Ward 2 Market Road Daudnagar,9876543211,Commercial`;
+const SAMPLE_VALUES: Record<string, [string, string]> = {
+  sno:            ['1', '2'],
+  registrationNo: ['DNPH001', 'DNPH002'],
+  ownerName:      ['Ramesh Prasad', 'Sunita Devi'],
+  fatherOrHusband:['Shiv Prasad', 'Ram Kumar'],
+  ward:           ['1', '2'],
+  address:        ['Ward 1 Station Road Daudnagar', 'Ward 2 Market Road Daudnagar'],
+  mobile:         ['9876543210', '9876543211'],
+  propertyType:   ['Residential', 'Commercial'],
+};
+
+function generateCSVTemplate(columns: ImportColumn[]): string {
+  const header = columns.map(c => c.name).join(',');
+  const row1   = columns.map(c => (SAMPLE_VALUES[c.key]?.[0] ?? '')).join(',');
+  const row2   = columns.map(c => (SAMPLE_VALUES[c.key]?.[1] ?? '')).join(',');
+  return `${header}\n${row1}\n${row2}`;
+}
 
 interface ParsedRow {
   rowNumber: number;
@@ -63,7 +77,7 @@ const STATUS_CFG = {
 } as const;
 
 export default function SuperAdminImport({ embedded = false }: { embedded?: boolean }) {
-  const { houses, wards, bulkImportHouses, addImportHistory, importHistory, deleteImportHistory } = useAppData();
+  const { houses, wards, bulkImportHouses, addImportHistory, importHistory, deleteImportHistory, importColumns, saveImportColumns } = useAppData();
   const { user } = useAuth();
   const colors = useColors();
   const { showAlert } = useAlert();
@@ -71,6 +85,11 @@ export default function SuperAdminImport({ embedded = false }: { embedded?: bool
   const [subTab, setSubTab] = useState<SubTab>('import');
   const [csvText, setCsvText] = useState('');
   const [showInput, setShowInput] = useState(false);
+  const [isEditingCols, setIsEditingCols] = useState(false);
+  const [editCols, setEditCols] = useState<ImportColumn[]>([]);
+  const [newColName, setNewColName] = useState('');
+  const [showAddCol, setShowAddCol] = useState(false);
+  const [savingCols, setSavingCols] = useState(false);
   const [parsedRows, setParsedRows] = useState<ParsedRow[]>([]);
   const [isPreviewing, setIsPreviewing] = useState(false);
   const [dupMode, setDupMode] = useState<DupMode>('skip');
@@ -87,23 +106,32 @@ export default function SuperAdminImport({ embedded = false }: { embedded?: bool
   const importsDone = importHistory.length;
   const totalWards = wards.length;
 
-  function validateRows(rows: string[][]) {
+  function validateRows(rows: string[][], columns: ImportColumn[]) {
     if (rows.length < 2) {
       showAlert('Invalid', 'File must have a header row + at least one data row.', undefined, 'error');
       return;
     }
+    const ix = (key: string) => columns.findIndex(c => c.key === key);
+    const gc = (row: string[], i: number) => i >= 0 ? String(row[i] ?? '').trim() : '';
+    const iReg    = ix('registrationNo');
+    const iOwner  = ix('ownerName');
+    const iFather = ix('fatherOrHusband');
+    const iWard   = ix('ward');
+    const iAddr   = ix('address');
+    const iMob    = ix('mobile');
+    const iProp   = ix('propertyType');
     const seenReg = new Set<string>();
     const results: ParsedRow[] = [];
     for (let i = 1; i < rows.length; i++) {
       const cols = rows[i];
       if (cols.every(c => !String(c ?? '').trim())) continue;
-      const regNo = String(cols[1] ?? '').trim();
-      const ownerName = String(cols[2] ?? '').trim();
-      const fatherOrHusband = String(cols[3] ?? '').trim() || undefined;
-      const wardInput = String(cols[4] ?? '').trim();
-      const address = String(cols[5] ?? '').trim();
-      const mobile = String(cols[6] ?? '').trim() || undefined;
-      const propType = String(cols[7] ?? '').trim() || undefined;
+      const regNo = gc(cols, iReg);
+      const ownerName = gc(cols, iOwner);
+      const fatherOrHusband = gc(cols, iFather) || undefined;
+      const wardInput = gc(cols, iWard);
+      const address = gc(cols, iAddr);
+      const mobile = gc(cols, iMob) || undefined;
+      const propType = gc(cols, iProp) || undefined;
       const errors: string[] = [];
       if (!regNo) errors.push('Registration No required');
       if (!ownerName) errors.push('Owner Name required');
@@ -136,7 +164,7 @@ export default function SuperAdminImport({ embedded = false }: { embedded?: bool
     }
     const rows = parseCSV(csvText);
     setSourceFileName('Manual CSV Import');
-    validateRows(rows);
+    validateRows(rows, importColumns);
   }
 
   async function parseAndLoad(fileName: string, readFile: () => Promise<string[][] | null>) {
@@ -147,7 +175,7 @@ export default function SuperAdminImport({ embedded = false }: { embedded?: bool
       if (!rows) return;
       setCsvText('');
       setShowInput(false);
-      validateRows(rows);
+      validateRows(rows, importColumns);
     } catch (e: any) {
       showAlert('File Error', e?.message ?? 'Could not read file.', undefined, 'error');
     } finally {
@@ -402,44 +430,152 @@ export default function SuperAdminImport({ embedded = false }: { embedded?: bool
                     <Feather name="columns" size={13} color="#fff" />
                   </LinearGradient>
                   <Text style={[s.colGuideTitle, { color: colors.text }]}>Expected Columns</Text>
-                  <View style={[s.colGuideNote, { backgroundColor: '#0EA5E915' }]}>
-                    <Text style={[s.colGuideNoteText, { color: '#0EA5E9' }]}>Col A → H</Text>
-                  </View>
-                </View>
-                <View style={s.colChipRow}>
-                  {[
-                    { name: 'S.No',            req: false },
-                    { name: 'Reg No',          req: true  },
-                    { name: 'Owner Name',      req: true  },
-                    { name: 'Father/Husband',  req: false },
-                    { name: 'Ward',            req: false },
-                    { name: 'Address',         req: true  },
-                    { name: 'Mobile',          req: false },
-                    { name: 'Property Type',   req: false },
-                  ].map((col, i) => (
-                    <View key={col.name} style={[
-                      s.colChip,
-                      { backgroundColor: col.req ? '#6366F112' : colors.background, borderColor: col.req ? '#6366F140' : colors.border },
-                    ]}>
-                      <Text style={[s.colChipLetter, { color: '#9CA3AF' }]}>{String.fromCharCode(65 + i)}</Text>
-                      <Text style={[s.colChipName, { color: col.req ? '#6366F1' : colors.text }]}>{col.name}</Text>
-                      {col.req && <View style={s.colReqDot} />}
+                  {!isEditingCols ? (
+                    <TouchableOpacity
+                      style={[s.colGuideNote, { backgroundColor: '#6366F115' }]}
+                      onPress={() => { setEditCols([...importColumns]); setIsEditingCols(true); setShowAddCol(false); setNewColName(''); }}
+                    >
+                      <Text style={[s.colGuideNoteText, { color: '#6366F1' }]}>✎ Edit</Text>
+                    </TouchableOpacity>
+                  ) : (
+                    <View style={{ flexDirection: 'row', gap: 6 }}>
+                      <TouchableOpacity
+                        style={[s.colGuideNote, { backgroundColor: '#EF444415' }]}
+                        onPress={() => { setIsEditingCols(false); setShowAddCol(false); setNewColName(''); }}
+                      >
+                        <Text style={[s.colGuideNoteText, { color: '#EF4444' }]}>✕ Cancel</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[s.colGuideNote, { backgroundColor: '#10B98115' }]}
+                        disabled={savingCols}
+                        onPress={async () => {
+                          setSavingCols(true);
+                          await saveImportColumns(editCols);
+                          setSavingCols(false);
+                          setIsEditingCols(false);
+                          setShowAddCol(false);
+                          setNewColName('');
+                        }}
+                      >
+                        <Text style={[s.colGuideNoteText, { color: '#10B981' }]}>{savingCols ? '…' : '✓ Save'}</Text>
+                      </TouchableOpacity>
                     </View>
-                  ))}
+                  )}
                 </View>
-                <View style={[s.colGuideFooter, { borderTopColor: colors.border }]}>
-                  <View style={s.colLegendItem}>
-                    <View style={[s.colLegendDot, { backgroundColor: '#6366F1' }]} />
-                    <Text style={[s.colLegendText, { color: colors.mutedForeground }]}>Required</Text>
+
+                {!isEditingCols ? (
+                  <>
+                    <View style={s.colChipRow}>
+                      {importColumns.map((col, i) => (
+                        <View key={col.id} style={[
+                          s.colChip,
+                          { backgroundColor: col.required ? '#6366F112' : colors.background, borderColor: col.required ? '#6366F140' : colors.border },
+                        ]}>
+                          <Text style={[s.colChipLetter, { color: '#9CA3AF' }]}>{String.fromCharCode(65 + i)}</Text>
+                          <Text style={[s.colChipName, { color: col.required ? '#6366F1' : colors.text }]}>{col.name}</Text>
+                          {col.required && <View style={s.colReqDot} />}
+                        </View>
+                      ))}
+                    </View>
+                    <View style={[s.colGuideFooter, { borderTopColor: colors.border }]}>
+                      <View style={s.colLegendItem}>
+                        <View style={[s.colLegendDot, { backgroundColor: '#6366F1' }]} />
+                        <Text style={[s.colLegendText, { color: colors.mutedForeground }]}>Required</Text>
+                      </View>
+                      <View style={s.colLegendItem}>
+                        <View style={[s.colLegendDot, { backgroundColor: colors.border }]} />
+                        <Text style={[s.colLegendText, { color: colors.mutedForeground }]}>Optional</Text>
+                      </View>
+                      <Text style={[s.colLegendText, { color: colors.mutedForeground, marginLeft: 'auto' }]}>
+                        {importColumns.length} columns
+                      </Text>
+                    </View>
+                  </>
+                ) : (
+                  <View style={{ paddingHorizontal: 12, paddingBottom: 12, gap: 6 }}>
+                    {editCols.map((col, i) => (
+                      <View key={col.id} style={[s.colEditRow, { backgroundColor: colors.background, borderColor: colors.border }]}>
+                        <Text style={[s.colChipLetter, { color: '#9CA3AF', width: 18, textAlign: 'center' }]}>{String.fromCharCode(65 + i)}</Text>
+                        <View style={[s.colReqDot, { backgroundColor: col.required ? '#6366F1' : colors.border, marginRight: 2 }]} />
+                        <Text style={[s.colEditName, { color: colors.text, flex: 1 }]}>{col.name}</Text>
+                        {col.isSystem && col.required && (
+                          <View style={[s.colSystemBadge, { backgroundColor: '#6366F112', borderColor: '#6366F130' }]}>
+                            <Text style={{ fontSize: 8, color: '#6366F1', fontFamily: 'Inter_600SemiBold' }}>system</Text>
+                          </View>
+                        )}
+                        <TouchableOpacity
+                          disabled={i === 0}
+                          onPress={() => {
+                            const next = [...editCols];
+                            [next[i - 1], next[i]] = [next[i], next[i - 1]];
+                            setEditCols(next);
+                          }}
+                          style={[s.colArrowBtn, { opacity: i === 0 ? 0.25 : 1 }]}
+                        >
+                          <Feather name="chevron-up" size={14} color={colors.text} />
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          disabled={i === editCols.length - 1}
+                          onPress={() => {
+                            const next = [...editCols];
+                            [next[i], next[i + 1]] = [next[i + 1], next[i]];
+                            setEditCols(next);
+                          }}
+                          style={[s.colArrowBtn, { opacity: i === editCols.length - 1 ? 0.25 : 1 }]}
+                        >
+                          <Feather name="chevron-down" size={14} color={colors.text} />
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          disabled={col.isSystem && col.required}
+                          onPress={() => setEditCols(editCols.filter((_, j) => j !== i))}
+                          style={[s.colArrowBtn, { opacity: col.isSystem && col.required ? 0.2 : 1 }]}
+                        >
+                          <Feather name="trash-2" size={13} color="#EF4444" />
+                        </TouchableOpacity>
+                      </View>
+                    ))}
+
+                    {showAddCol ? (
+                      <View style={[s.colAddRow, { borderColor: '#10B98140', backgroundColor: '#10B98108' }]}>
+                        <TextInput
+                          style={[s.colAddInput, { color: colors.text, borderColor: colors.border, backgroundColor: colors.background }]}
+                          placeholder="Column name…"
+                          placeholderTextColor={colors.mutedForeground}
+                          value={newColName}
+                          onChangeText={setNewColName}
+                          autoFocus
+                        />
+                        <TouchableOpacity
+                          style={[s.colAddConfirm, { backgroundColor: '#10B981' }]}
+                          onPress={() => {
+                            const name = newColName.trim();
+                            if (!name) return;
+                            const key = 'custom_' + Date.now();
+                            setEditCols(prev => [...prev, { id: key, name, key, required: false }]);
+                            setNewColName('');
+                            setShowAddCol(false);
+                          }}
+                        >
+                          <Feather name="check" size={14} color="#fff" />
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={[s.colAddConfirm, { backgroundColor: colors.border }]}
+                          onPress={() => { setShowAddCol(false); setNewColName(''); }}
+                        >
+                          <Feather name="x" size={14} color={colors.text} />
+                        </TouchableOpacity>
+                      </View>
+                    ) : (
+                      <TouchableOpacity
+                        style={[s.colAddBtn, { borderColor: '#10B98140', backgroundColor: '#10B98108' }]}
+                        onPress={() => setShowAddCol(true)}
+                      >
+                        <Feather name="plus" size={14} color="#10B981" />
+                        <Text style={{ fontSize: 12, color: '#10B981', fontFamily: 'Inter_600SemiBold' }}>Add Column</Text>
+                      </TouchableOpacity>
+                    )}
                   </View>
-                  <View style={s.colLegendItem}>
-                    <View style={[s.colLegendDot, { backgroundColor: colors.border }]} />
-                    <Text style={[s.colLegendText, { color: colors.mutedForeground }]}>Optional</Text>
-                  </View>
-                  <Text style={[s.colLegendText, { color: colors.mutedForeground, marginLeft: 'auto' }]}>
-                    Property: Residential · Commercial · Government…
-                  </Text>
-                </View>
+                )}
               </View>
 
               {/* ── Upload options ── */}
@@ -829,7 +965,7 @@ export default function SuperAdminImport({ embedded = false }: { embedded?: bool
                 <Feather name="file-text" size={14} color="#6366F1" />
                 <Text style={[s.templateBoxTitle, { color: '#6366F1' }]}>template.csv</Text>
               </View>
-              <Text style={[s.templateBoxText, { color: colors.text }]} selectable>{CSV_TEMPLATE}</Text>
+              <Text style={[s.templateBoxText, { color: colors.text }]} selectable>{generateCSVTemplate(importColumns)}</Text>
             </View>
             {[
               { color: '#F97316', icon: 'map-pin', text: 'Ward column: use ward number (e.g. "1", "42") or exact ward name' },
@@ -1013,6 +1149,14 @@ const s = StyleSheet.create({
   colLegendItem:  { flexDirection: 'row', alignItems: 'center', gap: 5 },
   colLegendDot:   { width: 6, height: 6, borderRadius: 3 },
   colLegendText:  { fontSize: 10, fontFamily: 'Inter_400Regular' },
+  colEditRow:     { flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: 10, borderWidth: 1, paddingHorizontal: 10, paddingVertical: 8 },
+  colEditName:    { fontSize: 12, fontFamily: 'Inter_500Medium' },
+  colArrowBtn:    { width: 26, height: 26, borderRadius: 7, justifyContent: 'center', alignItems: 'center' },
+  colSystemBadge: { borderRadius: 5, borderWidth: 1, paddingHorizontal: 5, paddingVertical: 2 },
+  colAddRow:      { flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: 10, borderWidth: 1, borderStyle: 'dashed', paddingHorizontal: 8, paddingVertical: 6 },
+  colAddInput:    { flex: 1, borderRadius: 8, borderWidth: 1, paddingHorizontal: 10, paddingVertical: 6, fontSize: 12, fontFamily: 'Inter_400Regular' },
+  colAddConfirm:  { width: 30, height: 30, borderRadius: 8, justifyContent: 'center', alignItems: 'center' },
+  colAddBtn:      { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, borderRadius: 10, borderWidth: 1, borderStyle: 'dashed', paddingVertical: 10 },
 
   /* ── upload cards ── */
   uploadRow:        { flexDirection: 'row', gap: 12 },
