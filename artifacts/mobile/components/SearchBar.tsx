@@ -26,6 +26,6 @@ export function SearchBar({ value, onChangeText, placeholder = 'Search...' }: Pr
 }
 
 const styles = StyleSheet.create({
-  wrap: { flexDirection: 'row', alignItems: 'center', gap: 10, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, borderWidth: 1 },
-  input: { flex: 1, fontSize: 14, fontFamily: 'Inter_400Regular', padding: 0 },
+  wrap: { flexDirection: 'row', alignItems: 'center', gap: 8, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10, borderWidth: 1 },
+  input: { flex: 1, fontSize: 13, fontFamily: 'Inter_400Regular', padding: 0 },
 });

@@ -1041,9 +1041,9 @@ const s = StyleSheet.create({
   syncText: { fontSize: 10, fontFamily: 'Inter_700Bold', color: '#10B981', letterSpacing: 0.3 },
 
   /* search — 30% compact */
-  searchWrap: { paddingHorizontal: 9, paddingTop: 7, paddingBottom: 6, gap: 6, borderBottomWidth: 1, borderBottomColor: GLASS_BD },
-  searchBox:  { flexDirection: 'row', alignItems: 'center', gap: 8, borderRadius: 10, borderWidth: 1, borderColor: GLASS_BD, backgroundColor: GLASS, paddingHorizontal: 9, paddingVertical: 6 },
-  searchInput:{ flex: 1, fontSize: 11, fontFamily: 'Inter_400Regular', color: TEXT, padding: 0 },
+  searchWrap: { paddingHorizontal: 12, paddingTop: 8, paddingBottom: 7, gap: 6, borderBottomWidth: 1, borderBottomColor: GLASS_BD },
+  searchBox:  { flexDirection: 'row', alignItems: 'center', gap: 8, borderRadius: 12, borderWidth: 1, borderColor: GLASS_BD, backgroundColor: GLASS, paddingHorizontal: 12, paddingVertical: 10 },
+  searchInput:{ flex: 1, fontSize: 13, fontFamily: 'Inter_400Regular', color: TEXT, padding: 0 },
 
   /* filters — 30% compact */
   filterRow:      { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 4 },
