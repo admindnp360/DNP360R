@@ -594,6 +594,15 @@ export default function AdminReports() {
           bgDataUri = `data:image/png;base64,${b64}`;
         }
       } catch { /* bg fallback */ }
+      let tableWmDataUri = '';
+      try {
+        const wmAsset = Asset.fromModule(require('../../assets/dnp360-table-watermark.png'));
+        await wmAsset.downloadAsync();
+        if (wmAsset.localUri) {
+          const b64 = await FileSystem.readAsStringAsync(wmAsset.localUri, { encoding: FileSystem.EncodingType.Base64 });
+          tableWmDataUri = `data:image/png;base64,${b64}`;
+        }
+      } catch { /* wm fallback */ }
 
       // ── Core stats ─────────────────────────────────────────────────
       const totP   = rpt.rows.reduce((a, r) => a + r.totalPresent, 0);
@@ -930,10 +939,15 @@ ${bgTag}
   <span>🔴 N = Not collected</span>
   <span>🟡 L = Collected late</span>
 </div>
-<table class="dt">
-  <thead><tr>${colHeaders}</tr></thead>
-  <tbody>${dataRows || '<tr><td colspan="20" style="text-align:center;color:#94a3b8;padding:8px">No house data</td></tr>'}</tbody>
-</table>
+<div style="position:relative">
+  ${tableWmDataUri ? `<div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);pointer-events:none;z-index:2;opacity:0.16">
+    <img src="${tableWmDataUri}" style="width:320px;height:auto" />
+  </div>` : ''}
+  <table class="dt" style="position:relative;z-index:1">
+    <thead><tr>${colHeaders}</tr></thead>
+    <tbody>${dataRows || '<tr><td colspan="20" style="text-align:center;color:#94a3b8;padding:8px">No house data</td></tr>'}</tbody>
+  </table>
+</div>
 
 <!-- ══ FOOTER ══ -->
 <div class="ftr">
