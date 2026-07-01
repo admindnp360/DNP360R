@@ -42,7 +42,7 @@ export default function SuperAdminHouseDB() {
     addHouse, updateHouse, deleteHouse,
     addWard, updateWard, deleteWard,
     assignWorkerToWard,
-    addGroup, groups,
+    addGroup, updateGroup, deleteGroup, groups,
     syncStatus,
   } = useAppData();
   const { user } = useAuth();
@@ -84,6 +84,9 @@ export default function SuperAdminHouseDB() {
   const [showWardPickerModal, setShowWardPickerModal] = useState(false);
   const [quickTab, setQuickTab] = useState<'ward' | 'group'>('ward');
   const [showAddPopup, setShowAddPopup] = useState(false);
+  const [editingGroup, setEditingGroup] = useState<any>(null);
+  const [editGroupForm, setEditGroupForm] = useState({ name: '', description: '' });
+  const [showEditGroupModal, setShowEditGroupModal] = useState(false);
   const [workerModalWard, setWorkerModalWard] = useState<Ward | null>(null);
   const [workerSearch, setWorkerSearch]   = useState('');
   const [editingWard, setEditingWard]     = useState<Ward | null>(null);
@@ -318,6 +321,25 @@ export default function SuperAdminHouseDB() {
       setGroupForm({ name: '', description: '' }); setShowAddGroupModal(false);
       showAlert('Group Created', groupForm.name.trim(), undefined, 'success');
     } finally { setSaving(false); }
+  }
+
+  function openEditGroup(g: any) { setEditingGroup(g); setEditGroupForm({ name: g.name, description: g.description || '' }); setShowEditGroupModal(true); }
+
+  async function handleSaveEditGroup() {
+    if (!editingGroup || !editGroupForm.name.trim()) { showAlert('Missing', 'Group name is required.', undefined, 'warning'); return; }
+    setSaving(true);
+    try {
+      await updateGroup(editingGroup.id, { name: editGroupForm.name.trim(), description: editGroupForm.description.trim() });
+      setShowEditGroupModal(false); setEditingGroup(null);
+      showAlert('Updated', 'Group saved.', undefined, 'success');
+    } finally { setSaving(false); }
+  }
+
+  function handleDeleteGroup(g: any) {
+    showAlert('Delete Group?', `"${g.name}" will be permanently deleted.`, [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Delete', style: 'destructive', onPress: async () => { setSaving(true); try { await deleteGroup(g.id); } finally { setSaving(false); } } },
+    ]);
   }
 
   async function handleDeleteWard(ward: Ward) {
@@ -725,13 +747,26 @@ export default function SuperAdminHouseDB() {
                       </View>
                     ) : [...groups].sort((a, b) => a.name.localeCompare(b.name)).map(g => (
                       <View key={g.id}>
-                        <View style={[s.waListRow, { gap: 12 }]}>
-                          <LinearGradient colors={['#059669','#10B981']} style={{ width: 36, height: 36, borderRadius: 10, justifyContent: 'center', alignItems: 'center' }}>
-                            <Feather name="layers" size={14} color="#fff" />
+                        <View style={[s.waCommRow, { paddingVertical: 8 }]}>
+                          <LinearGradient colors={['#059669','#10B981']} style={s.waCommAvatar}>
+                            <Feather name="layers" size={10} color="#fff" />
                           </LinearGradient>
                           <View style={{ flex: 1 }}>
                             <Text style={[s.waRowName, { color: TEXT }]} numberOfLines={1}>{g.name}</Text>
                             {g.description ? <Text style={[s.waRowSub, { color: MUTED }]} numberOfLines={1}>{g.description}</Text> : null}
+                          </View>
+                          <View style={{ alignItems: 'flex-end', gap: 4 }}>
+                            <View style={{ flexDirection: 'row', gap: 5 }}>
+                              <TouchableOpacity onPress={() => showAlert('Workers', 'Worker assignment for groups coming soon.', undefined, 'info')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} style={s.waMiniBtn}>
+                                <Feather name="user-plus" size={10} color="#818CF8" />
+                              </TouchableOpacity>
+                              <TouchableOpacity onPress={() => openEditGroup(g)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} style={s.waMiniBtn}>
+                                <Feather name="edit-2" size={10} color="#34D399" />
+                              </TouchableOpacity>
+                              <TouchableOpacity onPress={() => handleDeleteGroup(g)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} style={[s.waMiniBtn, { backgroundColor: 'rgba(239,68,68,0.14)', borderColor: 'rgba(239,68,68,0.28)' }]}>
+                                <Feather name="trash-2" size={10} color="#EF4444" />
+                              </TouchableOpacity>
+                            </View>
                           </View>
                         </View>
                         <View style={s.waSep} />
@@ -776,8 +811,8 @@ export default function SuperAdminHouseDB() {
                         )}
                         <View style={{ flex: 1 }}>
                           <Text style={[s.waRowName, { color: TEXT }]} numberOfLines={1}>{ward.name}</Text>
-                          <Text style={[s.waRowSub, { color: MUTED }]} numberOfLines={1}>{ward.area}</Text>
-                          <View style={{ flexDirection: 'row', gap: 8, marginTop: 3 }}>
+                          {ward.area && ward.area !== ward.name ? <Text style={[s.waRowSub, { color: MUTED }]} numberOfLines={1}>{ward.area}</Text> : null}
+                          <View style={{ flexDirection: 'row', gap: 8, marginTop: 1 }}>
                             <View style={s.waMiniStat}>
                               <Feather name="home" size={8} color="#818CF8" />
                               <Text style={[s.waMiniStatTxt, { color: '#818CF8' }]}>{wHouses}</Text>
@@ -1217,6 +1252,41 @@ export default function SuperAdminHouseDB() {
             <TouchableOpacity onPress={handleAddGroup} disabled={saving} activeOpacity={0.85}>
               <LinearGradient colors={['#059669','#10B981']} style={s.saveBtn}>
                 <Text style={s.saveBtnText}>{saving ? 'Saving…' : 'Create Group'}</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          </ScrollView>
+        </SafeAreaView>
+      </Modal>
+
+      {/* Edit Group Modal */}
+      <Modal visible={showEditGroupModal} animationType="slide" presentationStyle="pageSheet">
+        <SafeAreaView style={{ flex: 1, backgroundColor: BG }}>
+          <LinearGradient colors={['#059669','#10B981']} style={s.modalHdr}>
+            <Text style={s.modalTitle}>Edit Group</Text>
+            <Pressable onPress={() => setShowEditGroupModal(false)} style={s.closeBtn}><Feather name="x" size={19} color="#fff" /></Pressable>
+          </LinearGradient>
+          <ScrollView contentContainerStyle={{ padding: 20, gap: 14 }}>
+            <View>
+              <Text style={[s.fieldLabel, { color: MUTED }]}>Group Name *</Text>
+              <TextInput
+                style={[s.fieldInput, { backgroundColor: GLASS, borderColor: GLASS_BD, color: TEXT }]}
+                placeholder="e.g. Zone A" placeholderTextColor={MUTED2}
+                value={editGroupForm.name}
+                onChangeText={v => setEditGroupForm(p => ({ ...p, name: v }))}
+              />
+            </View>
+            <View>
+              <Text style={[s.fieldLabel, { color: MUTED }]}>Description (optional)</Text>
+              <TextInput
+                style={[s.fieldInput, { backgroundColor: GLASS, borderColor: GLASS_BD, color: TEXT }]}
+                placeholder="e.g. North zone houses" placeholderTextColor={MUTED2}
+                value={editGroupForm.description}
+                onChangeText={v => setEditGroupForm(p => ({ ...p, description: v }))}
+              />
+            </View>
+            <TouchableOpacity onPress={handleSaveEditGroup} disabled={saving} activeOpacity={0.85}>
+              <LinearGradient colors={['#059669','#10B981']} style={s.saveBtn}>
+                <Text style={s.saveBtnText}>{saving ? 'Saving…' : 'Save Changes'}</Text>
               </LinearGradient>
             </TouchableOpacity>
           </ScrollView>
