@@ -122,9 +122,7 @@ export default function AdminHome() {
         <View style={s.searchCard}>
           <View style={s.searchCardBevel} />
           <View style={s.searchRow}>
-            <LinearGradient colors={['#6366F128', '#6366F10A']} style={s.searchIconBox}>
-              <Feather name="search" size={14} color="#818CF8" />
-            </LinearGradient>
+            <Feather name="search" size={14} color="#818CF8" />
             <TextInput
               style={s.searchInput}
               placeholder="Search houses, users, wards…"

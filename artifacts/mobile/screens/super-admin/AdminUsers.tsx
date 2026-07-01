@@ -318,7 +318,7 @@ export default function AdminUsers() {
       {/* ── Search bar ── */}
       <View style={s.searchWrap}>
         <View style={s.searchBox}>
-          <Feather name="search" size={15} color={MUTED} />
+          <Feather name="search" size={14} color={MUTED} />
           <TextInput
             style={s.searchInput}
             placeholder="Search name, ID or employee ID…"
