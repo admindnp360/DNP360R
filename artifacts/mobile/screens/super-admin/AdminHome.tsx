@@ -235,94 +235,91 @@ export default function AdminHome() {
 
         {/* ── TODAY'S ATTENDANCE CARD ── */}
         <SectionTitle icon="user-check" label="Today's Attendance" color="#34D399" colors={['#10B981','#059669']} />
-        <View style={s.glassCard}>
+        <View style={[s.glassCard, { padding: 0 }]}>
           <View style={s.glassCardBevelTop} />
-
-          {/* Header row */}
-          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
-            <LinearGradient colors={['#10B981', '#059669']} style={[s.complaintIconBox, { marginRight: 10 }]}>
-              <Feather name="user-check" size={13} color="#fff" />
-            </LinearGradient>
-            <View style={{ flex: 1 }}>
-              <Text style={{ color: '#F0F4FF', fontSize: 13, fontFamily: 'Inter_700Bold' }}>
-                Safai Karmi Attendance
-              </Text>
-              <Text style={{ color: '#64748B', fontSize: 10, fontFamily: 'Inter_400Regular', marginTop: 1 }}>
-                {new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'short' })}
-              </Text>
-            </View>
-            <View style={[s.ratePill, { borderColor: attColor + '40', backgroundColor: attColor + '18' }]}>
-              <View style={[s.rateDot, { backgroundColor: attColor }]} />
-              <Text style={[s.ratePillTxt, { color: attColor }]}>
-                {attRateToday != null ? `${attRateToday}%` : 'No data'}
-              </Text>
-            </View>
-          </View>
-
-          {/* Summary row */}
-          <View style={s.metricsRow}>
-            {[
-              { label: 'Workers',  value: workers.length,  color: '#818CF8', colors: ['#818CF8','#6366F1'] as const },
-              { label: 'Present',  value: trackedToday > 0 ? presentToday : '—',  color: '#34D399', colors: ['#34D399','#10B981'] as const },
-              { label: 'Absent',   value: trackedToday > 0 ? trackedToday - presentToday : '—',   color: '#FB7185', colors: ['#FB7185','#F43F5E'] as const },
-              { label: 'Tracked',  value: trackedToday,   color: '#FCD34D', colors: ['#FCD34D','#F59E0B'] as const },
-            ].map((m, i) => (
-              <View key={m.label} style={[s.metricCell, i < 3 && s.metricDiv]}>
-                <LinearGradient colors={m.colors} style={s.metricDot} />
-                <Text style={[s.metricVal, { color: m.color }]}>{m.value}</Text>
-                <Text style={s.metricLbl}>{m.label}</Text>
+          <ScrollView
+            style={{ maxHeight: 220 }}
+            nestedScrollEnabled
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={{ padding: 14, paddingTop: 12 }}
+          >
+            {/* Header row */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
+              <LinearGradient colors={['#10B981', '#059669']} style={[s.complaintIconBox, { marginRight: 10 }]}>
+                <Feather name="user-check" size={13} color="#fff" />
+              </LinearGradient>
+              <View style={{ flex: 1 }}>
+                <Text style={{ color: '#F0F4FF', fontSize: 13, fontFamily: 'Inter_700Bold' }}>
+                  Safai Karmi Attendance
+                </Text>
+                <Text style={{ color: '#64748B', fontSize: 10, fontFamily: 'Inter_400Regular', marginTop: 1 }}>
+                  {new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'short' })}
+                </Text>
               </View>
-            ))}
-          </View>
+              <View style={[s.ratePill, { borderColor: attColor + '40', backgroundColor: attColor + '18' }]}>
+                <View style={[s.rateDot, { backgroundColor: attColor }]} />
+                <Text style={[s.ratePillTxt, { color: attColor }]}>
+                  {attRateToday != null ? `${attRateToday}%` : 'No data'}
+                </Text>
+              </View>
+            </View>
 
-          {/* Overall progress bar */}
-          <View style={[s.barTrack, { marginBottom: wardAttToday.length > 0 ? 12 : 0 }]}>
-            <View style={[s.barFill, { width: `${attRateToday ?? 0}%` as any, backgroundColor: attColor }]} />
-            <View style={[s.barGlow, { width: `${attRateToday ?? 0}%` as any, backgroundColor: attColor }]} />
-          </View>
-
-          {/* Per-ward breakdown */}
-          {wardAttToday.length > 0 && (
-            <View style={{ gap: 7 }}>
-              <Text style={{ color: '#475569', fontSize: 9, fontFamily: 'Inter_600SemiBold', letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 2 }}>
-                Ward Breakdown
-              </Text>
-              <ScrollView
-                style={{ maxHeight: 130 }}
-                nestedScrollEnabled
-                showsVerticalScrollIndicator={false}
-              >
-                <View style={{ gap: 7 }}>
-                  {wardAttToday.map(w => {
-                    const clr = w.pct == null ? '#475569' : w.pct >= 80 ? '#34D399' : w.pct >= 50 ? '#FCD34D' : '#FB7185';
-                    return (
-                      <View key={w.wn} style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                        <Text style={{ color: '#64748B', fontSize: 9, fontFamily: 'Inter_600SemiBold', width: 32 }}>W{w.wn}</Text>
-                        <View style={{ flex: 1, height: 8, backgroundColor: 'rgba(255,255,255,0.07)', borderRadius: 4, overflow: 'hidden' }}>
-                          <View style={{ width: `${w.pct ?? 0}%`, height: 8, backgroundColor: clr, borderRadius: 4 }} />
-                        </View>
-                        <Text style={{ color: clr, fontSize: 9, fontFamily: 'Inter_700Bold', width: 30, textAlign: 'right' }}>
-                          {w.pct != null ? `${w.pct}%` : '—'}
-                        </Text>
-                        <Text style={{ color: '#475569', fontSize: 9, width: 22 }}>({w.total})</Text>
-                      </View>
-                    );
-                  })}
+            {/* Summary row */}
+            <View style={s.metricsRow}>
+              {[
+                { label: 'Workers',  value: workers.length,  color: '#818CF8', colors: ['#818CF8','#6366F1'] as const },
+                { label: 'Present',  value: trackedToday > 0 ? presentToday : '—',  color: '#34D399', colors: ['#34D399','#10B981'] as const },
+                { label: 'Absent',   value: trackedToday > 0 ? trackedToday - presentToday : '—',   color: '#FB7185', colors: ['#FB7185','#F43F5E'] as const },
+                { label: 'Tracked',  value: trackedToday,   color: '#FCD34D', colors: ['#FCD34D','#F59E0B'] as const },
+              ].map((m, i) => (
+                <View key={m.label} style={[s.metricCell, i < 3 && s.metricDiv]}>
+                  <LinearGradient colors={m.colors} style={s.metricDot} />
+                  <Text style={[s.metricVal, { color: m.color }]}>{m.value}</Text>
+                  <Text style={s.metricLbl}>{m.label}</Text>
                 </View>
-              </ScrollView>
+              ))}
             </View>
-          )}
 
-          {/* No data state */}
-          {trackedToday === 0 && (
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 }}>
-              <Feather name="info" size={12} color="#475569" />
-              <Text style={{ color: '#475569', fontSize: 10, fontFamily: 'Inter_400Regular' }}>
-                No attendance records marked yet for today
-              </Text>
+            {/* Overall progress bar */}
+            <View style={[s.barTrack, { marginBottom: wardAttToday.length > 0 ? 12 : 0 }]}>
+              <View style={[s.barFill, { width: `${attRateToday ?? 0}%` as any, backgroundColor: attColor }]} />
+              <View style={[s.barGlow, { width: `${attRateToday ?? 0}%` as any, backgroundColor: attColor }]} />
             </View>
-          )}
 
+            {/* Per-ward breakdown */}
+            {wardAttToday.length > 0 && (
+              <View style={{ gap: 7 }}>
+                <Text style={{ color: '#475569', fontSize: 9, fontFamily: 'Inter_600SemiBold', letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 2 }}>
+                  Ward Breakdown
+                </Text>
+                {wardAttToday.map(w => {
+                  const clr = w.pct == null ? '#475569' : w.pct >= 80 ? '#34D399' : w.pct >= 50 ? '#FCD34D' : '#FB7185';
+                  return (
+                    <View key={w.wn} style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                      <Text style={{ color: '#64748B', fontSize: 9, fontFamily: 'Inter_600SemiBold', width: 32 }}>W{w.wn}</Text>
+                      <View style={{ flex: 1, height: 8, backgroundColor: 'rgba(255,255,255,0.07)', borderRadius: 4, overflow: 'hidden' }}>
+                        <View style={{ width: `${w.pct ?? 0}%`, height: 8, backgroundColor: clr, borderRadius: 4 }} />
+                      </View>
+                      <Text style={{ color: clr, fontSize: 9, fontFamily: 'Inter_700Bold', width: 30, textAlign: 'right' }}>
+                        {w.pct != null ? `${w.pct}%` : '—'}
+                      </Text>
+                      <Text style={{ color: '#475569', fontSize: 9, width: 22 }}>({w.total})</Text>
+                    </View>
+                  );
+                })}
+              </View>
+            )}
+
+            {/* No data state */}
+            {trackedToday === 0 && (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 }}>
+                <Feather name="info" size={12} color="#475569" />
+                <Text style={{ color: '#475569', fontSize: 10, fontFamily: 'Inter_400Regular' }}>
+                  No attendance records marked yet for today
+                </Text>
+              </View>
+            )}
+          </ScrollView>
           <View style={s.glassCardBevelBot} />
         </View>
 
